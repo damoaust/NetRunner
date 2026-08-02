@@ -165,7 +165,7 @@ func log_to_terminal(message: String) -> void:
 		terminal_log.text += message
 	print(message)
 
-func update_deck_info() -> void:
+func update_deck_info(_program: Variant = null) -> void:
 	if not netrunner:
 		return
 	if deck_name_label:
