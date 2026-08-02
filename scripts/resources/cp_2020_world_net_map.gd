@@ -15,8 +15,16 @@ var current_connected_city: String = "Night City"
 @onready var location_label: Label = get_node_or_null("HUDOverlay/LocationLabel")
 
 func _ready() -> void:
+	_fit_background_to_viewport()
 	setup_hub_buttons()
 	update_hud()
+
+func _fit_background_to_viewport() -> void:
+	var bg := get_node_or_null("BackgroundTexture") as Control
+	if bg:
+		var vp_size := get_viewport().get_visible_rect().size
+		bg.size = vp_size
+		bg.position = Vector2.ZERO
 
 func setup_hub_buttons() -> void:
 	for city_name in global_hubs.keys():

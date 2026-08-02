@@ -1,13 +1,17 @@
 [gd_scene format=3 uid="uid://d2bwfoltbv026"]
 
 [ext_resource type="Script" uid="uid://c07fig008mde3" path="res://scripts/resources/cp_2020_world_net_map.gd" id="1_2v4ka"]
+[ext_resource type="Texture2D" uid="uid://bqlwit126aaca" path="res://Gemini_Generated_Image_3pb8eo3pb8eo3pb8.png" id="2_bgimg"]
 
 [node name="Cp2020WorldNetMap" type="Node2D" unique_id=1725934924]
 script = ExtResource("1_2v4ka")
 
 [node name="BackgroundTexture" type="TextureRect" parent="." unique_id=737342068]
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 1280.0
+offset_bottom = 720.0
+texture = ExtResource("2_bgimg")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="HubButtonsContainer" type="Control" parent="." unique_id=1552680983]
 layout_mode = 3
