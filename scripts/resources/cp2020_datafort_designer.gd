@@ -10,6 +10,11 @@ var grid_offset_y: int = 90
 
 var current_layout: CP2020DatafortLayout
 var selected_tile_type: CP2020DatafortLayout.TileType = CP2020DatafortLayout.TileType.CODE_GATE
+# When true, painting an ENTRY tile marks it as an LDL link (a tile the
+# runner can travel through to reach another datafort / the world map).
+var ldl_link_mode: bool = false
+# Tile currently being edited in the LDL link side panel.
+var selected_ldl_coord: Vector2i = Vector2i(-1, -1)
 
 @onready var dynamic_button_row: HBoxContainer = $TopPanel/DynamicButtonRow
 @onready var columns_spinbox: SpinBox = $TopPanel/SettingsRow/ColumnsSpinBox
@@ -19,11 +24,19 @@ var selected_tile_type: CP2020DatafortLayout.TileType = CP2020DatafortLayout.Til
 @onready var save_dialog: FileDialog = get_node_or_null("SaveDialog")
 @onready var load_dialog: FileDialog = get_node_or_null("LoadDialog")
 
+# LDL link editor panel (built in code so the scene file stays simple).
+var ldl_panel: VBoxContainer
+var ldl_target_edit: LineEdit
+var ldl_x_spinbox: SpinBox
+var ldl_y_spinbox: SpinBox
+var ldl_browse_dialog: FileDialog
+
 func _ready() -> void:
 	setup_new_map()
 	setup_file_dialogs_if_missing()
 	setup_toolbar_signals()
 	setup_toolbar_buttons()
+	build_ldl_panel()
 	queue_redraw()
 
 func setup_new_map() -> void:
@@ -86,13 +99,13 @@ func setup_toolbar_buttons() -> void:
 	for child in dynamic_button_row.get_children():
 		child.queue_free()
 		
-	add_tool_button("Entry", CP2020DatafortLayout.TileType.ENTRY)
+	add_entry_tool_button("Entry")
 	add_tool_button("Datawall", CP2020DatafortLayout.TileType.DATAWALL)
 	add_tool_button("Code Gate", CP2020DatafortLayout.TileType.CODE_GATE)
 	add_tool_button("Memory Unit", CP2020DatafortLayout.TileType.MEMORY_UNIT)
 	add_tool_button("Control Node", CP2020DatafortLayout.TileType.CONTROL_NODE)
 	add_tool_button("Black ICE", CP2020DatafortLayout.TileType.BLACK_ICE)
-	add_tool_button("LDL Link", CP2020DatafortLayout.TileType.ENTRY) # Can map to entry/custom or flag as LDL
+	add_ldl_tool_button("LDL Link")
 	add_tool_button("Eraser", CP2020DatafortLayout.TileType.EMPTY)
 	
 	var sep = VSeparator.new()
@@ -111,9 +124,32 @@ func setup_toolbar_buttons() -> void:
 func add_tool_button(label_text: String, tile_type: CP2020DatafortLayout.TileType) -> void:
 	var btn = Button.new()
 	btn.text = label_text
-	btn.pressed.connect(func(): 
+	btn.pressed.connect(func():
 		selected_tile_type = tile_type
+		ldl_link_mode = false
+		_hide_ldl_panel()
 		print("Selected Tool: ", label_text)
+	)
+	dynamic_button_row.add_child(btn)
+
+func add_entry_tool_button(label_text: String) -> void:
+	var btn = Button.new()
+	btn.text = label_text
+	btn.pressed.connect(func():
+		selected_tile_type = CP2020DatafortLayout.TileType.ENTRY
+		ldl_link_mode = false
+		_hide_ldl_panel()
+		print("Selected Tool: ", label_text, " (plain datafort entrance)")
+	)
+	dynamic_button_row.add_child(btn)
+
+func add_ldl_tool_button(label_text: String) -> void:
+	var btn = Button.new()
+	btn.text = label_text
+	btn.pressed.connect(func():
+		selected_tile_type = CP2020DatafortLayout.TileType.ENTRY
+		ldl_link_mode = true
+		print("Selected Tool: ", label_text, " (paint/select an LDL link, then edit it in the side panel)")
 	)
 	dynamic_button_row.add_child(btn)
 
@@ -195,7 +231,20 @@ func _gui_input(event: InputEvent) -> void:
 			var grid_y = int(adjusted_y / cell_size)
 			
 			if grid_x >= 0 and grid_x < grid_columns and grid_y >= 0 and grid_y < grid_rows:
-				paint_tile(Vector2i(grid_x, grid_y))
+				var coord := Vector2i(grid_x, grid_y)
+				# In LDL Link mode: clicking an existing LDL link selects it for
+				# editing rather than overwriting it. Clicking anything else
+				# paints a fresh LDL link and opens the editor on it.
+				if ldl_link_mode:
+					var existing = current_layout.get_tile(coord) if current_layout else null
+					if existing and existing.tile_type == CP2020DatafortLayout.TileType.ENTRY and existing.is_ldl_link:
+						_open_ldl_editor(coord)
+					else:
+						paint_tile(coord)
+						_open_ldl_editor(coord)
+				else:
+					paint_tile(coord)
+					_hide_ldl_panel()
 
 # Update paint_tile to flag LDL options if needed
 func paint_tile(coord: Vector2i) -> void:
@@ -210,10 +259,19 @@ func paint_tile(coord: Vector2i) -> void:
 			tile_data.tile_name = "Memory Unit"
 			tile_data.memory_units_mu = 2
 		CP2020DatafortLayout.TileType.ENTRY:
-			tile_data.tile_name = "Netrunner Entry / LDL Node"
-			tile_data.is_ldl_link = true # Flag as LDL routing line connection point
-			tile_data.target_subnet_path = "res://scenes/forts/fort2.tres" # Default target subnet path example
-			tile_data.target_entry_coord = Vector2i(0, 0)
+			if ldl_link_mode:
+				# An LDL link is an ENTRY tile the runner can travel through to
+				# reach another datafort (or return to the world map). The
+				# target is configured afterwards via the LDL side panel.
+				tile_data.tile_name = "LDL Link"
+				tile_data.is_ldl_link = true
+				tile_data.target_subnet_path = ""
+				tile_data.target_entry_coord = Vector2i(-1, -1)
+			else:
+				# A plain Entry is this datafort's arrival point when diving
+				# in from the world map (no outbound LDL link).
+				tile_data.tile_name = "Netrunner Entry"
+				tile_data.is_ldl_link = false
 		CP2020DatafortLayout.TileType.EMPTY:
 			tile_data.tile_name = "Empty Path"
 			
@@ -266,12 +324,19 @@ func _draw() -> void:
 						draw_rect(inner_rect, Color(0.1, 0.2, 0.1), true)
 						draw_rect(inner_rect, Color.WEB_GREEN, false)
 						var center = cell_rect.get_center()
-						var points = PackedVector2Array([
-							center + Vector2(0, -10),
-							center + Vector2(-10, 8),
-							center + Vector2(10, 8)
-						])
-						draw_polygon(points, PackedColorArray([Color.WEB_GREEN]))
+						if tile_data.is_ldl_link:
+							# LDL links get a distinct blue frame + "L" glyph so the
+							# designer can tell them apart from plain netrunner entries.
+							draw_rect(inner_rect, Color(0.05, 0.1, 0.25), true)
+							draw_rect(inner_rect, Color.DEEP_SKY_BLUE, false, 2)
+							draw_string(get_theme_default_font(), cell_rect.position + Vector2(12, 27), "L", HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color.DEEP_SKY_BLUE)
+						else:
+							var points = PackedVector2Array([
+								center + Vector2(0, -10),
+								center + Vector2(-10, 8),
+								center + Vector2(10, 8)
+							])
+							draw_polygon(points, PackedColorArray([Color.WEB_GREEN]))
 						
 					CP2020DatafortLayout.TileType.CODE_GATE:
 						draw_rect(inner_rect, Color(0.3, 0.15, 0), true)
@@ -302,3 +367,137 @@ func _draw() -> void:
 						draw_circle(center, 12, Color(0.3, 0, 0))
 						draw_arc(center, 10, 0, TAU, 16, Color.CRIMSON, 2)
 						draw_circle(center, 3, Color.CRIMSON)
+
+# ---------------------------------------------------------------------------
+# LDL link editor side panel
+# ---------------------------------------------------------------------------
+
+func build_ldl_panel() -> void:
+	ldl_panel = VBoxContainer.new()
+	ldl_panel.name = "LDLLinkPanel"
+	ldl_panel.offset_left = 1020
+	ldl_panel.offset_top = 90
+	ldl_panel.offset_right = 1260
+	ldl_panel.offset_bottom = 360
+	ldl_panel.visible = false
+	add_child(ldl_panel)
+
+	var title = Label.new()
+	title.text = "LDL Link Editor"
+	ldl_panel.add_child(title)
+
+	var target_lbl = Label.new()
+	target_lbl.text = "Target subnet (.tres):"
+	ldl_panel.add_child(target_lbl)
+
+	var target_row = HBoxContainer.new()
+	ldl_target_edit = LineEdit.new()
+	ldl_target_edit.placeholder_text = "res://scenes/forts/..."
+	ldl_target_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ldl_target_edit.text_changed.connect(_on_ldl_target_changed)
+	target_row.add_child(ldl_target_edit)
+	var browse_btn = Button.new()
+	browse_btn.text = "..."
+	browse_btn.pressed.connect(_on_ldl_browse)
+	target_row.add_child(browse_btn)
+	ldl_panel.add_child(target_row)
+
+	var coord_lbl = Label.new()
+	coord_lbl.text = "Target entry coord (X, Y):"
+	ldl_panel.add_child(coord_lbl)
+
+	var coord_row = HBoxContainer.new()
+	ldl_x_spinbox = SpinBox.new()
+	ldl_x_spinbox.min_value = -1
+	ldl_x_spinbox.max_value = 999
+	ldl_x_spinbox.value_changed.connect(_on_ldl_coord_changed)
+	coord_row.add_child(ldl_x_spinbox)
+	ldl_y_spinbox = SpinBox.new()
+	ldl_y_spinbox.min_value = -1
+	ldl_y_spinbox.max_value = 999
+	ldl_y_spinbox.value_changed.connect(_on_ldl_coord_changed)
+	coord_row.add_child(ldl_y_spinbox)
+	ldl_panel.add_child(coord_row)
+
+	var clear_btn = Button.new()
+	clear_btn.text = "Clear target (world-map return only)"
+	clear_btn.pressed.connect(_clear_ldl_target)
+	ldl_panel.add_child(clear_btn)
+
+	var hint = Label.new()
+	hint.text = "Empty target = 'Return to World Map' only.\nSet a .tres to also offer 'Travel to <datafort>'."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ldl_panel.add_child(hint)
+
+	# Browse dialog scoped to the forts folder.
+	ldl_browse_dialog = FileDialog.new()
+	ldl_browse_dialog.name = "LDLBrowseDialog"
+	ldl_browse_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	ldl_browse_dialog.access = FileDialog.ACCESS_RESOURCES
+	ldl_browse_dialog.current_dir = "res://scenes/forts"
+	ldl_browse_dialog.filters = PackedStringArray(["*.tres ; Godot Resource"])
+	ldl_browse_dialog.file_selected.connect(_on_ldl_target_selected)
+	add_child(ldl_browse_dialog)
+
+
+func _open_ldl_editor(coord: Vector2i) -> void:
+	if not current_layout:
+		return
+	var tile = current_layout.get_tile(coord)
+	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.ENTRY or not tile.is_ldl_link:
+		print("No LDL link at ", coord, " to edit.")
+		return
+	selected_ldl_coord = coord
+	# Populate fields without retriggering the write-back handlers.
+	ldl_target_edit.set_block_signals(true)
+	ldl_x_spinbox.set_block_signals(true)
+	ldl_y_spinbox.set_block_signals(true)
+	ldl_target_edit.text = tile.target_subnet_path
+	ldl_x_spinbox.value = tile.target_entry_coord.x
+	ldl_y_spinbox.value = tile.target_entry_coord.y
+	ldl_target_edit.set_block_signals(false)
+	ldl_x_spinbox.set_block_signals(false)
+	ldl_y_spinbox.set_block_signals(false)
+	ldl_panel.visible = true
+	print("Editing LDL link at ", coord)
+
+
+func _hide_ldl_panel() -> void:
+	if ldl_panel:
+		ldl_panel.visible = false
+	selected_ldl_coord = Vector2i(-1, -1)
+
+
+func _write_ldl_field() -> void:
+	if not current_layout or selected_ldl_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ldl_coord)
+	if tile == null:
+		return
+	tile.target_subnet_path = ldl_target_edit.text.strip_edges()
+	tile.target_entry_coord = Vector2i(int(ldl_x_spinbox.value), int(ldl_y_spinbox.value))
+	queue_redraw()
+
+
+func _on_ldl_target_changed(_new_text: String) -> void:
+	_write_ldl_field()
+
+
+func _on_ldl_coord_changed(_value: float) -> void:
+	_write_ldl_field()
+
+
+func _on_ldl_browse() -> void:
+	ldl_browse_dialog.popup_centered(Vector2i(600, 400))
+
+
+func _on_ldl_target_selected(path: String) -> void:
+	ldl_target_edit.text = path
+	_write_ldl_field()
+
+
+func _clear_ldl_target() -> void:
+	ldl_target_edit.text = ""
+	ldl_x_spinbox.value = -1
+	ldl_y_spinbox.value = -1
+	_write_ldl_field()
