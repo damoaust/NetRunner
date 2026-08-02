@@ -26,6 +26,7 @@ var selected_ldl_coord: Vector2i = Vector2i(-1, -1)
 
 # LDL link editor panel (built in code so the scene file stays simple).
 var ldl_panel: VBoxContainer
+var ldl_panel_bg: PanelContainer
 var ldl_target_edit: LineEdit
 var ldl_x_spinbox: SpinBox
 var ldl_y_spinbox: SpinBox
@@ -373,14 +374,25 @@ func _draw() -> void:
 # ---------------------------------------------------------------------------
 
 func build_ldl_panel() -> void:
+	# Panel container gives the editor a readable background over the grid.
+	var panel_bg = PanelContainer.new()
+	panel_bg.name = "LDLLinkPanel"
+	panel_bg.anchor_left = 1.0
+	panel_bg.anchor_right = 1.0
+	panel_bg.anchor_top = 0.0
+	panel_bg.anchor_bottom = 1.0
+	panel_bg.offset_left = -300
+	panel_bg.offset_right = -10
+	panel_bg.offset_top = 90
+	panel_bg.offset_bottom = -10
+	panel_bg.visible = false
+	add_child(panel_bg)
+	ldl_panel_bg = panel_bg
+
 	ldl_panel = VBoxContainer.new()
-	ldl_panel.name = "LDLLinkPanel"
-	ldl_panel.offset_left = 1020
-	ldl_panel.offset_top = 90
-	ldl_panel.offset_right = 1260
-	ldl_panel.offset_bottom = 360
-	ldl_panel.visible = false
-	add_child(ldl_panel)
+	ldl_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ldl_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel_bg.add_child(ldl_panel)
 
 	var title = Label.new()
 	title.text = "LDL Link Editor"
@@ -458,13 +470,13 @@ func _open_ldl_editor(coord: Vector2i) -> void:
 	ldl_target_edit.set_block_signals(false)
 	ldl_x_spinbox.set_block_signals(false)
 	ldl_y_spinbox.set_block_signals(false)
-	ldl_panel.visible = true
+	ldl_panel_bg.visible = true
 	print("Editing LDL link at ", coord)
 
 
 func _hide_ldl_panel() -> void:
-	if ldl_panel:
-		ldl_panel.visible = false
+	if ldl_panel_bg:
+		ldl_panel_bg.visible = false
 	selected_ldl_coord = Vector2i(-1, -1)
 
 
