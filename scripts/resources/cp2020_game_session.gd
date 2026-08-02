@@ -7,6 +7,10 @@ extends Control
 @onready var interaction_handler: CP2020InteractionHandler = $CP2020InteractionHandler
 @onready var terminal_log: RichTextLabel = $UI/PanelContainer/VBoxContainer/TerminalLog
 @onready var netrunner: CP2020Netrunner = $CP2020Netrunner
+@onready var turn_manager: CP2020TurnManager = $TurnManager
+
+const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
+var ice_nodes: Array[BlackIce] = []
 
 var current_layout: CP2020DatafortLayout
 
@@ -14,7 +18,13 @@ func _ready() -> void:
 	if interaction_handler:
 		if not interaction_handler.action_triggered.is_connected(_on_action_triggered):
 			interaction_handler.action_triggered.connect(_on_action_triggered)
-			
+
+	if turn_manager:
+		if not turn_manager.turn_ended.is_connected(_on_turn_ended):
+			turn_manager.turn_ended.connect(_on_turn_ended)
+		if not turn_manager.ice_movement_stepped.is_connected(_on_ice_stepped):
+			turn_manager.ice_movement_stepped.connect(_on_ice_stepped)
+
 	load_subnet(starting_subnet_path)
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
 
@@ -28,7 +38,8 @@ func load_subnet(path: String) -> void:
 			# Let the Netrunner handle its own spawning!
 			if netrunner:
 				netrunner.initialize(current_layout)
-			recalculate_fog_of_war(netrunner.current_position)	
+			spawn_black_ice()
+			recalculate_fog_of_war(netrunner.current_position)
 			board_renderer.queue_redraw()
 
 func _input(event: InputEvent) -> void:
@@ -46,6 +57,10 @@ func _input(event: InputEvent) -> void:
 
 	# --- KEYBOARD INPUT (Pass to Netrunner) ---
 	elif event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER:
+			_end_player_turn()
+			return
+
 		var dir = Vector2i.ZERO
 		if event.keycode in [KEY_W, KEY_UP]: dir = Vector2i(0, -1)
 		elif event.keycode in [KEY_S, KEY_DOWN]: dir = Vector2i(0, 1)
@@ -93,6 +108,57 @@ func log_to_terminal(message: String) -> void:
 	if terminal_log:
 		terminal_log.text += message
 	print(message)
+
+func spawn_black_ice() -> void:
+	# Clear any previously spawned ICE nodes (e.g. on subnet reload)
+	for ice in ice_nodes:
+		if is_instance_valid(ice):
+			ice.queue_free()
+	ice_nodes.clear()
+
+	if not current_layout:
+		return
+
+	var layout_size := Vector2i(current_layout.columns, current_layout.rows)
+	for raw_key in current_layout.grid_tiles.keys():
+		var coord: Vector2i
+		if raw_key is String:
+			var parts = raw_key.split(",")
+			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+		else:
+			coord = raw_key
+
+		var tile = current_layout.get_tile(coord)
+		if tile and tile.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
+			var ice: BlackIce = BlackIceScene.instantiate()
+			add_child(ice)
+			ice.initialize(coord, layout_size)
+			ice.message_logged.connect(log_to_terminal)
+			ice.moved_to.connect(_on_ice_moved)
+			ice.attacked_netrunner.connect(_on_ice_attacked)
+			ice_nodes.append(ice)
+			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program_name, coord])
+
+func _end_player_turn() -> void:
+	if not turn_manager or not current_layout or not netrunner:
+		return
+	log_to_terminal("--- Netrunner turn ended. ICE activating... ---\n")
+	turn_manager.execute_ice_turns(ice_nodes, netrunner.current_position, current_layout)
+
+func _on_turn_ended(is_netrunner_turn: bool) -> void:
+	if is_netrunner_turn:
+		log_to_terminal("--- Netrunner turn begins. ---\n")
+
+func _on_ice_stepped() -> void:
+	if board_renderer:
+		board_renderer.queue_redraw()
+
+func _on_ice_moved(_new_pos: Vector2i) -> void:
+	if board_renderer:
+		board_renderer.queue_redraw()
+
+func _on_ice_attacked(strength: int) -> void:
+	log_to_terminal("WARNING: Netrunner takes %d damage from Black ICE!\n" % strength)
 #func reveal_entry_points() -> void:
 	#if not current_layout:
 		#return
@@ -191,6 +257,13 @@ func recalculate_fog_of_war(player_pos: Vector2i) -> void:
 					if tile:
 						tile.is_visible = true
 						tile.is_explored = true
+
+	# Sync Black ICE skull visibility with the freshly computed fog state
+	for ice in ice_nodes:
+		if is_instance_valid(ice):
+			var ice_tile = current_layout.get_tile(ice.current_position)
+			if ice_tile:
+				ice.update_visibility(ice_tile.is_explored, ice_tile.is_visible)
 
 
 func _has_line_of_sight(from: Vector2i, to: Vector2i) -> bool:
