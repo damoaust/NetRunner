@@ -1,19 +1,15 @@
 [gd_scene format=3 uid="uid://d2bwfoltbv026"]
 
 [ext_resource type="Script" uid="uid://c07fig008mde3" path="res://scripts/resources/cp_2020_world_net_map.gd" id="1_2v4ka"]
-[ext_resource type="Texture2D" uid="uid://bqlwit126aaca" path="res://Gemini_Generated_Image_3pb8eo3pb8eo3pb8.png" id="2_bgimg"]
+[ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="2_tm"]
 
-[node name="Cp2020WorldNetMap" type="Node2D" unique_id=1725934924]
+[node name="Cp2020WorldNetMap" type="Node2D"]
 script = ExtResource("1_2v4ka")
 
-[node name="BackgroundTexture" type="TextureRect" parent="." unique_id=737342068]
-offset_right = 1280.0
-offset_bottom = 720.0
-texture = ExtResource("2_bgimg")
-expand_mode = 1
-stretch_mode = 6
+[node name="TurnManager" type="Node" parent="."]
+script = ExtResource("2_tm")
 
-[node name="HubButtonsContainer" type="Control" parent="." unique_id=1552680983]
+[node name="HUDOverlay" type="Control" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -21,41 +17,32 @@ offset_right = 1280.0
 offset_bottom = 720.0
 mouse_filter = 2
 
-[node name="NightCityButton" type="Button" parent="HubButtonsContainer" unique_id=1345869840]
-offset_left = 50.0
-offset_top = 300.0
-offset_right = 190.0
-offset_bottom = 340.0
-text = "Night City"
-
-[node name="LondonButton" type="Button" parent="HubButtonsContainer" unique_id=1795986276]
-offset_left = 550.0
-offset_top = 220.0
-offset_right = 690.0
-offset_bottom = 260.0
-text = "London"
-
-[node name="TokyoButton" type="Button" parent="HubButtonsContainer" unique_id=144747779]
-offset_left = 980.0
-offset_top = 340.0
-offset_right = 1120.0
-offset_bottom = 380.0
-text = "Tokyo"
-
-[node name="HUDOverlay" type="Control" parent="." unique_id=1651333838]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = 1280.0
-offset_bottom = 720.0
-mouse_filter = 2
-
-[node name="LocationLabel" type="Label" parent="HUDOverlay" unique_id=1651333839]
+[node name="LocationLabel" type="Label" parent="HUDOverlay"]
 offset_left = 20.0
 offset_top = 10.0
 offset_right = 600.0
 offset_bottom = 44.0
-text = "CONNECTED HUB: NIGHT CITY"
+text = "LOCATION: NIGHT CITY"
 theme_override_colors/font_color = Color(0, 1, 0.7, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+
+[node name="ActionsLabel" type="Label" parent="HUDOverlay"]
+offset_left = 620.0
+offset_top = 10.0
+offset_right = 820.0
+offset_bottom = 44.0
+text = "ACTIONS: 5/5"
+theme_override_colors/font_color = Color(1, 1, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+
+[node name="CreditsLabel" type="Label" parent="HUDOverlay"]
+offset_left = 840.0
+offset_top = 10.0
+offset_right = 1080.0
+offset_bottom = 44.0
+text = "CREDITS: 1000 eb"
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
