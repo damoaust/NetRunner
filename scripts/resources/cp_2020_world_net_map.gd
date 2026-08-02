@@ -151,7 +151,7 @@ func _draw() -> void:
 	# Runner avatar (cyan circle).
 	var center := Vector2(runner_pos.x * CELL + CELL / 2.0, runner_pos.y * CELL + CELL / 2.0)
 	draw_arc(center, CELL * 0.35, 0, TAU, 24, runner_color, 2.0)
-	draw_circle(center, CELL * 0.18)
+	draw_circle(center, CELL * 0.18, runner_color)
 
 
 func _theme_font() -> Font:
