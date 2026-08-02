@@ -182,6 +182,8 @@ func update_deck_info() -> void:
 			var status_prefix = "[ACTIVE] " if active else ""
 			var label := Label.new()
 			label.text = "%s%s  (STR %d, %d MU)" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
+			if active:
+				label.add_theme_color_override("font_color", Color.GREEN)
 			program_list_container.add_child(label)
 
 func spawn_black_ice() -> void:
