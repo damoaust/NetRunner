@@ -9,6 +9,8 @@ extends Control
 @onready var deck_name_label: Label = $UI/PanelContainer/VBoxContainer/DeckNameLabel
 @onready var memory_label: Label = $UI/PanelContainer/VBoxContainer/MemoryLabel
 @onready var actions_label: Label = $UI/PanelContainer/VBoxContainer/ActionsLabel
+@onready var health_label: Label = $UI/PanelContainer/VBoxContainer/HealthLabel
+@onready var health_bar: ProgressBar = $UI/PanelContainer/VBoxContainer/HealthBar
 @onready var program_list_container: VBoxContainer = $UI/PanelContainer/VBoxContainer/ProgramListContainer
 @onready var netrunner: CP2020Netrunner = $CP2020Netrunner
 @onready var turn_manager: CP2020TurnManager = $TurnManager
@@ -43,9 +45,12 @@ func _ready() -> void:
 			netrunner.shield_raised.connect(update_deck_info)
 		if not netrunner.shield_consumed.is_connected(update_deck_info):
 			netrunner.shield_consumed.connect(update_deck_info)
+		if not netrunner.health_changed.is_connected(_on_health_changed):
+			netrunner.health_changed.connect(_on_health_changed)
 
 	load_subnet(starting_subnet_path)
 	update_deck_info()
+	_on_health_changed(netrunner.current_health, netrunner.max_health)
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
 
 func load_subnet(path: String) -> void:
@@ -252,6 +257,18 @@ func _check_actions_exhausted() -> void:
 	if turn_manager and turn_manager.actions_remaining <= 0:
 		log_to_terminal("Out of actions. ICE activating...\n")
 		turn_manager.execute_ice_turns(ice_nodes, netrunner.current_position, current_layout)
+
+func _on_health_changed(current: int, max_hp: int) -> void:
+	if health_bar:
+		health_bar.max_value = max_hp
+		health_bar.value = current
+	if health_label:
+		health_label.text = "Health: %d / %d" % [current, max_hp]
+	if health_bar:
+		if max_hp > 0 and float(current) / float(max_hp) <= 0.3:
+			health_bar.modulate = Color.RED
+		else:
+			health_bar.modulate = Color.WHITE
 
 func _on_ice_stepped() -> void:
 	if board_renderer:

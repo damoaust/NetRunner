@@ -52,6 +52,17 @@ text = "Memory:"
 layout_mode = 2
 text = "Actions:"
 
+[node name="HealthLabel" type="Label" parent="UI/PanelContainer/VBoxContainer" unique_id=347801989]
+layout_mode = 2
+text = "Health: 20 / 20"
+
+[node name="HealthBar" type="ProgressBar" parent="UI/PanelContainer/VBoxContainer" unique_id=347801990]
+custom_minimum_size = Vector2(380, 20)
+layout_mode = 2
+max_value = 20.0
+value = 20.0
+show_percentage = false
+
 [node name="ProgramListContainer" type="VBoxContainer" parent="UI/PanelContainer/VBoxContainer" unique_id=1835341297]
 layout_mode = 2
 
