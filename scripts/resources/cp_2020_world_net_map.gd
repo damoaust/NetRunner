@@ -1,5 +1,5 @@
 class_name CP2020WorldNetMap
-extends Control
+extends Node2D
 
 signal sub_net_selected(subnet_resource_path: String, target_city: String)
 
