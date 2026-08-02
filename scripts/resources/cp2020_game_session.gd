@@ -48,7 +48,16 @@ func _ready() -> void:
 		if not netrunner.health_changed.is_connected(_on_health_changed):
 			netrunner.health_changed.connect(_on_health_changed)
 
-	load_subnet(starting_subnet_path)
+	# Apply the selected cyberdeck from the workbench (if any)
+	if RunState.selected_deck:
+		var deck := RunState.selected_deck
+		netrunner.deck_name = deck.deck_name
+		netrunner.max_memory_units = deck.max_mu
+		netrunner.installed_programs = deck.installed_programs.duplicate()
+
+	# Load the subnet chosen on the world map (fall back to default)
+	var subnet_path := RunState.selected_subnet_path if RunState.selected_subnet_path != "" else starting_subnet_path
+	load_subnet(subnet_path)
 	update_deck_info()
 	_on_health_changed(netrunner.current_health, netrunner.max_health)
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
@@ -285,6 +294,10 @@ func _on_ice_attacked(strength: int) -> void:
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
+
+func _on_jack_out_pressed() -> void:
+	log_to_terminal("Jacking out...\n")
+	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 #func reveal_entry_points() -> void:
 	#if not current_layout:
 		#return

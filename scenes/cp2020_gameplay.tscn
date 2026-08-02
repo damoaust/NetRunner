@@ -72,6 +72,10 @@ layout_mode = 2
 scroll_following = true
 scroll_following_visible_characters = true
 
+[node name="JackOutButton" type="Button" parent="UI/PanelContainer/VBoxContainer" unique_id=1899900123]
+layout_mode = 2
+text = "[ JACK OUT ]"
+
 [node name="BoardRenderer" type="Node2D" parent="." unique_id=657228260]
 script = ExtResource("8_eihqs")
 
@@ -87,3 +91,5 @@ script = ExtResource("10_llsot")
 
 [node name="SubnetLoader" type="Node2D" parent="." unique_id=2113021941]
 script = ExtResource("11_7be1p")
+
+[connection signal="pressed" from="UI/PanelContainer/VBoxContainer/JackOutButton" to="." method="_on_jack_out_pressed"]

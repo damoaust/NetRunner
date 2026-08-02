@@ -62,6 +62,7 @@ func _on_deck_selector_item_selected(index: int) -> void:
 func _on_button_pressed() -> void:
 	if active_deck:
 		print("Initiating neural link with %s... Jacking into the Net!" % active_deck.deck_name)
-		# Pass active_deck data to your game session script before changing scenes.
+		RunState.selected_deck = active_deck
+		get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 	else:
 		print("Error: No active deck selected for neural link!")

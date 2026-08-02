@@ -47,6 +47,8 @@ func select_hub_city(city_name: String) -> void:
 	
 	# Emit signal so your main game manager knows to load the new subnet resource
 	sub_net_selected.emit(subnet_path, city_name)
+	RunState.selected_subnet_path = subnet_path
+	get_tree().change_scene_to_file("res://scenes/cp2020_gameplay.tscn")
 
 func calculate_ldl_trace_penalty(origin: String, destination: String) -> void:
 	if origin == destination:
