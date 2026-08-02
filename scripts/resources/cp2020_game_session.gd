@@ -25,6 +25,12 @@ func _ready() -> void:
 		if not turn_manager.ice_movement_stepped.is_connected(_on_ice_stepped):
 			turn_manager.ice_movement_stepped.connect(_on_ice_stepped)
 
+	if netrunner:
+		if not netrunner.message_logged.is_connected(log_to_terminal):
+			netrunner.message_logged.connect(log_to_terminal)
+		if not netrunner.flatlined.is_connected(_on_flatlined):
+			netrunner.flatlined.connect(_on_flatlined)
+
 	load_subnet(starting_subnet_path)
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
 
@@ -53,7 +59,8 @@ func _input(event: InputEvent) -> void:
 		if interaction_handler and current_layout:
 			var cs: float = board_renderer.cell_size if board_renderer else 40.0
 			var go_y: float = board_renderer.grid_offset_y if board_renderer else 90.0
-			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes)
+			var nr_pos: Vector2i = netrunner.current_position if netrunner else Vector2i(-1, -1)
+			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes, nr_pos)
 
 	# --- KEYBOARD INPUT (Pass to Netrunner) ---
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -85,6 +92,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					execute_wall_breach(program, target_coord)
 				elif program.effect_type == NetProgram.EffectType.DEREZ_ICE:
 					execute_ice_attack(program, target_coord)
+				elif program.effect_type == NetProgram.EffectType.SHIELD:
+					execute_shield(program)
 				else:
 					log_to_terminal("Program effect not implemented yet.\n")
 
@@ -134,6 +143,12 @@ func execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 
 	if board_renderer:
 		board_renderer.queue_redraw()
+
+func execute_shield(program: NetProgram) -> void:
+	if not netrunner:
+		return
+	log_to_terminal("Activating Protection Program '%s'...\n" % program.program_name)
+	netrunner.recharge_shield(program.strength)
 
 func log_to_terminal(message: String) -> void:
 	if terminal_log:
@@ -189,7 +204,12 @@ func _on_ice_moved(_new_pos: Vector2i) -> void:
 		board_renderer.queue_redraw()
 
 func _on_ice_attacked(strength: int) -> void:
-	log_to_terminal("WARNING: Netrunner takes %d damage from Black ICE!\n" % strength)
+	log_to_terminal("WARNING: Black ICE attacks for %d!\n" % strength)
+	if netrunner:
+		netrunner.apply_damage(strength)
+
+func _on_flatlined() -> void:
+	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
 #func reveal_entry_points() -> void:
 	#if not current_layout:
 		#return

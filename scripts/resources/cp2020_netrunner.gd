@@ -5,6 +5,9 @@ signal position_changed(new_pos: Vector2i)
 signal interacted_with_tile(tile_data: CP2020TileData, pos: Vector2i)
 signal deck_updated()
 signal message_logged(msg: String)
+signal health_changed(current_health: int, max_health: int)
+signal shield_changed(current_shield: int, max_shield: int)
+signal flatlined
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -12,6 +15,12 @@ signal message_logged(msg: String)
 @export var deck_name: String = "Kendachi Cyberdeck"
 @export var max_memory_units: int = 20
 @export var installed_programs: Array[NetProgram] = []
+
+@export var max_health: int = 20
+@export var max_shield: int = 10
+
+var current_health: int = 20
+var current_shield: int = 0
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_layout: CP2020DatafortLayout
@@ -24,6 +33,8 @@ func get_used_memory() -> int:
 	return total_mu
 
 func _ready() -> void:
+	current_health = max_health
+	current_shield = 0
 	message_logged.emit("Netrunner ready. Current memory used: %d / %d MU" % [get_used_memory(), max_memory_units])
 
 func initialize(layout: CP2020DatafortLayout) -> void:
@@ -111,3 +122,31 @@ func move(direction: Vector2i) -> bool:
 		interacted_with_tile.emit(tile_data, current_position)
 			
 	return true
+
+func apply_damage(amount: int) -> void:
+	var remaining = amount
+	if current_shield > 0:
+		var absorbed = min(current_shield, remaining)
+		current_shield -= absorbed
+		remaining -= absorbed
+		message_logged.emit("Shield absorbs %d damage (Shield %d/%d)." % [absorbed, current_shield, max_shield])
+		shield_changed.emit(current_shield, max_shield)
+
+	if remaining > 0:
+		current_health -= remaining
+		message_logged.emit("Netrunner takes %d damage (Health %d/%d)." % [remaining, current_health, max_health])
+		health_changed.emit(current_health, max_health)
+
+	if current_health <= 0:
+		current_health = 0
+		message_logged.emit("FLATLINED. Netrunner jacked out.")
+		flatlined.emit()
+
+func recharge_shield(amount: int) -> void:
+	var gained = min(max_shield - current_shield, amount)
+	if gained <= 0:
+		message_logged.emit("Shield already at maximum (%d/%d)." % [current_shield, max_shield])
+		return
+	current_shield += gained
+	message_logged.emit("Shield recharged by %d (Shield %d/%d)." % [gained, current_shield, max_shield])
+	shield_changed.emit(current_shield, max_shield)

@@ -9,12 +9,12 @@ var _dynamic_menu: PopupMenu = null
 # Stores programs for lambda closure (survives after _gui_input returns)
 var _current_programs: Array[NetProgram] = []
 
-func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = []) -> void:
+func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
-		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes)
+		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes, netrunner_pos)
 
-func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = []) -> void:
+func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	if not layout:
 		print("DEBUG: Layout is missing!")
 		return
@@ -80,6 +80,16 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 			var prog = available_programs[i] as NetProgram
 			if prog and prog.effect_type == NetProgram.EffectType.DEREZ_ICE:
 				var menu_label = "%s (STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
+				var prog_id = 1000 + i
+				_dynamic_menu.add_item(menu_label, prog_id)
+				options_added = true
+
+	elif target_coord == netrunner_pos and tile_data.is_visible:
+		# Right-click on the Netrunner's own tile — offer protection (SHIELD) programs
+		for i in range(available_programs.size()):
+			var prog = available_programs[i] as NetProgram
+			if prog and prog.effect_type == NetProgram.EffectType.SHIELD:
+				var menu_label = "%s (Shield +%d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
 				var prog_id = 1000 + i
 				_dynamic_menu.add_item(menu_label, prog_id)
 				options_added = true

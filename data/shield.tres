@@ -6,7 +6,8 @@
 script = ExtResource("1_kksb7")
 program_name = "Shield"
 type = 6
-effect_type = 5
+effect_type = 6
+memory_cost = 2
 strength = 3
 price = 150
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"
