@@ -246,8 +246,8 @@ tile_type = 7
 [resource]
 script = ExtResource("2_opbl1")
 fort_name = "New Datafort"
-rows = 100
-columns = 100
+rows = 11
+columns = 20
 grid_tiles = {
 Vector2i(5, 1): SubResource("Resource_vjnmp"),
 Vector2i(5, 2): SubResource("Resource_wq2yo"),
@@ -306,5 +306,5 @@ Vector2i(16, 6): SubResource("Resource_mkytk"),
 Vector2i(16, 7): SubResource("Resource_jmu3k"),
 Vector2i(16, 8): SubResource("Resource_1tcen"),
 Vector2i(16, 9): SubResource("Resource_vf3dc"),
-Vector2i(25, 1): SubResource("Resource_hwkeg")
+Vector2i(17, 5): SubResource("Resource_hwkeg")
 }

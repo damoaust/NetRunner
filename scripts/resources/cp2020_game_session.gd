@@ -74,6 +74,22 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> void
 			board_renderer.current_layout = current_layout
 			#reveal_entry_points()
 
+			# Reset fog state on every tile. ResourceLoader returns a cached
+			# instance, so a datafort visited on a previous run (or earlier in
+			# this run via LDL travel) would otherwise retain is_explored=true
+			# and show as already-revealed. A fresh run starts fully fogged.
+			for raw_key in current_layout.grid_tiles.keys():
+				var c: Vector2i
+				if raw_key is String:
+					var p = raw_key.split(",")
+					c = Vector2i(p[0].to_int(), p[1].to_int())
+				else:
+					c = raw_key
+				var t = current_layout.get_tile(c)
+				if t:
+					t.is_explored = false
+					t.is_visible = false
+
 			# Let the Netrunner handle its own spawning!
 			if netrunner:
 				netrunner.initialize(current_layout, entry_coord)

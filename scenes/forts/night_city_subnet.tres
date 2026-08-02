@@ -45,7 +45,7 @@ tile_type = 3
 tile_name = "Netrunner Entry / LDL Node"
 is_ldl_link = true
 target_subnet_path = "res://scenes/forts/fort2.tres"
-target_entry_coord = Vector2i(0, 0)
+target_entry_coord = Vector2i(17, 5)
 
 [sub_resource type="Resource" id="Resource_3q007"]
 script = ExtResource("1_sk5yr")
@@ -1489,7 +1489,7 @@ tile_type = 3
 tile_name = "Netrunner Entry / LDL Node"
 is_ldl_link = true
 target_subnet_path = "res://scenes/forts/fort2.tres"
-target_entry_coord = Vector2i(0, 0)
+target_entry_coord = Vector2i(17, 5)
 
 [sub_resource type="Resource" id="Resource_aqip2"]
 script = ExtResource("1_sk5yr")
