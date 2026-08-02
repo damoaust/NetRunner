@@ -4,16 +4,19 @@ extends Node2D
 signal message_logged(msg: String)
 signal moved_to(new_pos: Vector2i)
 signal attacked_netrunner(strength: int)
+signal destroyed
 
 enum State { IDLE, PURSUE }
 
 @export var program_name: String = "Hellhound"
 @export var max_ap: int = 3
 @export var strength: int = 4
+@export var max_integrity: int = 4
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_state: State = State.IDLE
 var astar_grid: AStarGrid2D
+var current_integrity: int = 4
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -23,6 +26,7 @@ var astar_grid: AStarGrid2D
 
 func initialize(start_pos: Vector2i, layout_size: Vector2i) -> void:
 	current_position = start_pos
+	current_integrity = max_integrity
 	
 	if skull_label:
 		skull_label.size = Vector2(cell_size, cell_size)
@@ -92,3 +96,13 @@ func update_visibility(is_explored: bool, is_visible: bool) -> void:
 	if not skull_label:
 		return
 	skull_label.visible = is_visible
+
+func take_damage(amount: int) -> bool:
+	current_integrity -= amount
+	message_logged.emit("%s takes %d damage (Integrity %d/%d)." % [program_name, amount, max(0, current_integrity), max_integrity])
+	if current_integrity <= 0:
+		message_logged.emit("%s DEREZED! ICE destroyed." % program_name)
+		destroyed.emit()
+		queue_free()
+		return true
+	return false

@@ -53,7 +53,7 @@ func _input(event: InputEvent) -> void:
 		if interaction_handler and current_layout:
 			var cs: float = board_renderer.cell_size if board_renderer else 40.0
 			var go_y: float = board_renderer.grid_offset_y if board_renderer else 90.0
-			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y)
+			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes)
 
 	# --- KEYBOARD INPUT (Pass to Netrunner) ---
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -83,6 +83,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					execute_decryption(program, target_coord)
 				elif program.effect_type == NetProgram.EffectType.BREACH_WALL:
 					execute_wall_breach(program, target_coord)
+				elif program.effect_type == NetProgram.EffectType.DEREZ_ICE:
+					execute_ice_attack(program, target_coord)
 				else:
 					log_to_terminal("Program effect not implemented yet.\n")
 
@@ -103,6 +105,35 @@ func execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 		log_to_terminal("Datawall breached! Path cleared.\n")
 		if board_renderer:
 			board_renderer.queue_redraw()
+
+func execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
+	var target_ice: BlackIce = null
+	for ice in ice_nodes:
+		if is_instance_valid(ice) and ice.current_position == target_coord:
+			target_ice = ice
+			break
+
+	if not target_ice:
+		log_to_terminal("No Black ICE detected at %s.\n" % target_coord)
+		return
+
+	log_to_terminal("Executing Anti-ICE Program '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_ice.program_name, target_coord])
+
+	# Opposed roll: 1d10 + STR for both attacker and defender (CP2020 anti-program combat)
+	var prog_roll = (randi() % 10) + 1 + program.strength
+	var ice_roll = (randi() % 10) + 1 + target_ice.strength
+	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d)\n" % [prog_roll, program.strength, target_ice.program_name, ice_roll, target_ice.strength])
+
+	if prog_roll > ice_roll:
+		var damage = prog_roll - ice_roll
+		log_to_terminal("Hit! %s takes %d damage.\n" % [target_ice.program_name, damage])
+		if target_ice.take_damage(damage):
+			ice_nodes.erase(target_ice)
+	else:
+		log_to_terminal("%s repelled the attack.\n" % target_ice.program_name)
+
+	if board_renderer:
+		board_renderer.queue_redraw()
 
 func log_to_terminal(message: String) -> void:
 	if terminal_log:

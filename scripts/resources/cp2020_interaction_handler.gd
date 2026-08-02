@@ -9,12 +9,12 @@ var _dynamic_menu: PopupMenu = null
 # Stores programs for lambda closure (survives after _gui_input returns)
 var _current_programs: Array[NetProgram] = []
 
-func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0) -> void:
+func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = []) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
-		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y)
+		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes)
 
-func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0) -> void:
+func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = []) -> void:
 	if not layout:
 		print("DEBUG: Layout is missing!")
 		return
@@ -65,9 +65,26 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 
 	_dynamic_menu.id_pressed.connect(_menu_id_pressed_fn)
 
+	# Check if a BlackICE node is currently occupying this tile — target the ICE itself
+	var ice_here: BlackIce = null
+	for ice in ice_nodes:
+		if is_instance_valid(ice) and ice.current_position == target_coord:
+			ice_here = ice
+			break
+
 	# Tile is explored (already checked above) — show relevant program actions
 	var options_added = false
-	if tile_data.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile_data.is_unlocked:
+	if ice_here and tile_data.is_visible:
+		# Black ICE present and visible — offer anti-ICE (DEREZ) programs
+		for i in range(available_programs.size()):
+			var prog = available_programs[i] as NetProgram
+			if prog and prog.effect_type == NetProgram.EffectType.DEREZ_ICE:
+				var menu_label = "%s (STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
+				var prog_id = 1000 + i
+				_dynamic_menu.add_item(menu_label, prog_id)
+				options_added = true
+
+	elif tile_data.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile_data.is_unlocked:
 		for i in range(available_programs.size()):
 			var prog = available_programs[i] as NetProgram
 			print("DEBUG: Checking program %s effect_type=%d BYPASS_GATE=0" % [prog.program_name, prog.effect_type])
