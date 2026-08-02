@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://dq0ccst4vu0ry"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_txww2"]
+
+[resource]
+script = ExtResource("1_txww2")
+program_name = "Wizard's Book"
+type = 1
+effect_type = 0
+price = 400
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

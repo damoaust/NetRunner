@@ -1,0 +1,39 @@
+[gd_scene format=3 uid="uid://bh3haiox7nrx3"]
+
+[ext_resource type="Script" uid="uid://c5bhyhegsspuo" path="res://scripts/resources/cp2020_datafort_designer.gd" id="1_4q7o0"]
+
+[node name="Cp2020DesignerCanvas" type="Control" unique_id=76929892]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_4q7o0")
+
+[node name="TopPanel" type="VBoxContainer" parent="." unique_id=1642773889]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="DynamicButtonRow" type="HBoxContainer" parent="TopPanel" unique_id=1560721362]
+layout_mode = 2
+
+[node name="SettingsRow" type="HBoxContainer" parent="TopPanel" unique_id=1863061141]
+layout_mode = 2
+
+[node name="ColumnsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow" unique_id=1380758939]
+layout_mode = 2
+min_value = 20.0
+step = 5.0
+value = 20.0
+
+[node name="RowsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow" unique_id=387652543]
+layout_mode = 2
+min_value = 20.0
+step = 5.0
+value = 20.0
+
+[node name="Button" type="Button" parent="TopPanel/SettingsRow" unique_id=1900782836]
+layout_mode = 2
+text = "Apply"

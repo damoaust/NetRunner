@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://b8bjpni7mu108"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_m76mi"]
+
+[resource]
+script = ExtResource("1_m76mi")
+program_name = "Worm"
+type = 0
+effect_type = 0
+memory_cost = 2
+strength = 5
+price = 660
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

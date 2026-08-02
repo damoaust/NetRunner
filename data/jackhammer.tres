@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://buomiv2a6oild"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_rdkfk"]
+
+[resource]
+script = ExtResource("1_rdkfk")
+program_name = "Jackhammer"
+type = 0
+effect_type = 1
+memory_cost = 2
+strength = 2
+price = 360
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

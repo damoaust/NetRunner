@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Cyberdeck" format=3 uid="uid://dap2edm6x0c6"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_6nq7d"]
+[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer_2_0.tres" id="2_6nq7d"]
+[ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="3_byobi"]
+[ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="4_byobi"]
+[ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="4_fltg3"]
+[ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="5_og7id"]
+[ext_resource type="Resource" uid="uid://cswmssw4eot6i" path="res://data/flatline.tres" id="6_8fwol"]
+
+[resource]
+script = ExtResource("4_byobi")
+deck_name = "Militech Mini-Term"
+max_mu = 10
+speed_bonus = 0
+data_wall_strength = 2
+installed_programs = Array[ExtResource("1_6nq7d")]([ExtResource("2_6nq7d"), ExtResource("3_byobi"), ExtResource("4_fltg3"), ExtResource("5_og7id"), ExtResource("6_8fwol")])

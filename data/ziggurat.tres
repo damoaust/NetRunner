@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Cyberdeck" format=3 uid="uid://ycvcc1ghp56k"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_3msl2"]
+[ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_dfveq"]
+
+[resource]
+script = ExtResource("2_dfveq")
+deck_name = "Ziggurat Transport Matrix"
+max_mu = 30
+speed_bonus = 4
+data_wall_strength = 10
+metadata/_custom_type_script = "uid://c8r70jm1siw14"

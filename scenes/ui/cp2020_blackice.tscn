@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://b6xlrq5xsuqje"]
+
+[ext_resource type="Script" uid="uid://spkww53rko5h" path="res://scripts/resources/cp2020_blackice.gd" id="1_tk02s"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_su5n1"]
+font_size = 30
+
+[node name="Cp2020Blackice" type="Node2D" unique_id=1818084201]
+script = ExtResource("1_tk02s")
+label_visual_offset = Vector2(-1, -2)
+
+[node name="SkullLabel" type="Label" parent="." unique_id=873883377]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "☠"
+label_settings = SubResource("LabelSettings_su5n1")
+horizontal_alignment = 1
+vertical_alignment = 1

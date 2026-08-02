@@ -1,0 +1,62 @@
+[gd_scene format=3 uid="uid://casrp8osrw5p4"]
+
+[ext_resource type="Script" uid="uid://dgmtdeo35vtqm" path="res://scripts/resources/cp2020_game_session.gd" id="1_dptho"]
+[ext_resource type="PackedScene" uid="uid://d5ren1w5dywy" path="res://scenes/ui/cp2020_netrunner.tscn" id="3_ei0ny"]
+[ext_resource type="Script" uid="uid://cv3qbo8qed61v" path="res://scripts/resources/cp2020_netrunner.gd" id="4_byruw"]
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="5_y7tfe"]
+[ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="6_eihqs"]
+[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer_2_0.tres" id="7_rqnxn"]
+[ext_resource type="Script" uid="uid://dkjy1jvw2xgfp" path="res://scripts/resources/cp2020_board_renderer.gd" id="8_eihqs"]
+[ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="8_llsot"]
+[ext_resource type="Script" uid="uid://dk7sod657ryjc" path="res://scripts/resources/cp2020_interaction_handler.gd" id="9_rqnxn"]
+[ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="10_llsot"]
+[ext_resource type="Script" uid="uid://dxtpx2qahb6ff" path="res://scripts/resources/cp2020_subnet_loader.gd" id="11_7be1p"]
+
+[node name="Cp2020Gameplay" type="Control" unique_id=170105146]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_dptho")
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=1055337778]
+
+[node name="PanelContainer" type="PanelContainer" parent="UI" unique_id=436676994]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -400.0
+offset_bottom = 208.0
+grow_horizontal = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/PanelContainer" unique_id=45431561]
+layout_mode = 2
+
+[node name="DeckNameLabel" type="Label" parent="UI/PanelContainer/VBoxContainer" unique_id=1737581921]
+layout_mode = 2
+text = "Deck:"
+
+[node name="MemoryLabel" type="Label" parent="UI/PanelContainer/VBoxContainer" unique_id=347801987]
+layout_mode = 2
+text = "Memory:"
+
+[node name="ProgramListContainer" type="VBoxContainer" parent="UI/PanelContainer/VBoxContainer" unique_id=1835341297]
+layout_mode = 2
+
+[node name="TerminalLog" type="RichTextLabel" parent="UI/PanelContainer/VBoxContainer" unique_id=157221439]
+custom_minimum_size = Vector2(400, 150)
+layout_mode = 2
+
+[node name="BoardRenderer" type="Node2D" parent="." unique_id=657228260]
+script = ExtResource("8_eihqs")
+
+[node name="CP2020Netrunner" parent="." unique_id=366506451 instance=ExtResource("3_ei0ny")]
+script = ExtResource("4_byruw")
+installed_programs = Array[ExtResource("5_y7tfe")]([ExtResource("7_rqnxn"), ExtResource("8_llsot"), ExtResource("6_eihqs")])
+
+[node name="InteractionHandler" type="Node2D" parent="." unique_id=457133470]
+script = ExtResource("9_rqnxn")
+
+[node name="TurnManager" type="Node2D" parent="." unique_id=1795720484]
+script = ExtResource("10_llsot")
+
+[node name="SubnetLoader" type="Node2D" parent="." unique_id=2113021941]
+script = ExtResource("11_7be1p")

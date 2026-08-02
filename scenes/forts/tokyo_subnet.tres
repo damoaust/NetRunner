@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CP2020DatafortLayout" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CP2020DatafortLayout.gd" id="1_layout"]
+
+[resource]
+script = ExtResource("1_layout")
+columns = 10
+rows = 10
+grid_tiles = {
+	Vector2i(5, 9): { "tile_type": 1, "is_explored": true, "is_visible": true }, # ENTRY
+	Vector2i(5, 6): { "tile_type": 2, "is_explored": true, "is_visible": true }, # DATAWALL
+	Vector2i(5, 4): { "tile_type": 3, "is_explored": true, "is_visible": true, "is_unlocked": false }, # CODE_GATE
+	Vector2i(5, 2): { "tile_type": 5, "is_explored": false, "is_visible": false }  # CONTROL_NODE
+}

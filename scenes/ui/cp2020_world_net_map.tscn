@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://d2bwfoltbv026"]
+
+[ext_resource type="Script" uid="uid://c07fig008mde3" path="res://scripts/resources/cp_2020_world_net_map.gd" id="1_2v4ka"]
+
+[node name="Cp2020WorldNetMap" type="Node2D" unique_id=1725934924]
+script = ExtResource("1_2v4ka")
+
+[node name="BackgroundTexture" type="TextureRect" parent="." unique_id=737342068]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="HubButtonsContainer" type="Control" parent="." unique_id=1552680983]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="NightCityButton" type="TextureButton" parent="HubButtonsContainer" unique_id=1345869840]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TokyoButton" type="TextureButton" parent="HubButtonsContainer" unique_id=1795986276]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LondonButton" type="TextureButton" parent="HubButtonsContainer" unique_id=144747779]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="HUDOverlay" type="Control" parent="." unique_id=1651334838]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0

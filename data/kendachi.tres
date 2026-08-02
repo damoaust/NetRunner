@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Cyberdeck" format=3 uid="uid://d2g5vsrs436ao"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_x0hyd"]
+[ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="2_c8vba"]
+[ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_tsrmj"]
+[ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="3_kylw5"]
+[ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="4_dnonk"]
+[ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="5_y8atb"]
+[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer_2_0.tres" id="6_87luw"]
+[ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="7_7015w"]
+
+[resource]
+script = ExtResource("2_tsrmj")
+installed_programs = Array[ExtResource("1_x0hyd")]([ExtResource("2_c8vba"), ExtResource("3_kylw5"), ExtResource("4_dnonk"), ExtResource("5_y8atb"), ExtResource("6_87luw"), ExtResource("7_7015w")])
+metadata/_custom_type_script = "uid://c8r70jm1siw14"

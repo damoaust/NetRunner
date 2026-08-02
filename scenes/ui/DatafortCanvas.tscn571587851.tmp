@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://cxvshgjnnv6k6"]
+
+[ext_resource type="Script" uid="uid://dci43e54cnksd" path="res://scenes/ui/datafort_canvas.gd" id="1_4lj10"]
+[ext_resource type="Script" uid="uid://dpyispudp450y" path="res://scripts/managers/NetCombatEngine.gd" id="2_klraw"]
+
+[node name="DatafortCanvas" type="Control" unique_id=1210526122]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_4lj10")
+
+[node name="GraphEdit" type="GraphEdit" parent="." unique_id=615929623]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+grid_pattern = 1
+
+[node name="CombatEngine" type="Node" parent="." unique_id=1279946697]
+unique_name_in_owner = true
+script = ExtResource("2_klraw")
