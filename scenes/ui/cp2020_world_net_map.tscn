@@ -14,28 +14,48 @@ expand_mode = 1
 stretch_mode = 6
 
 [node name="HubButtonsContainer" type="Control" parent="." unique_id=1552680983]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
 
-[node name="NightCityButton" type="TextureButton" parent="HubButtonsContainer" unique_id=1345869840]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="NightCityButton" type="Button" parent="HubButtonsContainer" unique_id=1345869840]
+offset_left = 50.0
+offset_top = 300.0
+offset_right = 190.0
+offset_bottom = 340.0
+text = "Night City"
 
-[node name="TokyoButton" type="TextureButton" parent="HubButtonsContainer" unique_id=1795986276]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="LondonButton" type="Button" parent="HubButtonsContainer" unique_id=1795986276]
+offset_left = 550.0
+offset_top = 220.0
+offset_right = 690.0
+offset_bottom = 260.0
+text = "London"
 
-[node name="LondonButton" type="TextureButton" parent="HubButtonsContainer" unique_id=144747779]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="TokyoButton" type="Button" parent="HubButtonsContainer" unique_id=144747779]
+offset_left = 980.0
+offset_top = 340.0
+offset_right = 1120.0
+offset_bottom = 380.0
+text = "Tokyo"
 
-[node name="HUDOverlay" type="Control" parent="." unique_id=1651334838]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="HUDOverlay" type="Control" parent="." unique_id=1651333838]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+
+[node name="LocationLabel" type="Label" parent="HUDOverlay" unique_id=1651333839]
+offset_left = 20.0
+offset_top = 10.0
+offset_right = 600.0
+offset_bottom = 44.0
+text = "CONNECTED HUB: NIGHT CITY"
+theme_override_colors/font_color = Color(0, 1, 0.7, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4

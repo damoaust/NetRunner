@@ -6,8 +6,7 @@ signal sub_net_selected(subnet_resource_path: String, target_city: String)
 @export var global_hubs: Dictionary = {
 	"Night City": { "path": "res://scenes/forts/night_city_subnet.tres", "node_path": "HubButtonsContainer/NightCityButton" },
 	"Tokyo": { "path": "res://scenes/forts/tokyo_subnet.tres", "node_path": "HubButtonsContainer/TokyoButton" },
-	"London": { "path": "res://scenes/forts/london_subnet.tres", "node_path": "HubButtonsContainer/LondonButton" },
-	"NYC/BosWash": { "path": "res://scenes/forts/boswash_subnet.tres", "node_path": "HubButtonsContainer/BosWashButton" }
+	"London": { "path": "res://scenes/forts/london_subnet.tres", "node_path": "HubButtonsContainer/LondonButton" }
 }
 
 var current_connected_city: String = "Night City"
@@ -20,11 +19,19 @@ func _ready() -> void:
 	update_hud()
 
 func _fit_background_to_viewport() -> void:
+	var vp_size := get_viewport().get_visible_rect().size
 	var bg := get_node_or_null("BackgroundTexture") as Control
 	if bg:
-		var vp_size := get_viewport().get_visible_rect().size
 		bg.size = vp_size
 		bg.position = Vector2.ZERO
+	var hubs := get_node_or_null("HubButtonsContainer") as Control
+	if hubs:
+		hubs.size = vp_size
+		hubs.position = Vector2.ZERO
+	var hud := get_node_or_null("HUDOverlay") as Control
+	if hud:
+		hud.size = vp_size
+		hud.position = Vector2.ZERO
 
 func setup_hub_buttons() -> void:
 	for city_name in global_hubs.keys():
