@@ -6,6 +6,9 @@ extends Control
 @onready var board_renderer: CP2020BoardRenderer = $BoardRenderer
 @onready var interaction_handler: CP2020InteractionHandler = $CP2020InteractionHandler
 @onready var terminal_log: RichTextLabel = $UI/PanelContainer/VBoxContainer/TerminalLog
+@onready var deck_name_label: Label = $UI/PanelContainer/VBoxContainer/DeckNameLabel
+@onready var memory_label: Label = $UI/PanelContainer/VBoxContainer/MemoryLabel
+@onready var program_list_container: VBoxContainer = $UI/PanelContainer/VBoxContainer/ProgramListContainer
 @onready var netrunner: CP2020Netrunner = $CP2020Netrunner
 @onready var turn_manager: CP2020TurnManager = $TurnManager
 
@@ -30,8 +33,15 @@ func _ready() -> void:
 			netrunner.message_logged.connect(log_to_terminal)
 		if not netrunner.flatlined.is_connected(_on_flatlined):
 			netrunner.flatlined.connect(_on_flatlined)
+		if not netrunner.deck_updated.is_connected(update_deck_info):
+			netrunner.deck_updated.connect(update_deck_info)
+		if not netrunner.shield_raised.is_connected(update_deck_info):
+			netrunner.shield_raised.connect(update_deck_info)
+		if not netrunner.shield_consumed.is_connected(update_deck_info):
+			netrunner.shield_consumed.connect(update_deck_info)
 
 	load_subnet(starting_subnet_path)
+	update_deck_info()
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
 
 func load_subnet(path: String) -> void:
@@ -154,6 +164,25 @@ func log_to_terminal(message: String) -> void:
 	if terminal_log:
 		terminal_log.text += message
 	print(message)
+
+func update_deck_info() -> void:
+	if not netrunner:
+		return
+	if deck_name_label:
+		deck_name_label.text = "Deck: %s" % netrunner.deck_name
+	if memory_label:
+		memory_label.text = "Memory: %d / %d MU" % [netrunner.get_used_memory(), netrunner.max_memory_units]
+	if program_list_container:
+		for child in program_list_container.get_children():
+			child.queue_free()
+		for prog in netrunner.installed_programs:
+			if not prog:
+				continue
+			var active := (netrunner.raised_shield == prog)
+			var status_prefix = "[ACTIVE] " if active else ""
+			var label := Label.new()
+			label.text = "%s%s  (STR %d, %d MU)" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
+			program_list_container.add_child(label)
 
 func spawn_black_ice() -> void:
 	# Clear any previously spawned ICE nodes (e.g. on subnet reload)
