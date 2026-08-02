@@ -9,6 +9,10 @@ var _dynamic_menu: PopupMenu = null
 # Stores programs for lambda closure (survives after _gui_input returns)
 var _current_programs: Array[NetProgram] = []
 
+# The LDL-link tile the current popup was built for (so the menu callback can
+# emit travel actions with the tile data).
+var _ldl_tile: CP2020TileData = null
+
 func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
@@ -72,8 +76,17 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 			ice_here = ice
 			break
 
-	# Tile is explored (already checked above) — show relevant program actions
+	# LDL-link tiles offer matrix travel to another datafort or back to the
+	# world map. These appear even when no program matches the tile, so a
+	# bare ENTRY/LDL tile right-click opens the travel menu.
 	var options_added = false
+	if tile_data.is_ldl_link:
+		_ldl_tile = tile_data
+		var dest_name := _ldl_target_name(tile_data.target_subnet_path)
+		_dynamic_menu.add_item("Travel to %s" % dest_name, 3000)
+		_dynamic_menu.add_item("Return to World Map", 3001)
+		options_added = true
+
 	if ice_here and tile_data.is_visible:
 		# Black ICE present and visible — offer anti-ICE (DEREZ) programs
 		for i in range(available_programs.size()):
@@ -104,7 +117,7 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var prog_id = 1000 + i # Positive ID offset for program actions
 				_dynamic_menu.add_item(menu_label, prog_id)
 				options_added = true
-				
+
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.DATAWALL:
 		for i in range(available_programs.size()):
 			var prog = available_programs[i] as NetProgram
@@ -134,9 +147,24 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	_dynamic_menu.popup_on_parent(Rect2i(click_pos, Vector2i.ZERO))
 
 func _on_menu_action_selected(id: int, target_coord: Vector2i, available_programs: Array[NetProgram]) -> void:
+	# LDL travel actions take priority (their ids collide with the program
+	# id range 1000+, so check them explicitly first).
+	if id == 3000:
+		action_triggered.emit("travel_ldl", target_coord, _ldl_tile)
+		return
+	if id == 3001:
+		action_triggered.emit("return_world_map", target_coord, null)
+		return
 	if id >= 1000:
 		var idx = id - 1000
 		if idx >= 0 and idx < available_programs.size():
 			var prog = available_programs[idx] as NetProgram
 			print("DEBUG: Program menu item clicked: %s (idx: %d) on tile %s" % [prog.program_name, idx, target_coord])
 			action_triggered.emit("use_program", target_coord, prog)
+
+
+func _ldl_target_name(path: String) -> String:
+	if path == "":
+		return "target datafort"
+	var fname := path.get_file().get_basename()
+	return fname if fname != "" else "target datafort"

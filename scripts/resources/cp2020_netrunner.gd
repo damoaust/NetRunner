@@ -36,24 +36,31 @@ func _ready() -> void:
 	current_health = max_health
 	message_logged.emit("Netrunner ready. Current memory used: %d / %d MU" % [get_used_memory(), max_memory_units])
 
-func initialize(layout: CP2020DatafortLayout) -> void:
+func initialize(layout: CP2020DatafortLayout, entry_coord: Vector2i = Vector2i(-1, -1)) -> void:
 	current_layout = layout
 	if current_layout:
-		for raw_key in current_layout.grid_tiles.keys():
-			# 1. Safely parse the key
-			var coord: Vector2i
-			if raw_key is String:
-				var parts = raw_key.split(",")
-				coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-			else:
-				coord = raw_key
-				
-			# 2. Use our safe helper
-			var tile = current_layout.get_tile(coord)
-			if tile and tile.tile_type == CP2020DatafortLayout.TileType.ENTRY:
-				current_position = coord
-				break
-				
+		# Spawn at a specific entry coord if one was supplied and is valid
+		# (used by mid-run LDL travel to arrive at a designated tile).
+		if entry_coord.x >= 0 and entry_coord.y >= 0 \
+				and entry_coord.x < current_layout.columns and entry_coord.y < current_layout.rows \
+				and current_layout.get_tile(entry_coord) != null:
+			current_position = entry_coord
+		else:
+			for raw_key in current_layout.grid_tiles.keys():
+				# 1. Safely parse the key
+				var coord: Vector2i
+				if raw_key is String:
+					var parts = raw_key.split(",")
+					coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+				else:
+					coord = raw_key
+
+				# 2. Use our safe helper
+				var tile = current_layout.get_tile(coord)
+				if tile and tile.tile_type == CP2020DatafortLayout.TileType.ENTRY:
+					current_position = coord
+					break
+
 	update_visual_position()
 	queue_redraw()
 	position_changed.emit(current_position)

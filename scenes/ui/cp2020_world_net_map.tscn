@@ -2,14 +2,24 @@
 
 [ext_resource type="Script" uid="uid://c07fig008mde3" path="res://scripts/resources/cp_2020_world_net_map.gd" id="1_2v4ka"]
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="2_tm"]
+[ext_resource type="Resource" path="res://data/world_map_default.tres" id="3_layout"]
 
 [node name="Cp2020WorldNetMap" type="Node2D"]
 script = ExtResource("1_2v4ka")
+world_map_layout = ExtResource("3_layout")
 
 [node name="TurnManager" type="Node" parent="."]
 script = ExtResource("2_tm")
 
-[node name="HUDOverlay" type="Control" parent="."]
+[node name="RunnerCamera" type="Camera2D" parent="."]
+enabled = true
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0
+zoom = Vector2(1, 1)
+
+[node name="HUDLayer" type="CanvasLayer" parent="."]
+
+[node name="HUDOverlay" type="Control" parent="HUDLayer"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -17,7 +27,7 @@ offset_right = 1280.0
 offset_bottom = 720.0
 mouse_filter = 2
 
-[node name="LocationLabel" type="Label" parent="HUDOverlay"]
+[node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay"]
 offset_left = 20.0
 offset_top = 10.0
 offset_right = 600.0
@@ -27,7 +37,7 @@ theme_override_colors/font_color = Color(0, 1, 0.7, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 
-[node name="ActionsLabel" type="Label" parent="HUDOverlay"]
+[node name="ActionsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
 offset_left = 620.0
 offset_top = 10.0
 offset_right = 820.0
@@ -37,12 +47,22 @@ theme_override_colors/font_color = Color(1, 1, 0.4, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 
-[node name="CreditsLabel" type="Label" parent="HUDOverlay"]
+[node name="CreditsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
 offset_left = 840.0
 offset_top = 10.0
 offset_right = 1080.0
 offset_bottom = 44.0
 text = "CREDITS: 1000 eb"
 theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+
+[node name="TraceLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+offset_left = 20.0
+offset_top = 44.0
+offset_right = 280.0
+offset_bottom = 78.0
+text = "TRACE: 0"
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4

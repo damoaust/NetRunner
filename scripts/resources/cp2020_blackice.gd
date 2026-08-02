@@ -12,11 +12,15 @@ enum State { IDLE, PURSUE }
 @export var max_ap: int = 3
 @export var strength: int = 4
 @export var max_integrity: int = 4
+# Tracing-type ICE: on activation it must trace the netrunner's signal before it
+# can hunt. Rolls 1D10 + strength vs RunState.accumulated_trace once per run.
+@export var traces: bool = false
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_state: State = State.IDLE
 var astar_grid: AStarGrid2D
 var current_integrity: int = 4
+var _activated: bool = false
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -52,6 +56,16 @@ func update_visual_position() -> void:
 	position = Vector2(center_x, center_y)
 
 func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
+	if not _activated:
+		_activated = true
+		if traces:
+			# Tracing programs must beat the run's accumulated trace difficulty
+			# to locate the netrunner's signal before they can hunt.
+			var trace_roll := randi_range(1, 10) + strength
+			if trace_roll < RunState.accumulated_trace:
+				message_logged.emit("%s failed to trace your signal (1D10+STR %d vs trace %d) — idle." % [program_name, trace_roll, RunState.accumulated_trace])
+				return
+			message_logged.emit("%s traced your signal (1D10+STR %d vs trace %d)." % [program_name, trace_roll, RunState.accumulated_trace])
 	if current_state == State.IDLE:
 		current_state = State.PURSUE
 		message_logged.emit("WARNING: %s activated and is hunting!" % program_name)

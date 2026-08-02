@@ -1,0 +1,145 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_world_map_designer.gd" id="1_wmdesigner"]
+
+[node name="Cp2020WorldMapDesigner" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_wmdesigner")
+
+[node name="TopPanel" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 80.0
+
+[node name="ToolRow" type="HBoxContainer" parent="TopPanel"]
+layout_mode = 2
+
+[node name="RegionOption" type="OptionButton" parent="TopPanel/ToolRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+item_count = 0
+
+[node name="AddRegionButton" type="Button" parent="TopPanel/ToolRow"]
+layout_mode = 2
+text = "Add Region"
+
+[node name="RegionPaintButton" type="Button" parent="TopPanel/ToolRow"]
+layout_mode = 2
+text = "Region Paint"
+
+[node name="HubButton" type="Button" parent="TopPanel/ToolRow"]
+layout_mode = 2
+text = "Hub"
+
+[node name="EraserButton" type="Button" parent="TopPanel/ToolRow"]
+layout_mode = 2
+text = "Eraser"
+
+[node name="SaveButton" type="Button" parent="TopPanel/ToolRow"]
+layout_mode = 2
+text = "Save"
+
+[node name="LoadButton" type="Button" parent="TopPanel/ToolRow"]
+layout_mode = 2
+text = "Load"
+
+[node name="SettingsRow" type="HBoxContainer" parent="TopPanel"]
+layout_mode = 2
+
+[node name="ColsLabel" type="Label" parent="TopPanel/SettingsRow"]
+layout_mode = 2
+text = "Cols:"
+
+[node name="ColumnsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow"]
+layout_mode = 2
+min_value = 4.0
+max_value = 128.0
+step = 1.0
+value = 32.0
+
+[node name="RowsLabel" type="Label" parent="TopPanel/SettingsRow"]
+layout_mode = 2
+text = "Rows:"
+
+[node name="RowsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow"]
+layout_mode = 2
+min_value = 4.0
+max_value = 64.0
+step = 1.0
+value = 18.0
+
+[node name="ApplySizeButton" type="Button" parent="TopPanel/SettingsRow"]
+layout_mode = 2
+text = "Apply Size"
+
+[node name="SidePanel" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 1020.0
+offset_top = 90.0
+offset_right = 1270.0
+offset_bottom = 600.0
+
+[node name="HubNameLabel" type="Label" parent="SidePanel"]
+layout_mode = 2
+text = "Hub Name"
+
+[node name="HubNameEdit" type="LineEdit" parent="SidePanel"]
+layout_mode = 2
+
+[node name="SubnetPathLabel" type="Label" parent="SidePanel"]
+layout_mode = 2
+text = "Subnet Path"
+
+[node name="SubnetPathEdit" type="LineEdit" parent="SidePanel"]
+layout_mode = 2
+
+[node name="BrowseButton" type="Button" parent="SidePanel"]
+layout_mode = 2
+text = "Browse..."
+
+[node name="LdlCostLabel" type="Label" parent="SidePanel"]
+layout_mode = 2
+text = "LDL Cost (eb)"
+
+[node name="LdlCostSpinBox" type="SpinBox" parent="SidePanel"]
+layout_mode = 2
+min_value = 0.0
+max_value = 99999.0
+step = 10.0
+value = 50.0
+
+[node name="SecurityCodeLabel" type="Label" parent="SidePanel"]
+layout_mode = 2
+text = "Security Code (1-10)"
+
+[node name="SecurityCodeSpinBox" type="SpinBox" parent="SidePanel"]
+layout_mode = 2
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 4.0
+
+[node name="TraceValueLabel" type="Label" parent="SidePanel"]
+layout_mode = 2
+text = "Trace Value"
+
+[node name="TraceValueSpinBox" type="SpinBox" parent="SidePanel"]
+layout_mode = 2
+min_value = 0.0
+max_value = 99.0
+step = 1.0
+value = 5.0
+
+[node name="SetSpawnButton" type="Button" parent="SidePanel"]
+layout_mode = 2
+text = "Set as Runner Spawn"
+
+[node name="DeleteHubButton" type="Button" parent="SidePanel"]
+layout_mode = 2
+text = "Delete Hub"

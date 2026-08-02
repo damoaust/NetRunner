@@ -11,9 +11,11 @@ extends Control
 @onready var actions_label: Label = $UI/PanelContainer/VBoxContainer/ActionsLabel
 @onready var health_label: Label = $UI/PanelContainer/VBoxContainer/HealthLabel
 @onready var health_bar: ProgressBar = $UI/PanelContainer/VBoxContainer/HealthBar
+@onready var trace_label: Label = $UI/PanelContainer/VBoxContainer/TraceLabel
 @onready var program_list_container: VBoxContainer = $UI/PanelContainer/VBoxContainer/ProgramListContainer
 @onready var netrunner: CP2020Netrunner = $CP2020Netrunner
 @onready var turn_manager: CP2020TurnManager = $TurnManager
+@onready var camera: Camera2D = board_renderer.get_node_or_null("RunnerCamera") if board_renderer else null
 
 const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
 var ice_nodes: Array[BlackIce] = []
@@ -47,6 +49,8 @@ func _ready() -> void:
 			netrunner.shield_consumed.connect(update_deck_info)
 		if not netrunner.health_changed.is_connected(_on_health_changed):
 			netrunner.health_changed.connect(_on_health_changed)
+		if netrunner.position_changed.is_connected(_center_camera_on_runner) == false:
+			netrunner.position_changed.connect(_center_camera_on_runner)
 
 	# Apply the selected cyberdeck from the workbench (if any)
 	if RunState.selected_deck:
@@ -60,28 +64,50 @@ func _ready() -> void:
 	load_subnet(subnet_path)
 	update_deck_info()
 	_on_health_changed(netrunner.current_health, netrunner.max_health)
+	_update_trace()
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
 
-func load_subnet(path: String) -> void:
+func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> void:
 	if ResourceLoader.exists(path):
 		current_layout = ResourceLoader.load(path) as CP2020DatafortLayout
 		if board_renderer and current_layout:
 			board_renderer.current_layout = current_layout
-			#reveal_entry_points() 
-			
+			#reveal_entry_points()
+
 			# Let the Netrunner handle its own spawning!
 			if netrunner:
-				netrunner.initialize(current_layout)
+				netrunner.initialize(current_layout, entry_coord)
 			spawn_black_ice()
 			recalculate_fog_of_war(netrunner.current_position)
+			_update_camera_limits()
+			_center_camera_on_runner()
 			board_renderer.queue_redraw()
+
+func _update_trace() -> void:
+	if trace_label:
+		trace_label.text = "Trace: %d" % RunState.accumulated_trace
+
+func _update_camera_limits() -> void:
+	if not camera or not current_layout or not board_renderer:
+		return
+	var cs: float = board_renderer.cell_size
+	var go_y: float = board_renderer.grid_offset_y
+	camera.limit_left = 0
+	camera.limit_top = int(go_y)
+	camera.limit_right = int(current_layout.columns * cs)
+	camera.limit_bottom = int(go_y + current_layout.rows * cs)
+
+func _center_camera_on_runner(_new_pos: Vector2i = Vector2i(-1, -1)) -> void:
+	if not camera or not netrunner:
+		return
+	camera.position = netrunner.position
 
 func _input(event: InputEvent) -> void:
 	# Right-click is handled here in _input (NOT _unhandled_input) because the root
 	# Control node's GUI system consumes mouse events before _unhandled_input fires.
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		accept_event() # Prevent GUI system from re-processing this
-		var mouse_pos: Vector2 = get_viewport().get_mouse_position()
+		var mouse_pos: Vector2 = board_renderer.get_global_mouse_position() if board_renderer else get_viewport().get_mouse_position()
 		var programs: Array[NetProgram] = netrunner.installed_programs if netrunner else []
 		print("DEBUG [session] right-click at ", mouse_pos, " programs=", programs.size())
 		if interaction_handler and current_layout:
@@ -135,6 +161,23 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				if turn_manager:
 					turn_manager.consume_action()
 				_check_actions_exhausted()
+		"travel_ldl":
+			# program carries the CP2020TileData of the LDL link tile.
+			if program is CP2020TileData:
+				var tile: CP2020TileData = program
+				var dest_path: String = tile.target_subnet_path
+				var dest_coord: Vector2i = tile.target_entry_coord
+				if dest_path == "":
+					log_to_terminal("LDL link has no target subnet set.\n")
+					return
+				log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, dest_coord])
+				load_subnet(dest_path, dest_coord)
+				update_deck_info()
+				_update_trace()
+		"return_world_map":
+			log_to_terminal("Returning to the world map via LDL. Connection severed.\n")
+			RunState.accumulated_trace = 0
+			get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
@@ -294,9 +337,15 @@ func _on_ice_attacked(strength: int) -> void:
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
+	# End of run — clear the accumulated trace difficulty for the next run.
+	RunState.accumulated_trace = 0
+	# A flatline dumps the runner unceremoniously back to the workbench.
+	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
 
 func _on_jack_out_pressed() -> void:
 	log_to_terminal("Jacking out...\n")
+	# End of run — clear the accumulated trace difficulty for the next run.
+	RunState.accumulated_trace = 0
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 #func reveal_entry_points() -> void:
 	#if not current_layout:

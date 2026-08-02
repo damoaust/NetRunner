@@ -2,9 +2,19 @@
 
 [ext_resource type="Script" uid="uid://xi7762rglqiw" path="res://scripts/ui/cyberdeck_workbench.gd" id="1_ih6ts"]
 [ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_gys0u"]
-[ext_resource type="Resource" uid="uid://dap2edm6x0c6" path="res://data/starting_deck.tres" id="3_x3icd"]
-[ext_resource type="Resource" uid="uid://d2g5vsrs436ao" path="res://data/kendachi.tres" id="4_tbgok"]
-[ext_resource type="Resource" uid="uid://ycvcc1ghp56k" path="res://data/ziggurat.tres" id="5_w0tjv"]
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="3_prog"]
+[ext_resource type="Resource" path="res://data/aegis.tres" id="4_aegis"]
+[ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="5_codecracker"]
+[ext_resource type="Resource" uid="uid://cswmssw4eot6i" path="res://data/flatline.tres" id="6_flatline"]
+[ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="7_hammer"]
+[ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="8_jackhammer"]
+[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer_2_0.tres" id="9_killer"]
+[ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="10_shield"]
+[ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="11_wizbook"]
+[ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="12_worm"]
+[ext_resource type="Resource" uid="uid://dap2edm6x0c6" path="res://data/starting_deck.tres" id="13_startdeck"]
+[ext_resource type="Resource" uid="uid://d2g5vsrs436ao" path="res://data/kendachi.tres" id="14_kendachi"]
+[ext_resource type="Resource" uid="uid://ycvcc1ghp56k" path="res://data/ziggurat.tres" id="15_ziggurat"]
 
 [node name="CyberdeckWorkbench" type="Control" unique_id=1813044171]
 layout_mode = 3
@@ -14,7 +24,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ih6ts")
-available_decks = Array[ExtResource("2_gys0u")]([ExtResource("3_x3icd"), ExtResource("4_tbgok"), ExtResource("5_w0tjv")])
+available_decks = Array[ExtResource("2_gys0u")]([ExtResource("13_startdeck"), ExtResource("14_kendachi"), ExtResource("15_ziggurat")])
+available_programs = Array[ExtResource("3_prog")]([ExtResource("4_aegis"), ExtResource("5_codecracker"), ExtResource("6_flatline"), ExtResource("7_hammer"), ExtResource("8_jackhammer"), ExtResource("9_killer"), ExtResource("10_shield"), ExtResource("11_wizbook"), ExtResource("12_worm")])
 
 [node name="ColorRect" type="ColorRect" parent="." unique_id=459979431]
 layout_mode = 1
@@ -37,51 +48,91 @@ theme_override_constants/margin_top = 30
 theme_override_constants/margin_right = 30
 theme_override_constants/margin_bottom = 30
 
-[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer" unique_id=1202166419]
+[node name="VBoxRoot" type="VBoxContainer" parent="MarginContainer" unique_id=1202166419]
 layout_mode = 2
 
-[node name="DeckStatsColumn" type="VBoxContainer" parent="MarginContainer/HBoxContainer" unique_id=602838232]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Label" type="Label" parent="MarginContainer/HBoxContainer/DeckStatsColumn" unique_id=1440872845]
-layout_mode = 2
-text = "--- CYBERDECK STATS ---"
-
-[node name="Label2" type="Label" parent="MarginContainer/HBoxContainer/DeckStatsColumn" unique_id=90148619]
-layout_mode = 2
-text = "Model: Zetatech 5700"
-
-[node name="Label3" type="Label" parent="MarginContainer/HBoxContainer/DeckStatsColumn" unique_id=1147621719]
-layout_mode = 2
-text = "Speed Bonus: +2"
-
-[node name="Label4" type="Label" parent="MarginContainer/HBoxContainer/DeckStatsColumn" unique_id=1371541145]
-layout_mode = 2
-text = "Memory Units (MU): 0 / 10"
-
-[node name="Label5" type="Label" parent="MarginContainer/HBoxContainer/DeckStatsColumn" unique_id=1446393241]
-layout_mode = 2
-
-[node name="Label6" type="Label" parent="MarginContainer/HBoxContainer/DeckStatsColumn" unique_id=414635700]
-layout_mode = 2
-
-[node name="ProgramListColumn" type="VBoxContainer" parent="MarginContainer/HBoxContainer" unique_id=236729089]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Label" type="Label" parent="MarginContainer/HBoxContainer/ProgramListColumn" unique_id=668600247]
-layout_mode = 2
-text = "--- INSTALLED PROGRAMS ---"
-
-[node name="ItemList" type="ItemList" parent="MarginContainer/HBoxContainer/ProgramListColumn" unique_id=2034251224]
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxRoot" unique_id=602838232]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Button" type="Button" parent="MarginContainer" unique_id=168557167]
+[node name="DeckStatsColumn" type="VBoxContainer" parent="MarginContainer/VBoxRoot/HBoxContainer" unique_id=602838233]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=1440872845]
+layout_mode = 2
+text = "--- CYBERDECK STATS ---"
+
+[node name="DeckSelector" type="OptionButton" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=901486191]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ModelLabel" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=901486192]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Model:"
+
+[node name="SpeedLabel" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=1147621719]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Speed Bonus: +0"
+
+[node name="MuLabel" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=1371541145]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Memory Units (MU): 0 / 0"
+
+[node name="MUBar" type="ProgressBar" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=1371541146]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 20)
+layout_mode = 2
+max_value = 20.0
+value = 20.0
+show_percentage = false
+
+[node name="StrengthLabel" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=1446393241]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Data Wall STR: 0"
+
+[node name="InterfaceLabel" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn" unique_id=414635700]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Interface Rank: 6"
+
+[node name="LoadedProgramsColumn" type="VBoxContainer" parent="MarginContainer/VBoxRoot/HBoxContainer" unique_id=236729089]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/LoadedProgramsColumn" unique_id=668600247]
+layout_mode = 2
+text = "--- LOADED INTO MEMORY (click to unload) ---"
+
+[node name="LoadedList" type="ItemList" parent="MarginContainer/VBoxRoot/HBoxContainer/LoadedProgramsColumn" unique_id=2034251224]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ProgramLibraryColumn" type="VBoxContainer" parent="MarginContainer/VBoxRoot/HBoxContainer" unique_id=236729090]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxRoot/HBoxContainer/ProgramLibraryColumn" unique_id=668600248]
+layout_mode = 2
+text = "--- PROGRAM LIBRARY (click to load) ---"
+
+[node name="LibraryList" type="ItemList" parent="MarginContainer/VBoxRoot/HBoxContainer/ProgramLibraryColumn" unique_id=2034251225]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Button" type="Button" parent="MarginContainer/VBoxRoot" unique_id=168557167]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 8
 text = "[ JACK IN ]"
 
-[connection signal="pressed" from="MarginContainer/Button" to="." method="_on_button_pressed"]
+[connection signal="item_selected" from="MarginContainer/VBoxRoot/HBoxContainer/DeckStatsColumn/DeckSelector" to="." method="_on_deck_selector_item_selected"]
+[connection signal="item_selected" from="MarginContainer/VBoxRoot/HBoxContainer/LoadedProgramsColumn/LoadedList" to="." method="_on_loaded_item_selected"]
+[connection signal="item_selected" from="MarginContainer/VBoxRoot/HBoxContainer/ProgramLibraryColumn/LibraryList" to="." method="_on_library_item_selected"]
+[connection signal="pressed" from="MarginContainer/VBoxRoot/Button" to="." method="_on_button_pressed"]
