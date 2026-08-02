@@ -6,7 +6,8 @@ signal interacted_with_tile(tile_data: CP2020TileData, pos: Vector2i)
 signal deck_updated()
 signal message_logged(msg: String)
 signal health_changed(current_health: int, max_health: int)
-signal shield_changed(current_shield: int, max_shield: int)
+signal shield_raised(program: NetProgram)
+signal shield_consumed
 signal flatlined
 
 @export var cell_size: int = 40
@@ -17,10 +18,9 @@ signal flatlined
 @export var installed_programs: Array[NetProgram] = []
 
 @export var max_health: int = 20
-@export var max_shield: int = 10
 
 var current_health: int = 20
-var current_shield: int = 0
+var raised_shield: NetProgram = null
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_layout: CP2020DatafortLayout
@@ -34,7 +34,6 @@ func get_used_memory() -> int:
 
 func _ready() -> void:
 	current_health = max_health
-	current_shield = 0
 	message_logged.emit("Netrunner ready. Current memory used: %d / %d MU" % [get_used_memory(), max_memory_units])
 
 func initialize(layout: CP2020DatafortLayout) -> void:
@@ -123,18 +122,23 @@ func move(direction: Vector2i) -> bool:
 			
 	return true
 
-func apply_damage(amount: int) -> void:
-	var remaining = amount
-	if current_shield > 0:
-		var absorbed = min(current_shield, remaining)
-		current_shield -= absorbed
-		remaining -= absorbed
-		message_logged.emit("Shield absorbs %d damage (Shield %d/%d)." % [absorbed, current_shield, max_shield])
-		shield_changed.emit(current_shield, max_shield)
+func apply_damage(attack_strength: int, attacker_name: String) -> void:
+	var damage: int = attack_strength
+	if raised_shield != null:
+		var shield_roll := randi_range(1, 10) + raised_shield.strength
+		var attack_roll := randi_range(1, 10) + attack_strength
+		message_logged.emit("Shield opposes: %d vs ICE %d." % [shield_roll, attack_roll])
+		if shield_roll >= attack_roll:
+			message_logged.emit("Shield thwarts the attack. No damage taken.")
+			damage = 0
+		else:
+			message_logged.emit("Shield breached! Full damage applies.")
+		raised_shield = null
+		shield_consumed.emit()
 
-	if remaining > 0:
-		current_health -= remaining
-		message_logged.emit("Netrunner takes %d damage (Health %d/%d)." % [remaining, current_health, max_health])
+	if damage > 0:
+		current_health -= damage
+		message_logged.emit("%s hits for %d damage (Health %d/%d)." % [attacker_name, damage, current_health, max_health])
 		health_changed.emit(current_health, max_health)
 
 	if current_health <= 0:
@@ -142,11 +146,7 @@ func apply_damage(amount: int) -> void:
 		message_logged.emit("FLATLINED. Netrunner jacked out.")
 		flatlined.emit()
 
-func recharge_shield(amount: int) -> void:
-	var gained = min(max_shield - current_shield, amount)
-	if gained <= 0:
-		message_logged.emit("Shield already at maximum (%d/%d)." % [current_shield, max_shield])
-		return
-	current_shield += gained
-	message_logged.emit("Shield recharged by %d (Shield %d/%d)." % [gained, current_shield, max_shield])
-	shield_changed.emit(current_shield, max_shield)
+func raise_shield(program: NetProgram) -> void:
+	raised_shield = program
+	message_logged.emit("Shield raised (Block STR %d). Will thwart next attack on success." % program.strength)
+	shield_raised.emit(program)

@@ -148,7 +148,7 @@ func execute_shield(program: NetProgram) -> void:
 	if not netrunner:
 		return
 	log_to_terminal("Activating Protection Program '%s'...\n" % program.program_name)
-	netrunner.recharge_shield(program.strength)
+	netrunner.raise_shield(program)
 
 func log_to_terminal(message: String) -> void:
 	if terminal_log:
@@ -206,7 +206,7 @@ func _on_ice_moved(_new_pos: Vector2i) -> void:
 func _on_ice_attacked(strength: int) -> void:
 	log_to_terminal("WARNING: Black ICE attacks for %d!\n" % strength)
 	if netrunner:
-		netrunner.apply_damage(strength)
+		netrunner.apply_damage(strength, "Black ICE")
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")

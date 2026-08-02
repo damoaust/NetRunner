@@ -89,7 +89,7 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 		for i in range(available_programs.size()):
 			var prog = available_programs[i] as NetProgram
 			if prog and prog.effect_type == NetProgram.EffectType.SHIELD:
-				var menu_label = "%s (Shield +%d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
+				var menu_label = "%s (Block STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
 				var prog_id = 1000 + i
 				_dynamic_menu.add_item(menu_label, prog_id)
 				options_added = true
