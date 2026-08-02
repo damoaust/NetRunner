@@ -8,6 +8,7 @@ extends Control
 @onready var terminal_log: RichTextLabel = $UI/PanelContainer/VBoxContainer/TerminalLog
 @onready var deck_name_label: Label = $UI/PanelContainer/VBoxContainer/DeckNameLabel
 @onready var memory_label: Label = $UI/PanelContainer/VBoxContainer/MemoryLabel
+@onready var actions_label: Label = $UI/PanelContainer/VBoxContainer/ActionsLabel
 @onready var program_list_container: VBoxContainer = $UI/PanelContainer/VBoxContainer/ProgramListContainer
 @onready var netrunner: CP2020Netrunner = $CP2020Netrunner
 @onready var turn_manager: CP2020TurnManager = $TurnManager
@@ -27,6 +28,9 @@ func _ready() -> void:
 			turn_manager.turn_ended.connect(_on_turn_ended)
 		if not turn_manager.ice_movement_stepped.is_connected(_on_ice_stepped):
 			turn_manager.ice_movement_stepped.connect(_on_ice_stepped)
+		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
+			turn_manager.actions_changed.connect(_on_actions_changed)
+		turn_manager.start_netrunner_turn()
 
 	if netrunner:
 		if not netrunner.message_logged.is_connected(log_to_terminal):
@@ -85,17 +89,24 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode in [KEY_D, KEY_RIGHT]: dir = Vector2i(1, 0)
 		
 		if dir != Vector2i.ZERO and netrunner:
+			if turn_manager and not turn_manager.has_actions():
+				log_to_terminal("No actions remaining. End turn (Space) to let ICE move.\n")
+				return
 			var moved_successfully = netrunner.move(dir)
-			
-			# If you want Fog of War to update dynamically when walking:
 			if moved_successfully:
+				if turn_manager:
+					turn_manager.consume_action()
 				recalculate_fog_of_war(netrunner.current_position)
 				board_renderer.queue_redraw()
+				_check_actions_exhausted()
 
 func _on_action_triggered(action_name: String, target_coord: Vector2i, program = null) -> void:
 	match action_name:
 		"use_program":
 			if program is NetProgram and current_layout:
+				if turn_manager and not turn_manager.has_actions():
+					log_to_terminal("No actions remaining. End turn (Space) to let ICE move.\n")
+					return
 				if program.effect_type == NetProgram.EffectType.BYPASS_GATE:
 					execute_decryption(program, target_coord)
 				elif program.effect_type == NetProgram.EffectType.BREACH_WALL:
@@ -106,6 +117,10 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					execute_shield(program)
 				else:
 					log_to_terminal("Program effect not implemented yet.\n")
+					return
+				if turn_manager:
+					turn_manager.consume_action()
+				_check_actions_exhausted()
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
@@ -219,12 +234,24 @@ func spawn_black_ice() -> void:
 func _end_player_turn() -> void:
 	if not turn_manager or not current_layout or not netrunner:
 		return
+	if not turn_manager.is_netrunner_turn:
+		return
 	log_to_terminal("--- Netrunner turn ended. ICE activating... ---\n")
 	turn_manager.execute_ice_turns(ice_nodes, netrunner.current_position, current_layout)
 
 func _on_turn_ended(is_netrunner_turn: bool) -> void:
 	if is_netrunner_turn:
 		log_to_terminal("--- Netrunner turn begins. ---\n")
+
+func _on_actions_changed(remaining: int, max_actions: int) -> void:
+	if actions_label:
+		actions_label.text = "Actions: %d / %d" % [remaining, max_actions]
+	log_to_terminal("Actions: %d / %d\n" % [remaining, max_actions])
+
+func _check_actions_exhausted() -> void:
+	if turn_manager and turn_manager.actions_remaining <= 0:
+		log_to_terminal("Out of actions. ICE activating...\n")
+		turn_manager.execute_ice_turns(ice_nodes, netrunner.current_position, current_layout)
 
 func _on_ice_stepped() -> void:
 	if board_renderer:

@@ -83,11 +83,16 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 			break
 
 func _update_obstacles(layout: CP2020DatafortLayout) -> void:
-	# Optimized to use AStarGrid2D's native region filling instead of iterating manually over every dictionary key
-	astar_grid.fill_solid_region(astar_grid.region, false) 
-	
-	for coord in layout.grid_tiles.keys():
-		var tile = layout.grid_tiles[coord] as CP2020TileData
+	astar_grid.fill_solid_region(astar_grid.region, false)
+
+	for raw_key in layout.grid_tiles.keys():
+		var coord: Vector2i
+		if raw_key is String:
+			var parts = raw_key.split(",")
+			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+		else:
+			coord = raw_key
+		var tile = layout.get_tile(coord)
 		if tile:
 			if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL or (tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked):
 				astar_grid.set_point_solid(coord, true)
