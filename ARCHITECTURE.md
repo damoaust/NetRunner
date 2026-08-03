@@ -117,7 +117,7 @@ graph TD
 
 1. **CyberdeckWorkbench** — pick a deck and load programs, then `Jack In`.
 2. **World Map** (`cp2020_world_net_map.tscn`) — geographic grid of regions + city markers. Move between cities; hack/pay LDL to build trace. Right-click a city → **ENTER City Grid** (loads that city's `CP2020CityGridLayout` via `hub.city_grid_path`).
-3. **City Grid** (`cp2020_city_grid.tscn`) — per-city grid of datafort icons (security-tier coded). Runner enters at the LDL entry tile, moves 5/turn, right-clicks a datafort → **DIVE** into its subnet, or Hack/Pay LDL to nearby dataforts, or **Return to World Map** (resets trace).
+3. **City Grid** (`cp2020_city_grid.tscn`) — per-city grid of datafort icons (security-tier coded). Runner enters at the LDL entry tile, moves 5/turn. **Stepping onto a datafort icon auto-dives** into its subnet (no Hack/Pay LDL here — that's world-map only). Right-click the runner's tile to **Return to World Map** (resets trace).
 4. **Gameplay / Datafort** (`cp2020_gameplay.tscn`) — explore the datafort with fog of war, fight ICE, use programs. LDL-link tiles travel to other dataforts (preserve trace) or **Return to City Grid** (preserve trace — still in the run). Jack-out / flatline returns to the World Map and resets trace (full abort).
 
 ---
@@ -326,11 +326,10 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Camera follow via a `Camera2D` clamped to the map rect and centred on the runner.
 
 ### 5.10 City Grid Runtime ([cp2020_city_grid.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_city_grid.gd)) — *NEW*
-- Per-city grid (`cp2020_city_grid.tscn`) loaded from `RunState.selected_city_grid_path` (`CP2020CityGridLayout`). Runner spawns on `ldl_entry` and moves 5 actions/turn. Reuses the world map movement/camera/popup pattern.
+- Per-city grid (`cp2020_city_grid.tscn`) loaded from `RunState.selected_city_grid_path` (`CP2020CityGridLayout`). Runner spawns on `ldl_entry` and moves 5 actions/turn. Reuses the world map movement/camera pattern.
 - **Tier-coded datafort icons**: each datafort is drawn as a filled chip in its `security_tier` colour (via `CP2020SecurityTier.COLORS`) with the tier glyph (`CP2020SecurityTier.GLYPHS`) and the datafort name. The LDL entry tile shows a cyan "LDL" ring marker.
-- Right-click the runner's tile when on a datafort opens the popup: **DIVE [tier]** into the datafort's subnet, **Hack LDL →** / **Pay LDL →** to nearby dataforts (Chebyshev ≤ 5), **Return to World Map** (id 998), Cancel.
-  - **DIVE**: sets `RunState.selected_subnet_path` + `RunState.selected_security_tier` (the datafort's tier), keeps `selected_city_grid_path`, changes scene to gameplay. Diving adds no trace.
-  - **Return to World Map**: resets `accumulated_trace`, clears `selected_city_grid_path` + `selected_security_tier`, changes scene to the world map.
+- **Stepping onto a datafort icon auto-dives** into its subnet (sets `RunState.selected_subnet_path` + `selected_security_tier`, keeps `selected_city_grid_path`, changes scene to gameplay). No Hack/Pay LDL on the city grid — that is a world-map-only mechanic; dataforts are reached by walking.
+- Right-click the runner's tile → **Return to World Map** popup (resets `accumulated_trace`, clears `selected_city_grid_path` + `selected_security_tier`, changes scene to the world map) / Cancel.
 - HUD: Actions, Credits, Location (datafort/city), Trace.
 
 ### 5.11 Cross-Scene State & Trace ([run_state.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/autoload/run_state.gd))

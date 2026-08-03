@@ -4,9 +4,10 @@ extends Node2D
 # City Grid — the middle layer of the 3-level map model
 # (World Map -> City Grid -> Datafort). Loaded from a CP2020CityGridLayout
 # resource (RunState.selected_city_grid_path). The runner arrives on the
-# grid's `ldl_entry` tile, moves 5 tiles/turn, and right-clicks a datafort
-# tile to DIVE into its subnet, Hack/Pay LDL to a nearby datafort, or Return
-# to the World Map. Tier-coded datafort icons reuse CP2020SecurityTier consts.
+# grid's `ldl_entry` tile and moves 5 tiles/turn. Stepping onto a datafort
+# icon auto-dives into its subnet (no Hack/Pay LDL — that is a world-map-only
+# mechanic). Right-click the runner's tile to Return to the World Map.
+# Tier-coded datafort icons reuse CP2020SecurityTier consts.
 
 const CELL: int = 40
 
@@ -25,8 +26,6 @@ var city_name: String = "City Grid"
 @onready var location_label: Label = get_node_or_null("HUDLayer/HUDOverlay/LocationLabel")
 @onready var trace_label: Label = get_node_or_null("HUDLayer/HUDOverlay/TraceLabel")
 @onready var camera: Camera2D = get_node_or_null("RunnerCamera")
-
-var _popup_nearby: Array = []
 
 
 func _ready() -> void:
@@ -190,8 +189,8 @@ func _input(event: InputEvent) -> void:
 			_check_actions_exhausted()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		var grid := _screen_to_grid(get_global_mouse_position())
-		if grid == runner_pos and _datafort_at(grid) != null:
-			_open_dive_popup(grid)
+		if grid == runner_pos:
+			_open_return_popup()
 			get_viewport().set_input_as_handled()
 
 
@@ -211,6 +210,10 @@ func _try_move(target: Vector2i) -> bool:
 			return false
 	runner_pos = target
 	_center_camera_on_runner()
+	# Stepping onto a datafort icon auto-dives into its subnet.
+	var df: Variant = _datafort_at(target)
+	if df != null:
+		_dive_datafort(df)
 	return true
 
 
@@ -225,54 +228,24 @@ func _on_actions_changed(remaining: int, max_actions: int) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Dive popup
+# Right-click popup (Return to World Map only)
 # ---------------------------------------------------------------------------
 
-func _open_dive_popup(df_pos: Vector2i) -> void:
-	var df: Variant = _datafort_at(df_pos)
-	if df == null:
-		return
+func _open_return_popup() -> void:
 	var popup := PopupMenu.new()
 	var hud_layer := get_node_or_null("HUDLayer")
 	if hud_layer != null:
 		hud_layer.add_child(popup)
 	else:
 		add_child(popup)
-
-	_popup_nearby = _nearby_dataforts(df_pos)
-
-	var tier_tag := String(CP2020SecurityTier.SHORT.get(int(df.security_tier), "?"))
-	popup.add_item("DIVE into %s [%s]" % [df.name, tier_tag], 0)
-	popup.add_separator()
-	for i in range(_popup_nearby.size()):
-		var dest: Dictionary = _popup_nearby[i]
-		var dest_tag := String(CP2020SecurityTier.SHORT.get(int(dest.security_tier), "?"))
-		popup.add_item("Hack LDL -> %s [%s] (Sec %d, +Trace %d)" % [dest.name, dest_tag, int(dest.security_code), int(dest.trace_value)], 100 + i)
-		popup.add_item("Pay LDL -> %s [%s] (%d eb)" % [dest.name, dest_tag, int(dest.ldl_cost)], 200 + i)
-	popup.add_separator()
 	popup.add_item("Return to World Map", 998)
 	popup.add_item("Cancel", 999)
-
-	popup.id_pressed.connect(_on_dive_popup_id.bind(df))
-	var world_pos := Vector2(df_pos.x * CELL + CELL, df_pos.y * CELL)
+	popup.id_pressed.connect(_on_return_popup_id)
+	var world_pos := Vector2(runner_pos.x * CELL + CELL, runner_pos.y * CELL)
 	var screen_pos := _world_to_screen(world_pos) + Vector2(20, 20)
 	popup.position = screen_pos
 	popup.popup()
 	popup.set_position(screen_pos)
-
-
-func _chebyshev(a: Vector2i, b: Vector2i) -> int:
-	return maxi(absi(a.x - b.x), absi(a.y - b.y))
-
-
-func _nearby_dataforts(pos: Vector2i) -> Array:
-	var out: Array = []
-	for df in dataforts:
-		if df.pos == pos:
-			continue
-		if _chebyshev(pos, df.pos) <= 5:
-			out.append(df)
-	return out
 
 
 func _world_to_screen(world_pos: Vector2) -> Vector2:
@@ -285,81 +258,9 @@ func _world_to_screen(world_pos: Vector2) -> Vector2:
 	return (world_pos - screen_center) * zoom + vp_size * 0.5
 
 
-func _on_dive_popup_id(id: int, df: Variant) -> void:
-	if id == 0:
-		_dive_datafort(df)
-		return
+func _on_return_popup_id(id: int) -> void:
 	if id == 998:
 		_return_to_world_map()
-		return
-	if id == 999:
-		return
-	if id >= 100 and id < 100 + _popup_nearby.size():
-		_hack_jump(_popup_nearby[id - 100])
-		return
-	if id >= 200 and id < 200 + _popup_nearby.size():
-		_pay_jump(_popup_nearby[id - 200])
-		return
-
-
-func _hack_jump(dest: Dictionary) -> void:
-	var roll := randi_range(1, 10)
-	print("CITY GRID: Hack LDL -> %s — 1D10 %d vs Security Code %d." % [dest.name, roll, int(dest.security_code)])
-	if roll >= int(dest.security_code):
-		RunState.accumulated_trace += int(dest.trace_value)
-		runner_pos = dest.pos
-		_center_camera_on_runner()
-		print("CITY GRID: Jumped to %s. Run trace difficulty: %d" % [dest.name, RunState.accumulated_trace])
-		_update_hud()
-		queue_redraw()
-		return
-	print("CITY GRID: Hack failed — caught scamming the LDL.")
-	_caught_table(dest)
-
-
-func _pay_jump(dest: Dictionary) -> void:
-	var cost: int = int(dest.ldl_cost)
-	if RunState.credits < cost:
-		print("CITY GRID: Insufficient credits (%d eb) for %s LDL (%d eb)." % [RunState.credits, dest.name, cost])
-		_update_hud()
-		return
-	RunState.credits -= cost
-	RunState.accumulated_trace += int(dest.trace_value)
-	runner_pos = dest.pos
-	_center_camera_on_runner()
-	print("CITY GRID: Paid %d eb, jumped to %s. Run trace difficulty: %d" % [cost, dest.name, RunState.accumulated_trace])
-	_update_hud()
-	queue_redraw()
-
-
-func _caught_table(df: Dictionary) -> void:
-	var caught := randi_range(1, 6)
-	print("CITY GRID: NETWATCH roll 1D6 = %d" % caught)
-	match caught:
-		1, 2, 3, 4:
-			var charge: int = int(df.ldl_cost)
-			RunState.credits = maxi(0, RunState.credits - charge)
-			print("CITY GRID: Cut off and charged for the call (-%d eb). Credits: %d" % [charge, RunState.credits])
-		5:
-			print("CITY GRID: Cut off. NETWATCH has your access code — expect company in Realspace.")
-		6:
-			_handle_netcop_bust()
-	_update_hud()
-
-
-func _handle_netcop_bust() -> void:
-	var bust := randi_range(1, 6)
-	print("CITY GRID: NetCops bust attempt — 1D6 = %d" % bust)
-	match bust:
-		1, 2:
-			var fine := randi_range(1, 6) * 100
-			RunState.credits = maxi(0, RunState.credits - fine)
-			print("CITY GRID: Fined %d eb. Credits: %d" % [fine, RunState.credits])
-		3, 4, 5:
-			var days := randi_range(1, 6) + 1
-			print("CITY GRID: You escape. NetCops patrol the area %d days hoping you show up." % days)
-		6:
-			print("CITY GRID: You escape, but an All-Net Bulletin is issued. They are looking for you.")
 
 
 func _dive_datafort(df: Variant) -> void:
