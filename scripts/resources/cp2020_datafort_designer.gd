@@ -71,6 +71,19 @@ var loot_add_dialog: FileDialog
 var loot_cpu_info_label: Label
 var selected_loot_coord: Vector2i = Vector2i(-1, -1)
 
+# Files editor panel (built in code; shown when a MEMORY_UNIT tile is
+# selected). Files are discrete data files a netrunner copies to deck memory
+# (consuming MU) and fences at the hub for their credit value. Replaces the
+# loot editor for MEMORY_UNIT tiles; CONTROL_NODE still uses the loot editor.
+var files_panel: VBoxContainer
+var files_panel_bg: PanelContainer
+var files_list: ItemList
+var file_name_edit: LineEdit
+var file_desc_edit: TextEdit
+var file_value_spinbox: SpinBox
+var file_mu_spinbox: SpinBox
+var selected_files_coord: Vector2i = Vector2i(-1, -1)
+
 # Layout-level resident programs editor (programs the datafort's CPUs run).
 var programs_panel: VBoxContainer
 var programs_panel_bg: PanelContainer
@@ -88,6 +101,7 @@ func _ready() -> void:
 	build_npc_panel()
 	build_cpu_panel()
 	build_loot_panel()
+	build_files_panel()
 	build_programs_panel()
 	queue_redraw()
 
@@ -185,6 +199,7 @@ func add_tool_button(label_text: String, tile_type: CP2020DatafortLayout.TileTyp
 		_hide_ice_panel()
 		_hide_npc_panel()
 		_hide_loot_panel()
+		_hide_files_panel()
 		print("Selected Tool: ", label_text)
 	)
 	dynamic_button_row.add_child(btn)
@@ -199,6 +214,7 @@ func add_entry_tool_button(label_text: String) -> void:
 		_hide_ice_panel()
 		_hide_npc_panel()
 		_hide_loot_panel()
+		_hide_files_panel()
 		print("Selected Tool: ", label_text, " (plain datafort entrance)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -212,6 +228,7 @@ func add_ldl_tool_button(label_text: String) -> void:
 		_hide_ice_panel()
 		_hide_npc_panel()
 		_hide_loot_panel()
+		_hide_files_panel()
 		print("Selected Tool: ", label_text, " (paint/select an LDL link, then edit it in the side panel)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -315,14 +332,17 @@ func _gui_input(event: InputEvent) -> void:
 						_open_npc_editor(coord)
 					elif painted and painted.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
 						_hide_cpu_panel()
+						_hide_files_panel()
 						_open_loot_editor(coord)
 					elif painted and painted.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
-						_open_loot_editor(coord)
+						_hide_loot_panel()
+						_open_files_editor(coord)
 					else:
 						_hide_ice_panel()
 						_hide_npc_panel()
 						_hide_cpu_panel()
 						_hide_loot_panel()
+						_hide_files_panel()
 
 # Update paint_tile to flag LDL options if needed
 func paint_tile(coord: Vector2i) -> void:
@@ -1115,6 +1135,8 @@ func _open_loot_editor(coord: Vector2i) -> void:
 	if tile.tile_type != CP2020DatafortLayout.TileType.MEMORY_UNIT and tile.tile_type != CP2020DatafortLayout.TileType.CONTROL_NODE:
 		return
 	selected_loot_coord = coord
+	# Only one side panel shows at a time.
+	_hide_files_panel()
 	# Show the CPU info block only when editing a CONTROL_NODE tile.
 	loot_cpu_info_label.visible = tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE
 	loot_credits_spinbox.set_block_signals(true)
@@ -1204,6 +1226,215 @@ func _clear_loot_list() -> void:
 		return
 	tile.loot_programs.clear()
 	_refresh_loot_programs_list()
+	queue_redraw()
+
+
+# ---------------------------------------------------------------------------
+# Files editor side panel (MEMORY_UNIT tiles)
+# ---------------------------------------------------------------------------
+
+func build_files_panel() -> void:
+	var panel_bg = PanelContainer.new()
+	panel_bg.name = "FilesEditorPanel"
+	panel_bg.anchor_left = 1.0
+	panel_bg.anchor_right = 1.0
+	panel_bg.anchor_top = 0.0
+	panel_bg.anchor_bottom = 1.0
+	panel_bg.offset_left = -300
+	panel_bg.offset_right = -10
+	panel_bg.offset_top = 90
+	panel_bg.offset_bottom = -10
+	panel_bg.visible = false
+	add_child(panel_bg)
+	files_panel_bg = panel_bg
+
+	files_panel = VBoxContainer.new()
+	files_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	files_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel_bg.add_child(files_panel)
+
+	var title = Label.new()
+	title.text = "Files Editor"
+	files_panel.add_child(title)
+
+	var hint = Label.new()
+	hint.text = "Files are discrete data files a netrunner copies to deck memory (consuming MU alongside programs) during a dive, then fences at the hub for their credit value (eb). The credit value is hidden from the player in the datafort menu and only revealed at the hub shop."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	files_panel.add_child(hint)
+
+	var name_lbl = Label.new()
+	name_lbl.text = "File name:"
+	files_panel.add_child(name_lbl)
+	file_name_edit = LineEdit.new()
+	file_name_edit.placeholder_text = "e.g. Corporate Payroll Logs"
+	files_panel.add_child(file_name_edit)
+
+	var desc_lbl = Label.new()
+	desc_lbl.text = "Description:"
+	files_panel.add_child(desc_lbl)
+	file_desc_edit = TextEdit.new()
+	file_desc_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	file_desc_edit.custom_minimum_size = Vector2(0, 60)
+	file_desc_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	files_panel.add_child(file_desc_edit)
+
+	var value_lbl = Label.new()
+	value_lbl.text = "Credit value (fence price):"
+	files_panel.add_child(value_lbl)
+	file_value_spinbox = SpinBox.new()
+	file_value_spinbox.min_value = 0
+	file_value_spinbox.max_value = 100000
+	file_value_spinbox.suffix = " eb"
+	files_panel.add_child(file_value_spinbox)
+
+	var mu_lbl = Label.new()
+	mu_lbl.text = "MU size:"
+	files_panel.add_child(mu_lbl)
+	file_mu_spinbox = SpinBox.new()
+	file_mu_spinbox.min_value = 1
+	file_mu_spinbox.max_value = 100
+	file_mu_spinbox.suffix = " MU"
+	file_mu_spinbox.value = 1
+	files_panel.add_child(file_mu_spinbox)
+
+	files_list = ItemList.new()
+	files_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	files_list.custom_minimum_size = Vector2(0, 120)
+	files_panel.add_child(files_list)
+
+	var add_btn = Button.new()
+	add_btn.text = "Add file"
+	add_btn.pressed.connect(_add_file)
+	files_panel.add_child(add_btn)
+
+	var update_btn = Button.new()
+	update_btn.text = "Update selected"
+	update_btn.pressed.connect(_update_selected_file)
+	files_panel.add_child(update_btn)
+
+	var remove_btn = Button.new()
+	remove_btn.text = "Remove selected"
+	remove_btn.pressed.connect(_remove_selected_file)
+	files_panel.add_child(remove_btn)
+
+	var clear_btn = Button.new()
+	clear_btn.text = "Clear files"
+	clear_btn.pressed.connect(_clear_files)
+	files_panel.add_child(clear_btn)
+
+
+func _open_files_editor(coord: Vector2i) -> void:
+	if not current_layout:
+		return
+	var tile = current_layout.get_tile(coord)
+	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.MEMORY_UNIT:
+		return
+	# Only one side panel shows at a time.
+	_hide_loot_panel()
+	_hide_cpu_panel()
+	selected_files_coord = coord
+	_refresh_files_list()
+	files_panel_bg.visible = true
+
+
+func _hide_files_panel() -> void:
+	if files_panel_bg:
+		files_panel_bg.visible = false
+	selected_files_coord = Vector2i(-1, -1)
+
+
+func _refresh_files_list() -> void:
+	if not files_list or not current_layout or selected_files_coord == Vector2i(-1, -1):
+		return
+	files_list.clear()
+	var tile = current_layout.get_tile(selected_files_coord)
+	if tile == null:
+		return
+	var i := 0
+	for f in tile.files:
+		if f is NetFile:
+			files_list.add_item("%s — %d eb, %d MU" % [f.file_name, f.credit_value, f.mu_size])
+		else:
+			files_list.add_item("(invalid file)")
+		files_list.set_item_metadata(i, i)
+		i += 1
+
+
+func _read_file_fields_from_inputs() -> NetFile:
+	# Helper used by add/update so both buttons read the same input fields.
+	var f := NetFile.new()
+	f.file_name = file_name_edit.text.strip_edges()
+	if f.file_name == "":
+		f.file_name = "Untitled File"
+	f.description = file_desc_edit.text
+	f.credit_value = int(file_value_spinbox.value)
+	f.mu_size = int(file_mu_spinbox.value)
+	return f
+
+
+func _add_file() -> void:
+	if not current_layout or selected_files_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_files_coord)
+	if tile == null:
+		return
+	var f := _read_file_fields_from_inputs()
+	tile.files.append(f)
+	_refresh_files_list()
+	queue_redraw()
+
+
+func _update_selected_file() -> void:
+	if not current_layout or not files_list or selected_files_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_files_coord)
+	if tile == null:
+		return
+	var idxs: PackedInt32Array = files_list.get_selected_items()
+	if idxs.is_empty():
+		return
+	var i: int = idxs[0]
+	if i < 0 or i >= tile.files.size():
+		return
+	var existing = tile.files[i] as NetFile
+	if existing == null:
+		return
+	existing.file_name = file_name_edit.text.strip_edges()
+	if existing.file_name == "":
+		existing.file_name = "Untitled File"
+	existing.description = file_desc_edit.text
+	existing.credit_value = int(file_value_spinbox.value)
+	existing.mu_size = int(file_mu_spinbox.value)
+	_refresh_files_list()
+	queue_redraw()
+
+
+func _remove_selected_file() -> void:
+	if not current_layout or not files_list or selected_files_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_files_coord)
+	if tile == null:
+		return
+	var idxs: PackedInt32Array = files_list.get_selected_items()
+	if idxs.is_empty():
+		return
+	# Remove highest index first to keep indices valid.
+	idxs.reverse()
+	for i: int in idxs:
+		if i >= 0 and i < tile.files.size():
+			tile.files.remove_at(i)
+	_refresh_files_list()
+	queue_redraw()
+
+
+func _clear_files() -> void:
+	if not current_layout or selected_files_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_files_coord)
+	if tile == null:
+		return
+	tile.files.clear()
+	_refresh_files_list()
 	queue_redraw()
 
 

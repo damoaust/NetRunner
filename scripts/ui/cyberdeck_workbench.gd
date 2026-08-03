@@ -47,12 +47,15 @@ var credits_label: Label
 var shop_buy_decks_list: ItemList
 var shop_buy_programs_list: ItemList
 var shop_sell_loot_list: ItemList
+var shop_sell_files_list: ItemList
 var buy_deck_button: Button
 var buy_program_button: Button
 var sell_loot_button: Button
+var sell_file_button: Button
 var _selected_buy_deck_idx: int = -1
 var _selected_buy_program_idx: int = -1
 var _selected_sell_loot_idx: int = -1
+var _selected_sell_file_idx: int = -1
 
 # Human-readable tags for each program effect type.
 const EFFECT_TAGS: Dictionary = {
@@ -601,6 +604,20 @@ func _build_shop_column() -> Control:
 	sell_loot_button.pressed.connect(_on_sell_loot_pressed)
 	col.add_child(sell_loot_button)
 
+	col.add_child(_make_rule())
+
+	# SELL FILES
+	col.add_child(_make_header_label("SELL FILES"))
+	shop_sell_files_list = ItemList.new()
+	shop_sell_files_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	shop_sell_files_list.item_selected.connect(_on_sell_file_selected)
+	shop_sell_files_list.add_theme_stylebox_override("panel", _transparent_style())
+	shop_sell_files_list.add_theme_color_override("font_color", COL_TEXT)
+	col.add_child(shop_sell_files_list)
+	sell_file_button = _make_button("SELL FILE", COL_AMBER)
+	sell_file_button.pressed.connect(_on_sell_file_pressed)
+	col.add_child(sell_file_button)
+
 	return panel
 
 func _refresh_credits() -> void:
@@ -611,6 +628,7 @@ func _refresh_shop() -> void:
 	_refresh_shop_buy_decks()
 	_refresh_shop_buy_programs()
 	_refresh_shop_sell_loot()
+	_refresh_shop_sell_files()
 	_refresh_credits()
 
 func _refresh_shop_buy_decks() -> void:
@@ -666,6 +684,21 @@ func _refresh_shop_sell_loot() -> void:
 		shop_sell_loot_list.add_item("%s [%s] — %d eb" % [prog.program_name, tag, sell_price], null, false)
 		var idx := shop_sell_loot_list.item_count - 1
 		shop_sell_loot_list.set_item_metadata(idx, prog)
+
+func _refresh_shop_sell_files() -> void:
+	shop_sell_files_list.clear()
+	_selected_sell_file_idx = -1
+	if RunState.carried_files.is_empty():
+		shop_sell_files_list.add_item("No files carried — copy some from a datafort.", null, false)
+		shop_sell_files_list.set_item_custom_fg_color(0, COL_GREY)
+		shop_sell_files_list.set_item_disabled(0, true)
+		return
+	for file in RunState.carried_files:
+		if file == null:
+			continue
+		shop_sell_files_list.add_item("%s — %d eb" % [file.file_name, file.credit_value], null, false)
+		var idx := shop_sell_files_list.item_count - 1
+		shop_sell_files_list.set_item_metadata(idx, file)
 
 # Owned-vs-catalogue comparison. Owned items are duplicates whose
 # resource_path may be cleared by duplicate(), so fall back to matching by
@@ -750,6 +783,23 @@ func _on_sell_loot_pressed() -> void:
 		_show_message("Fenced %s for %d eb." % [prog.program_name, proceeds], COL_GREEN)
 	else:
 		_show_message("Could not sell that item.")
+
+func _on_sell_file_selected(index: int) -> void:
+	_selected_sell_file_idx = index
+
+func _on_sell_file_pressed() -> void:
+	if _selected_sell_file_idx < 0 or _selected_sell_file_idx >= shop_sell_files_list.item_count:
+		_show_message("Select a file to sell.", COL_AMBER)
+		return
+	var file := shop_sell_files_list.get_item_metadata(_selected_sell_file_idx) as NetFile
+	if file == null:
+		return
+	var proceeds := RunState.sell_file(file)
+	if proceeds > 0:
+		_after_transaction()
+		_show_message("Fenced %s for %d eb." % [file.file_name, proceeds], COL_GREEN)
+	else:
+		_show_message("Could not sell that file.")
 
 # ---------------------------------------------------------------------------
 # UI helpers

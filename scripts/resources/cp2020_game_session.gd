@@ -156,6 +156,9 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 				# Reset the loot flag so a revisited datafort can be looted
 				# again on a fresh dive (cached ResourceLoader instance).
 				t.is_looted = false
+				# Reset per-file copied tracking so a revisited datafort's files can
+				# be copied again on a fresh dive (cached ResourceLoader instance).
+				t.copied_file_paths = PackedStringArray()
 
 		# Let the Netrunner handle its own spawning!
 		if netrunner:
@@ -201,7 +204,7 @@ func _input(event: InputEvent) -> void:
 			var cs: float = board_renderer.cell_size if board_renderer else 40.0
 			var go_y: float = board_renderer.grid_offset_y if board_renderer else 90.0
 			var nr_pos: Vector2i = netrunner.current_position if netrunner else Vector2i(-1, -1)
-			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes, nr_pos, npc_nodes)
+			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes, nr_pos, npc_nodes, netrunner)
 
 	# --- KEYBOARD INPUT (Pass to Netrunner) ---
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -296,29 +299,72 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				if turn_manager:
 					turn_manager.consume_action()
 				_check_actions_exhausted()
-		"loot_tile":
-			# Download files from a MEMORY_UNIT tile. Looting is a "free" data
-			# retrieval in CP2020 — it does NOT consume an action or end the
-			# turn (unlike use_program / attack_npc / crash_cpu above).
+		"copy_file":
+			# Copy a single file from a MEMORY_UNIT tile to the deck. File
+			# retrieval is a "free" data action in CP2020 — it does NOT consume
+			# an action or end the turn (unlike use_program / attack_npc above).
 			if current_layout:
-				var loot_tile: CP2020TileData = current_layout.get_tile(target_coord)
-				if not loot_tile:
-					push_warning("loot_tile: no tile at %s." % target_coord)
+				var file := program as NetFile
+				if file == null:
+					push_warning("copy_file: program is not a NetFile.")
 					return
-				if loot_tile.is_looted:
-					push_warning("loot_tile: tile at %s already looted." % target_coord)
+				var tile: CP2020TileData = current_layout.get_tile(target_coord)
+				if not tile:
+					push_warning("copy_file: no tile at %s." % target_coord)
 					return
-				if loot_tile.loot_credits > 0:
-					RunState.add_loot_credits(loot_tile.loot_credits)
-					log_to_terminal("Downloaded %d eb from %s.\n" % [loot_tile.loot_credits, target_coord])
-				for prog in loot_tile.loot_programs:
-					if prog is NetProgram:
-						RunState.add_loot(prog)
-						log_to_terminal("Downloaded program: %s.\n" % prog.program_name)
-				loot_tile.is_looted = true
+				# Find the file's index on the tile. Match by instance OR by
+				# file_name, since program_resource may be a duplicate with
+				# different identity than the tile's stored entry.
+				var idx: int = -1
+				for i in range(tile.files.size()):
+					if tile.files[i] == file or tile.files[i].file_name == file.file_name:
+						idx = i
+						break
+				if idx < 0:
+					push_warning("copy_file: file not found on tile %s." % target_coord)
+					return
+				if str(idx) in tile.copied_file_paths:
+					push_warning("copy_file: file already copied.")
+					return
+				# MU-fit check: free MU = max MU minus programs + carried files.
+				var free_mu: int = netrunner.max_memory_units - netrunner.get_used_memory() if netrunner else 999999
+				if file.mu_size > free_mu:
+					log_to_terminal("Not enough free deck memory for %s (need %d MU, have %d).\n" % [file.file_name, file.mu_size, free_mu])
+					return
+				RunState.copy_file(file)
+				tile.copied_file_paths.append(str(idx))
+				log_to_terminal("Copied %s to deck memory (%d MU).\n" % [file.file_name, file.mu_size])
 				if board_renderer:
 					board_renderer.queue_redraw()
-				log_to_terminal("Loot secured. Return to the City Grid and jack out to fence it at the hub.\n")
+		"copy_all_files":
+			# Batch-copy every fitting file from a MEMORY_UNIT tile to the
+			# deck. Like copy_file, this does NOT consume an action or end
+			# the turn — it is a free data retrieval action.
+			if current_layout:
+				var tile: CP2020TileData = current_layout.get_tile(target_coord)
+				if not tile:
+					push_warning("copy_all_files: no tile at %s." % target_coord)
+					return
+				if tile.files.is_empty():
+					return
+				if netrunner:
+					var free_mu := netrunner.max_memory_units - netrunner.get_used_memory()
+					for i in range(tile.files.size()):
+						if str(i) in tile.copied_file_paths:
+							continue
+						var f: NetFile = tile.files[i]
+						if f == null:
+							continue
+						if f.mu_size <= free_mu:
+							RunState.copy_file(f)
+							tile.copied_file_paths.append(str(i))
+							free_mu -= f.mu_size
+							log_to_terminal("Copied %s to deck memory (%d MU).\n" % [f.file_name, f.mu_size])
+						else:
+							log_to_terminal("Skipped %s — not enough free deck memory.\n" % f.file_name)
+				if board_renderer:
+					board_renderer.queue_redraw()
+				log_to_terminal("Batch copy complete.\n")
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
@@ -805,6 +851,7 @@ func _on_flatlined() -> void:
 		"trace": RunState.accumulated_trace,
 		"credits": RunState.credits,
 		"loot_count": RunState.loot.size(),
+		"files_count": RunState.carried_files.size(),
 		"datafort": RunState.selected_subnet_path,
 		"security_tier": RunState.selected_security_tier,
 	}
@@ -824,10 +871,11 @@ func _on_jack_out_pressed() -> void:
 			"trace": RunState.accumulated_trace,
 			"credits": RunState.credits,
 			"loot_count": RunState.loot.size(),
+			"files_count": RunState.carried_files.size(),
 			"datafort": RunState.selected_subnet_path,
 			"security_tier": RunState.selected_security_tier,
-		}
-		MetaState.record_run(summary)
+			}
+			MetaState.record_run(summary)
 		RunState.last_death_cause = "Busted"
 		RunState.last_run_summary = summary
 		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")

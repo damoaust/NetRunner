@@ -72,3 +72,21 @@ extends Resource
 # every load_subnet (same fog-reset pattern as is_explored / is_visible /
 # cpu_crashed_turns) because ResourceLoader returns a cached instance.
 @export var is_looted: bool = false
+
+# --- Files (MEMORY_UNIT tiles) ---
+# files REPLACE the loot_credits / loot_programs model for MEMORY_UNIT tiles.
+# MEMORY_UNIT tiles now store discrete NetFile data the netrunner copies into
+# deck memory during a dive (each file has its own name / description /
+# credit_value / mu_size). CONTROL_NODE tiles keep using loot_programs above
+# for their program loot, so the legacy loot_* / is_looted fields are retained
+# and must not be removed.
+@export var files: Array[NetFile] = []
+# Runtime per-file "already copied this dive" tracking. Each entry is the
+# INDEX (as a string) of a file within the `files` array that has already been
+# copied this dive (e.g. "0", "2"). Index-based rather than resource_path-based
+# because files may be inline-created NetFile instances with no resource path
+# and may be duplicate()d. Reset to an empty array on every load_subnet (same
+# fog-reset pattern as is_explored / is_visible / cpu_crashed_turns) because
+# ResourceLoader returns a cached instance; cp2020_game_session performs that
+# reset.
+@export var copied_file_paths: PackedStringArray = []

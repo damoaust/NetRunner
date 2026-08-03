@@ -97,6 +97,15 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 			canvas.draw_line(chip_rect.position + Vector2(24, 4), chip_rect.position + Vector2(28, 4), pin_color, 2.0)
 			canvas.draw_line(chip_rect.position + Vector2(24, 12), chip_rect.position + Vector2(28, 12), pin_color, 2.0)
 
+			# "Data copied" indicator: when every authored file on this memory
+			# unit has been copied this dive, draw a small green filled dot at the
+			# chip's bottom-right corner so the player can see it's harvested.
+			# Empty (no-file) tiles are not marked copied — only fully drained ones.
+			var all_copied: bool = tile_data.files.size() > 0 and tile_data.copied_file_paths.size() >= tile_data.files.size()
+			if all_copied:
+				var dot_pos = chip_rect.position + chip_rect.size - Vector2(4, 4)
+				canvas.draw_circle(dot_pos, 3.0, Color(0.2, 0.9, 0.3, 0.9 * alpha_mult))
+
 		CP2020DatafortLayout.TileType.CONTROL_NODE:
 			# A datafort CPU. Crashed CPUs (Krash) render dimmed red with an "X"
 			# so the player can see which CPUs are down; active CPUs keep the

@@ -9,6 +9,10 @@ var _dynamic_menu: PopupMenu = null
 # Stores programs for lambda closure (survives after _gui_input returns)
 var _current_programs: Array[NetProgram] = []
 
+# Stores the files authored on the MEMORY_UNIT tile the current popup was
+# built for (so the copy-file callback can resolve a file by menu id index).
+var _current_files: Array[NetFile] = []
+
 # The LDL-link tile the current popup was built for (so the menu callback can
 # emit travel actions with the tile data).
 var _ldl_tile: CP2020TileData = null
@@ -17,12 +21,12 @@ var _ldl_tile: CP2020TileData = null
 # the right node even if it moves before the menu is dismissed).
 var _npc_target: CP2020NpcNetrunner = null
 
-func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = []) -> void:
+func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
-		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes, netrunner_pos, npc_nodes)
+		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes, netrunner_pos, npc_nodes, netrunner_node)
 
-func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = []) -> void:
+func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null) -> void:
 	if not layout:
 		print("DEBUG: Layout is missing!")
 		return
@@ -64,6 +68,9 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 
 	# Store programs as member var to avoid lambda capture issues
 	_current_programs = available_programs
+	# Reset the per-file list for this popup; set when a MEMORY_UNIT branch
+	# builds its menu below.
+	_current_files.clear()
 	
 	print("DEBUG: handle_right_click tile=", target_coord, " type=", tile_data.tile_type, " explored=", tile_data.is_explored, " visible=", tile_data.is_visible)
 	
@@ -176,17 +183,54 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
-		# Lootable memory unit — offer a "Download Files" action when the tile
-		# is visible, not already looted, has loot, and is adjacent to (or
-		# the same as) the netrunner's tile. Looting requires standing next
-		# to the memory unit; adjacency is enforced ONLY for this branch.
-		if tile_data.is_visible and not tile_data.is_looted:
-			var has_loot: bool = tile_data.loot_programs.size() > 0 or tile_data.loot_credits > 0
+		# Lootable memory unit — offer a PER-FILE copy-to-deck menu when the
+		# tile is visible, has authored files, and is adjacent to (or the same
+		# as) the netrunner's tile. Each file gets its own menu item (id
+		# 6000+i) showing name + MU cost (NOT credit_value — value is
+		# discovered at the hub). Already-copied files show a ✓ checkmark and
+		# are disabled. A "Copy All" item (id 6999) is appended last.
+		# Adjacency is enforced ONLY for this branch.
+		if tile_data.is_visible and tile_data.files.size() > 0:
 			var dx: int = abs(target_coord.x - netrunner_pos.x)
 			var dy: int = abs(target_coord.y - netrunner_pos.y)
 			var is_adjacent: bool = (dx + dy) <= 1
-			if has_loot and is_adjacent:
-				_dynamic_menu.add_item("Download Files", 6000)
+			if is_adjacent:
+				# Remember the authored files so the menu callback can resolve
+				# a file by its menu id index (6000+i).
+				_current_files = tile_data.files
+				# Free deck memory for the MU-fit check. When the netrunner
+				# node is provided (gameplay caller), used memory already
+				# includes carried files + installed programs. When null
+				# (e.g. designer/legacy callers) we skip the fit check and
+				# assume every file fits.
+				var free_mu: int = -1
+				if netrunner_node != null and is_instance_valid(netrunner_node):
+					free_mu = netrunner_node.max_memory_units - netrunner_node.get_used_memory()
+				var any_copyable: bool = false
+				for i in range(tile_data.files.size()):
+					var file := tile_data.files[i] as NetFile
+					if file == null:
+						continue
+					var already_copied: bool = tile_data.copied_file_paths.has(str(i))
+					var fits: bool = true
+					if free_mu >= 0:
+						fits = file.mu_size <= free_mu
+					var label = "%s (%d MU)" % [file.file_name, file.mu_size]
+					var item_id = 6000 + i
+					if already_copied:
+						label = "✓ " + label
+					_dynamic_menu.add_item(label, item_id)
+					var item_idx = _dynamic_menu.get_item_index(item_id)
+					if already_copied or not fits:
+						_dynamic_menu.set_item_disabled(item_idx, true)
+					else:
+						any_copyable = true
+				# "Copy All" — disabled when no copyable+fitting file remains.
+				_dynamic_menu.add_item("Copy All", 6999)
+				var copy_all_idx = _dynamic_menu.get_item_index(6999)
+				_dynamic_menu.set_item_disabled(copy_all_idx, not any_copyable)
+				# Always open the menu here so the player sees the ✓ state /
+				# visual indicator even when every file is already copied.
 				options_added = true
 
 	print("DEBUG: options_added=", int(options_added), " gate_STR=", tile_data.strength_str, " is_unlocked=", tile_data.is_unlocked)
@@ -207,6 +251,10 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	_dynamic_menu.popup_on_parent(Rect2i(click_pos, Vector2i.ZERO))
 
 func _on_menu_action_selected(id: int, target_coord: Vector2i, available_programs: Array[NetProgram]) -> void:
+	# Special-id ordering (checked BEFORE the 1000+i program range to avoid
+	# collision): LDL travel (3000/3001) → NPC talk (4000) → NPC attack
+	# (2000+i) → CPU crash (5000+i) → copy file (6000+i) / copy all (6999)
+	# → program use (1000+i). The old single 6000 loot_tile id is removed.
 	# LDL travel actions take priority (their ids collide with the program
 	# id range 1000+, so check them explicitly first).
 	if id == 3000:
@@ -234,10 +282,18 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 			var prog = available_programs[idx] as NetProgram
 			action_triggered.emit("crash_cpu", target_coord, prog)
 		return
-	# Loot a MEMORY_UNIT tile — single fixed id 6000 (checked before the
-	# 1000+i program range to avoid collision).
-	if id == 6000:
-		action_triggered.emit("loot_tile", target_coord, null)
+	# Copy all files from a MEMORY_UNIT tile — single fixed id 6999 (checked
+	# before the 1000+i program range to avoid collision).
+	if id == 6999:
+		action_triggered.emit("copy_all_files", target_coord, null)
+		return
+	# Copy a single file from a MEMORY_UNIT tile — id range 6000+i. Resolve
+	# the file via the member-var list populated when the popup was built.
+	if id >= 6000 and id < 7000:
+		var idx = id - 6000
+		if idx >= 0 and idx < _current_files.size():
+			var file = _current_files[idx] as NetFile
+			action_triggered.emit("copy_file", target_coord, file)
 		return
 	if id >= 1000:
 		var idx = id - 1000

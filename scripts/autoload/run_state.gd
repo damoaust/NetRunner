@@ -40,6 +40,10 @@ var owned_decks: Array[Cyberdeck] = []
 # Programs the runner owns this life (purchased or starting), available to
 # load into the deck at the workbench.
 var owned_programs: Array[NetProgram] = []
+# Files copied from datafort MEMORY_UNIT tiles during the current run, carried
+# to the hub to fence for their credit_value. Consume deck MU alongside
+# programs while carried. Lost on death.
+var carried_files: Array[NetFile] = []
 
 # Full wipe — clears every field to defaults. Called by start_new_life() and
 # by any explicit hard-reset path.
@@ -53,6 +57,7 @@ func reset() -> void:
 	loot.clear()
 	owned_decks.clear()
 	owned_programs.clear()
+	carried_files.clear()
 	last_death_cause = ""
 	last_run_summary.clear()
 
@@ -113,6 +118,49 @@ func sell_loot_program(prog: NetProgram, fence_factor: float = 0.5) -> int:
 	var sell_price: int = int(loot[idx].price * fence_factor)
 	credits += sell_price
 	loot.remove_at(idx)
+	return sell_price
+
+# --- Carried-file helpers (used by the memory-tile copy + hub fence) ---
+# Appends a duplicate of file to carried_files (duplicate to avoid mutating
+# cached .tres, matching add_loot). Does NOT check MU — the caller is
+# responsible for the free-MU check via get_carried_files_mu. Returns false if
+# file is null.
+func copy_file(file: NetFile) -> bool:
+	if file == null:
+		return false
+	carried_files.append(file.duplicate())
+	return true
+
+# Sums mu_size over carried_files (skipping null entries). Used by the
+# netrunner / game_session for the free-MU check before copying a file.
+func get_carried_files_mu() -> int:
+	var total: int = 0
+	for f: NetFile in carried_files:
+		if f != null:
+			total += f.mu_size
+	return total
+
+# Sells a carried file at its FULL credit_value (no fence factor — value is a
+# fixed authored price). Adds proceeds to credits, removes the file from
+# carried_files, returns the sell price. Returns 0 if the file is not carried.
+# Matches by instance first, then falls back to file_name (duplicate() may
+# clear instance identity but file_name is stable).
+func sell_file(file: NetFile) -> int:
+	if file == null:
+		return 0
+	var idx: int = carried_files.find(file)
+	if idx < 0:
+		# file may be a different instance with the same file_name —
+		# fall back to matching by file_name.
+		for i: int in range(carried_files.size()):
+			if carried_files[i] != null and carried_files[i].file_name == file.file_name:
+				idx = i
+				break
+	if idx < 0:
+		return 0
+	var sell_price: int = carried_files[idx].credit_value
+	credits += sell_price
+	carried_files.remove_at(idx)
 	return sell_price
 
 # --- Owned-gear purchase helpers (used by the hub shop) ---

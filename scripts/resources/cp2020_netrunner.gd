@@ -31,6 +31,10 @@ func get_used_memory() -> int:
 	for prog in installed_programs:
 		if prog:
 			total_mu += prog.memory_cost
+	# Carried data files also consume deck MU alongside installed programs, so
+	# the free-MU check (max_memory_units - get_used_memory()) stays accurate
+	# when files are copied to the deck during a dive.
+	total_mu += RunState.get_carried_files_mu()
 	return total_mu
 
 func _ready() -> void:
