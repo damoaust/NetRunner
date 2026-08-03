@@ -183,7 +183,12 @@ func _input(event: InputEvent) -> void:
 			KEY_D, KEY_RIGHT:
 				moved = _try_move(runner_pos + Vector2i(1, 0))
 		if moved:
-			get_viewport().set_input_as_handled()
+			var vp := get_viewport()
+			if vp != null:
+				vp.set_input_as_handled()
+			# A dive changes the scene mid-input; stop touching the old node.
+			if not is_instance_valid(self):
+				return
 			_update_hud()
 			queue_redraw()
 			_check_actions_exhausted()
@@ -191,7 +196,9 @@ func _input(event: InputEvent) -> void:
 		var grid := _screen_to_grid(get_global_mouse_position())
 		if grid == runner_pos:
 			_open_return_popup()
-			get_viewport().set_input_as_handled()
+			var vp := get_viewport()
+			if vp != null:
+				vp.set_input_as_handled()
 
 
 func _screen_to_grid(world_pos: Vector2) -> Vector2i:
