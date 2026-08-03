@@ -659,7 +659,7 @@ func _refresh_shop_buy_decks() -> void:
 			continue
 		if _is_deck_owned(deck, path):
 			continue
-		shop_buy_decks_list.add_item("%s — %d eb" % [deck.deck_name, deck.price], null, false)
+		shop_buy_decks_list.add_item("%s — %d eb" % [deck.deck_name, deck.price], null, true)
 		var idx := shop_buy_decks_list.item_count - 1
 		shop_buy_decks_list.set_item_metadata(idx, deck)
 		if RunState.credits < deck.price:
@@ -678,7 +678,7 @@ func _refresh_shop_buy_programs() -> void:
 		if _is_program_owned(prog, path):
 			continue
 		var tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
-		shop_buy_programs_list.add_item("%s [%s] %d MU — %d eb" % [prog.program_name, tag, prog.memory_cost, prog.price], null, false)
+		shop_buy_programs_list.add_item("%s [%s] %d MU — %d eb" % [prog.program_name, tag, prog.memory_cost, prog.price], null, true)
 		var idx := shop_buy_programs_list.item_count - 1
 		shop_buy_programs_list.set_item_metadata(idx, prog)
 		if RunState.credits < prog.price:
@@ -698,7 +698,7 @@ func _refresh_shop_sell_loot() -> void:
 			continue
 		var sell_price := int(prog.price * 0.5)
 		var tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
-		shop_sell_loot_list.add_item("%s [%s] — %d eb" % [prog.program_name, tag, sell_price], null, false)
+		shop_sell_loot_list.add_item("%s [%s] — %d eb" % [prog.program_name, tag, sell_price], null, true)
 		var idx := shop_sell_loot_list.item_count - 1
 		shop_sell_loot_list.set_item_metadata(idx, prog)
 
@@ -713,7 +713,7 @@ func _refresh_shop_sell_files() -> void:
 	for file in RunState.carried_files:
 		if file == null:
 			continue
-		shop_sell_files_list.add_item("%s — %d eb" % [file.file_name, file.credit_value], null, false)
+		shop_sell_files_list.add_item("%s — %d eb" % [file.file_name, file.credit_value], null, true)
 		var idx := shop_sell_files_list.item_count - 1
 		shop_sell_files_list.set_item_metadata(idx, file)
 
@@ -951,7 +951,7 @@ func _add_unlock_row(path: String, is_deck: bool) -> void:
 		unlock_list.set_item_disabled(idxu, true)
 		unlock_list.set_item_custom_fg_color(idxu, COL_GREY)
 		return
-	var idx := unlock_list.add_item("%s — %d eb" % [name_txt, cost], null, false)
+	var idx := unlock_list.add_item("%s — %d eb" % [name_txt, cost], null, true)
 	unlock_list.set_item_metadata(idx, {"path": path, "is_deck": is_deck, "cost": cost})
 	if RunState.credits < cost:
 		unlock_list.set_item_disabled(idx, true)
