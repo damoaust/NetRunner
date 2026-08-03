@@ -34,6 +34,7 @@ var current_layout: CP2020WorldMapLayout = null
 @onready var ldl_cost_spinbox: SpinBox = $SidePanel/LdlCostSpinBox
 @onready var security_code_spinbox: SpinBox = $SidePanel/SecurityCodeSpinBox
 @onready var trace_value_spinbox: SpinBox = $SidePanel/TraceValueSpinBox
+@onready var security_tier_option: OptionButton = $SidePanel/SecurityTierOption
 @onready var set_spawn_button: Button = $SidePanel/SetSpawnButton
 @onready var delete_hub_button: Button = $SidePanel/DeleteHubButton
 
@@ -51,6 +52,7 @@ func _ready() -> void:
 	_setup_file_dialogs_if_missing()
 	_setup_signals()
 	_refresh_region_option()
+	_populate_tier_option()
 	_refresh_side_panel()
 	queue_redraw()
 
@@ -123,6 +125,8 @@ func _setup_signals() -> void:
 		security_code_spinbox.value_changed.connect(_on_security_code_changed)
 	if trace_value_spinbox and not trace_value_spinbox.value_changed.is_connected(_on_trace_value_changed):
 		trace_value_spinbox.value_changed.connect(_on_trace_value_changed)
+	if security_tier_option and not security_tier_option.item_selected.is_connected(_on_security_tier_changed):
+		security_tier_option.item_selected.connect(_on_security_tier_changed)
 	if set_spawn_button and not set_spawn_button.pressed.is_connected(_on_set_spawn):
 		set_spawn_button.pressed.connect(_on_set_spawn)
 	if delete_hub_button and not delete_hub_button.pressed.is_connected(_on_delete_hub):
@@ -268,6 +272,17 @@ func _on_trace_value_changed(value: float) -> void:
 	if selected_hub:
 		selected_hub.trace_value = int(value)
 
+func _on_security_tier_changed(index: int) -> void:
+	if selected_hub:
+		selected_hub.security_tier = int(index)
+
+func _populate_tier_option() -> void:
+	if not security_tier_option:
+		return
+	security_tier_option.clear()
+	for i in range(CP2020WorldHub.SecurityTier.size()):
+		security_tier_option.add_item(String(CP2020WorldHub.TIER_LABELS[i]), i)
+
 
 func _on_set_spawn() -> void:
 	if selected_hub:
@@ -309,6 +324,9 @@ func _refresh_side_panel() -> void:
 		security_code_spinbox.value = selected_hub.security_code
 	if trace_value_spinbox and trace_value_spinbox.value_changed.is_connected(_on_trace_value_changed):
 		trace_value_spinbox.value = selected_hub.trace_value
+	if security_tier_option and security_tier_option.item_selected.is_connected(_on_security_tier_changed):
+		var tier := clampi(int(selected_hub.security_tier), 0, CP2020WorldHub.SecurityTier.size() - 1)
+		security_tier_option.select(tier)
 
 
 # ---------------------------------------------------------------------------
@@ -396,10 +414,16 @@ func _draw() -> void:
 	var font := _theme_font()
 	for hub in current_layout.hubs:
 		var rect := Rect2(hub.pos.x * CELL, GRID_OFFSET_Y + hub.pos.y * CELL, CELL, CELL)
-		var outline := Color(0.0, 1.0, 0.9, 1.0)
+		var tier_color: Color = CP2020WorldHub.TIER_COLORS.get(hub.security_tier, Color(0.0, 1.0, 0.9, 1.0))
+		var outline := tier_color
 		if hub == selected_hub:
 			outline = Color(1.0, 1.0, 0.0, 1.0)
+		# Filled tier chip.
+		draw_rect(rect, Color(tier_color.r, tier_color.g, tier_color.b, 0.35), true)
 		draw_rect(rect, outline, false, 2.0)
+		# Tier glyph.
+		var glyph := String(CP2020WorldHub.TIER_GLYPHS.get(hub.security_tier, "?"))
+		draw_string(font, Vector2(hub.pos.x * CELL + 12, GRID_OFFSET_Y + hub.pos.y * CELL + 26), glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, outline)
 		var label_pos := Vector2(hub.pos.x * CELL + 4, GRID_OFFSET_Y + hub.pos.y * CELL + CELL + 2)
 		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, outline)
 		# Spawn hub marker.

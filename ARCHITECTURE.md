@@ -138,6 +138,9 @@ Represents state and attributes of a single cell in the datafort layout grid.
     - `is_ldl_link: bool` — marks the tile as a Long Distance Line connection point
     - `target_subnet_path: String` — `.tres` resource path to the linked remote datafort (empty = world-map-return-only)
     - `target_entry_coord: Vector2i` — arrival coordinate in the remote subnet (`(-1,-1)` = unset; falls back to first ENTRY)
+  - **Per-tile ICE overrides** (BLACK_ICE tiles; authored in the datafort designer's ICE editor; zero/empty = use the hub security-tier template):
+    - `ice_program_name: String`, `ice_strength: int`, `ice_max_ap: int`, `ice_max_integrity: int`, `ice_traces: bool`
+    - `ice_has_override: bool` — set true when any field is non-zero/non-empty; the runtime prefers tile stats over the tier template when this is set
 
 ### 4.3 `CP2020WorldMapLayout` ([CP2020WorldMapLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020WorldMapLayout.gd))
 Serializable world map authored by the world map designer and loaded at runtime by `cp_2020_world_net_map.gd`.
@@ -151,6 +154,8 @@ Serializable world map authored by the world map designer and loaded at runtime 
 
 ### 4.4 `CP2020WorldHub` ([CP2020WorldHub.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_world_hub.gd))
 - `name: String`, `pos: Vector2i`, `subnet_path: String` (the datafort `.tres` to dive into), `ldl_cost: int`, `security_code: int` (1D10 target to hack the LDL), `trace_value: int` (trace added on a successful jump through this hub's LDL)
+- `security_tier: int` — CP2020 classification (`SecurityTier` enum: `GREY=0`, `LEVEL_1=1`, `LEVEL_2=2`, `LEVEL_3=3`, `BLACK=4`). Drives the world-map icon colour/glyph and the default ICE loadout for the hub's datafort. Tier metadata consts (`TIER_LABELS`, `TIER_SHORT`, `TIER_COLORS`, `TIER_GLYPHS`) are the single source of truth for tier rendering.
+- `security_code` (LDL hack difficulty) and `security_tier` (classification) are kept separate per the sourcebook: tier drives visuals + ICE defaults, code drives the LDL hack roll.
 
 ### 4.5 `CP2020WorldRegion` ([CP2020WorldRegion.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_world_region.gd))
 - `name: String`, `color: Color` — purely visual categorisation; ocean is the absence of a region assignment.
@@ -228,6 +233,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **States**: `IDLE` -> `PURSUE`. Activates upon turn execution, taking up to `max_ap` (3) steps per turn toward the Netrunner's position. On reaching the runner, emits `attacked_netrunner(strength)`.
 - **Tracing ICE** (`traces: bool`): on first activation, rolls `1D10 + strength` vs `RunState.accumulated_trace`; if the roll is **less than** the trace difficulty the ICE fails to locate the signal and stays idle. Higher accumulated trace makes tracing ICE easier to spot you.
 - **Fog of War Visibility**: Dynamically updates the `skull_label` icon visibility based on the tile fog state.
+- **Stat sourcing** (see `cp2020_game_session.spawn_black_ice`): ICE stats are set on the node **before** `initialize()` (which copies `max_integrity` into `current_integrity`). Per-tile override fields (`ice_*` on `CP2020TileData`) take precedence; otherwise the hub's `security_tier` selects a default template from `TIER_ICE_TEMPLATES` (Grey→Watchdog, L1→Killer 1.0, L2→Killer 2.0, L3→Hellhound, Black→Flatline).
 
 ### 5.5 Contextual Right-Click Input Handler ([cp2020_interaction_handler.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_interaction_handler.gd))
 - Captures right-click mouse events over grid cells.
@@ -246,13 +252,14 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Runs in editor (`@tool` annotation).
 - Visual editor interface for painting tiles. The toolbar has distinct **Entry** (plain datafort arrival point, `is_ldl_link=false`) and **LDL Link** (travel node, `is_ldl_link=true` with no hardcoded target) buttons, plus Datawall, Code Gate, Memory Unit, Control Node, Black ICE, and Eraser.
 - **LDL-Link Editor panel** (built in code as a `PanelContainer`+`VBox` anchored to the right edge so it stays on-screen): target subnet `LineEdit` + Browse `FileDialog` (scoped to `scenes/forts/*.tres`), target entry coord X/Y `SpinBox`es, and a "Clear target" button. In LDL mode, clicking an existing LDL link selects it for editing (does not overwrite); clicking empty space paints a new link and opens the editor. Field edits write back to the tile live and persist on save. Empty target = world-map-return-only. LDL links draw with a distinct blue frame + "L" glyph.
+- **ICE Editor panel** (built in code; shown when a BLACK_ICE tile is painted/selected): program name `LineEdit`, strength/AP/integrity `SpinBox`es, traces `CheckBox`, and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override the template for that tile. Edits write back to the tile's `ice_*` fields live and persist on save.
 - Dynamic layout resizing (`SpinBox` input for columns/rows).
 - Native file open/save dialog integration (`FileDialog`) for loading and exporting `.tres` layout files.
 
 ### 5.7 World Map Designer Tool ([cp2020_world_map_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_world_map_designer.gd))
 - `@tool` editor that authors a `CP2020WorldMapLayout` `.tres` (regions + hubs) consumed at runtime by `cp_2020_world_net_map.gd`.
 - Tools: `REGION` (paint region colour), `HUB` (place/select a hub), `ERASER`.
-- Side panel edits the selected hub: name, subnet path (+ Browse), LDL cost, security code, trace value, set-as-spawn, delete. Region list with add/paint.
+- Side panel edits the selected hub: name, subnet path (+ Browse), LDL cost, security code, trace value, **Security Tier** `OptionButton` (Grey/L1/L2/L3/Black), set-as-spawn, delete. Region list with add/paint. Hub chips are drawn in the tier colour with the tier glyph.
 
 ### 5.8 Cyberdeck Workbench UI ([cyberdeck_workbench.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/ui/cyberdeck_workbench.gd))
 - Deck selection via an `OptionButton` (`available_decks`); stats (Model, Speed, MU used/total + coloured MU bar, Data Wall STR, Interface Rank from the deck resource) refresh on selection. The whole UI is built in code from a minimal scene root (matching the designer-panel pattern).
@@ -264,8 +271,9 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Loadouts persist across deck switches within a session (edits mutate the in-memory deck resource directly).
 
 ### 5.9 World Map Runtime ([cp_2020_world_net_map.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp_2020_world_net_map.gd))
-- Grid-based world map. Runner spawns on the configured spawn hub (Night City fallback) and moves tile-by-tile with a 5-action turn limit (no ICE on the world map). Regions are categorising only — any in-bounds tile is traversable, including open ocean.
-- Right-click the runner's tile when on a hub opens the LDL popup: **DIVE** into the hub's datafort, **Hack LDL →** or **Pay LDL →** to each nearby hub (Chebyshev ≤ 5).
+- Grid-based world map (the "City Grid"). Runner spawns on the configured spawn hub (Night City fallback) and moves tile-by-tile with a 5-action turn limit (no ICE on the world map). Regions are categorising only — any in-bounds tile is traversable, including open ocean. The scene is titled "CITY GRID" with a tier-colour legend strip across the top.
+- **Tier-coded hub icons**: each hub is drawn as a filled chip in its `security_tier` colour with the tier glyph (G/1/2/3/B) and the hub name below. The spawn hub additionally shows a cyan "LDL" entry marker (ring + tag) marking the City Grid entry point.
+- Right-click the runner's tile when on a hub opens the LDL popup: **DIVE** into the hub's datafort, **Hack LDL →** or **Pay LDL →** to each nearby hub (Chebyshev ≤ 5). Popup items include the tier tag, e.g. `DIVE into Night City [Black]`, `Hack LDL -> London [L3] (Sec 6, +Trace 7)`.
   - **Hack**: `1D10 >= destination security_code` → teleport + add `trace_value`; fail → `_caught_table` (1D6 consequences).
   - **Pay**: deduct `ldl_cost` credits, teleport + add `trace_value`.
   - **Dive**: sets `RunState.selected_subnet_path`, emits `sub_net_selected`, changes scene to gameplay. Diving itself adds no trace (trace is built by hub-to-hub jumps).

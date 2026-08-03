@@ -21,6 +21,22 @@ const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
 var ice_nodes: Array[BlackIce] = []
 
 var current_layout: CP2020DatafortLayout
+# Cached world map layout + resolved tier for the current subnet.
+var _world_map_layout_cache: CP2020WorldMapLayout = null
+var _current_security_tier: int = CP2020WorldHub.SecurityTier.LEVEL_1
+
+# Tier -> default ICE template. Used when a BLACK_ICE tile has no per-tile
+# override (ice_has_override == false). Stats follow CP2020 progression:
+# Grey = alarm/detection only (weak Watchdog), L1/L2 = anti-IC Killers,
+# L3 = non-fatal anti-personnel (Hellhound, tracing), Black = fatal
+# anti-personnel (Flatline, tracing).
+const TIER_ICE_TEMPLATES: Dictionary = {
+	CP2020WorldHub.SecurityTier.GREY:     {"name": "Watchdog",   "strength": 2, "max_ap": 2, "max_integrity": 3, "traces": false},
+	CP2020WorldHub.SecurityTier.LEVEL_1:  {"name": "Killer 1.0", "strength": 3, "max_ap": 2, "max_integrity": 4, "traces": false},
+	CP2020WorldHub.SecurityTier.LEVEL_2:  {"name": "Killer 2.0", "strength": 4, "max_ap": 3, "max_integrity": 5, "traces": false},
+	CP2020WorldHub.SecurityTier.LEVEL_3:  {"name": "Hellhound",  "strength": 5, "max_ap": 3, "max_integrity": 6, "traces": true},
+	CP2020WorldHub.SecurityTier.BLACK:    {"name": "Flatline",   "strength": 6, "max_ap": 4, "max_integrity": 8, "traces": true},
+}
 
 func _ready() -> void:
 	if interaction_handler:
@@ -99,6 +115,7 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		# Let the Netrunner handle its own spawning!
 		if netrunner:
 			netrunner.initialize(current_layout, entry_coord)
+		_current_security_tier = _resolve_security_tier(path)
 		spawn_black_ice()
 		recalculate_fog_of_war(netrunner.current_position)
 		_update_camera_limits()
@@ -294,6 +311,7 @@ func spawn_black_ice() -> void:
 		return
 
 	var layout_size := Vector2i(current_layout.columns, current_layout.rows)
+	var template: Dictionary = TIER_ICE_TEMPLATES.get(_current_security_tier, TIER_ICE_TEMPLATES[CP2020WorldHub.SecurityTier.LEVEL_1])
 	for raw_key in current_layout.grid_tiles.keys():
 		var coord: Vector2i
 		if raw_key is String:
@@ -306,12 +324,46 @@ func spawn_black_ice() -> void:
 		if tile and tile.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
 			var ice: BlackIce = BlackIceScene.instantiate()
 			add_child(ice)
+			# Apply ICE stats BEFORE initialize (initialize copies max_integrity
+			# into current_integrity). Per-tile override wins; otherwise use the
+			# hub security-tier template.
+			if tile.ice_has_override:
+				if tile.ice_program_name != "":
+					ice.program_name = tile.ice_program_name
+				if tile.ice_strength > 0:
+					ice.strength = tile.ice_strength
+				if tile.ice_max_ap > 0:
+					ice.max_ap = tile.ice_max_ap
+				if tile.ice_max_integrity > 0:
+					ice.max_integrity = tile.ice_max_integrity
+				ice.traces = tile.ice_traces
+			else:
+				ice.program_name = String(template.get("name", "Black ICE"))
+				ice.strength = int(template.get("strength", 4))
+				ice.max_ap = int(template.get("max_ap", 2))
+				ice.max_integrity = int(template.get("max_integrity", 4))
+				ice.traces = bool(template.get("traces", false))
 			ice.initialize(coord, layout_size)
 			ice.message_logged.connect(log_to_terminal)
 			ice.moved_to.connect(_on_ice_moved)
 			ice.attacked_netrunner.connect(_on_ice_attacked)
 			ice_nodes.append(ice)
 			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program_name, coord])
+
+
+# Resolve the security tier for the current subnet by looking up the matching
+# hub in the world map layout. Falls back to LEVEL_1 if not found.
+func _resolve_security_tier(subnet_path: String) -> int:
+	if _world_map_layout_cache == null:
+		var layout_path := "res://data/world_map_default.tres"
+		if ResourceLoader.exists(layout_path):
+			_world_map_layout_cache = ResourceLoader.load(layout_path) as CP2020WorldMapLayout
+	if _world_map_layout_cache == null:
+		return CP2020WorldHub.SecurityTier.LEVEL_1
+	for hub in _world_map_layout_cache.hubs:
+		if hub is CP2020WorldHub and hub.subnet_path == subnet_path:
+			return int(hub.security_tier)
+	return CP2020WorldHub.SecurityTier.LEVEL_1
 
 func _end_player_turn() -> void:
 	if not turn_manager or not current_layout or not netrunner:

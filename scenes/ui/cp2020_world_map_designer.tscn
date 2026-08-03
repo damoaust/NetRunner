@@ -136,6 +136,14 @@ max_value = 99.0
 step = 1.0
 value = 5.0
 
+[node name="SecurityTierLabel" type="Label" parent="SidePanel"]
+layout_mode = 2
+text = "Security Tier"
+
+[node name="SecurityTierOption" type="OptionButton" parent="SidePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="SetSpawnButton" type="Button" parent="SidePanel"]
 layout_mode = 2
 text = "Set as Runner Spawn"

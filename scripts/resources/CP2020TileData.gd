@@ -16,3 +16,13 @@ extends Resource
 @export var is_ldl_link: bool = false      # Marks this tile as a Long Distance Line connection point
 @export var target_subnet_path: String = "" # Resource path (.tres) to the linked remote subnet/datafort
 @export var target_entry_coord: Vector2i = Vector2i(-1, -1) # Arrival coordinate in the remote subnet
+
+# --- Per-tile ICE overrides (BLACK_ICE tiles). Zero/empty = use the hub
+# security-tier template from cp2020_game_session. Non-zero values here take
+# precedence and let designers hand-tune individual ICE. ---
+@export var ice_program_name: String = ""
+@export var ice_strength: int = 0
+@export var ice_max_ap: int = 0
+@export var ice_max_integrity: int = 0
+@export var ice_traces: bool = false
+@export var ice_has_override: bool = false
