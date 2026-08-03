@@ -880,13 +880,14 @@ func _on_jack_out_pressed() -> void:
 		RunState.last_run_summary = summary
 		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
 		return
-	# Successful jack-out — escape with loot intact to fence at the hub. Keep
-	# this path exactly as before (trace + context cleared, world map).
+	# Successful jack-out — escape with loot intact to fence at the hub.
+	# Ends the run: trace + run context cleared, back to the Workbench.
 	log_to_terminal("Jacking out...\n")
 	RunState.accumulated_trace = 0
+	RunState.selected_subnet_path = ""
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
-	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
 #func reveal_entry_points() -> void:
 	#if not current_layout:
 		#return

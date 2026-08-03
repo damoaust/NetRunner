@@ -58,7 +58,7 @@ netrunner-v-0.006/
     │   ├── cp2020_security_tier.gd   # CP2020SecurityTier const class (Tier enum + LABELS/COLORS/GLYPHS)
     │   ├── cp2020_city_grid_datafort.gd # CP2020CityGridDatafort resource (datafort icon on a city grid)
     │   ├── cp2020_city_grid_layout.gd  # CP2020CityGridLayout resource (city grid layout)
-    │   ├── cp2020_city_grid.gd       # City Grid runtime node (movement, dive, return to world map)
+    │   ├── cp2020_city_grid.gd       # City Grid runtime node (movement, dive, return to world map / jack out to hub)
     │   ├── cp2020_city_grid_designer.gd # @tool City Grid authoring tool
     │   ├── cp_2020_world_net_map.gd  # Runtime world map node (movement, LDL jumps, ENTER city grid)
     │   ├── cp2020_blackice.gd        # Black ICE enemy AI node (AStarGrid2D, tracing)
@@ -109,7 +109,9 @@ graph TD
     Workbench -->|change_scene| WorldMap
     WorldMap -->|ENTER city: sets selected_city_grid_path + change_scene| CityGrid
     CityGrid -->|DIVE datafort: sets selected_subnet_path + selected_security_tier + change_scene| GameSession
-    CityGrid -->|Return to World Map: reset trace + clear city-grid context| WorldMap
+    CityGrid -->|Return to World Map (id 998): reset trace + clear city-grid context| WorldMap
+    CityGrid -->|Jack Out to Hub (id 997): reset trace + clear run context| Workbench
+    WorldMap -->|Jack Out to Hub (id 998): reset trace + clear run context| Workbench
     GameSession -->|draw_grid(canvas, layout)| BoardRenderer
     GameSession -->|recalculate_fog_of_war| BoardRenderer
     Netrunner -->|position_changed| GameSession
@@ -123,7 +125,7 @@ graph TD
     GameSession -->|travel_ldl: load_subnet (preserve trace)| GameSession
     GameSession -->|return_world_map: change_scene to City Grid (preserve trace)| CityGrid
     GameSession -->|copy_file: copy MEMORY_UNIT files → RunState.carried_files| RunState
-    GameSession -->|jack_out (trace < BUSTED_THRESHOLD): reset trace + clear context + change_scene| WorldMap
+    GameSession -->|jack_out (trace < BUSTED_THRESHOLD): reset trace + clear run context + change_scene| Workbench
     GameSession -->|jack_out (trace >= BUSTED_THRESHOLD): BUSTED permadeath → record_run + change_scene| GameOver
     GameSession -->|flatline: FLATLINED permadeath → record_run + change_scene| GameOver
     GameOver -->|New Life button: RunState.start_new_life() + change_scene| Workbench
@@ -487,7 +489,7 @@ Permadeath end-of-life screen, reached on **Flatline** or **Busted**. Shows a ca
 - **Datafort does not control ICE**: The [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) adversary runs its **own** `resident_programs` against the runner; it does not command the Black ICE or NPC netrunners, which stay independent turn-manager adversaries. The datafort is prepended to `_all_adversaries()` so it acts first.
 - **Floor tiles via designer only**: Hand-authored `.tres` `Empty Path` floor tiles have failed to render in-game, but the same tiles resaved through the datafort designer render correctly. Author floor tiles through the designer; hand-edit `.tres` only for tile properties (e.g. LDL link target fields).
 - **LDL link is an ENTRY tile**: There is no separate "return" tile type. Any `ENTRY` tile with `is_ldl_link=true` auto-offers Travel (id `3000`) + Return to City Grid (id `3001`) via the interaction handler. An LDL link with an empty `target_subnet_path` is effectively city-grid-return-only.
-- **Trace lifecycle**: `accumulated_trace` resets on flatline / jack-out / return-to-world-map (City Grid return-to-world-map), but is **preserved** across in-datafort LDL travel (`travel_ldl` keeps it) AND across the datafort→City Grid return (`return_world_map` now goes to the City Grid and keeps trace).
+- **Trace lifecycle**: `accumulated_trace` resets on flatline / jack-out / return-to-world-map (City Grid "Return to World Map", id 998) / jack-out-to-hub (Datafort Jack Out, City Grid "Jack Out to Hub" id 997, World Map "Jack Out to Hub" id 998 — all route to `CyberdeckWorkbench.tscn`), but is **preserved** across in-datafort LDL travel (`travel_ldl` keeps it) AND across the datafort→City Grid return (`return_world_map` id `3001` goes to the City Grid and keeps trace). The three **end-run exits** (Datafort Jack Out, City Grid Jack Out to Hub, World Map Jack Out to Hub) all end the run and return to the Workbench; the **one-level-back** travel options (Datafort→City Grid via LDL return id `3001`, City Grid→World Map via "Return to World Map" id 998) are preserved.
 - **Lambda Signal Connections**: Popup menus disconnect previous `id_pressed` connections before reconnecting to prevent duplicate signal callbacks. Menu id ranges are a collision hazard — check in this order in `_on_menu_action_selected`: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → **memory files (`6000+i` per file / `6999` Copy All)** → `CONTROL_NODE` loot (`loot_tile`) → program use (`1000+i`). Do not reorder.
 - **Memory-tile file menu ids**: The `MEMORY_UNIT` file menu uses ids `6000+i` per file and `6999` for "Copy All", checked BEFORE the `1000+i` program range to avoid collision. **The old single `6000` `MEMORY_UNIT` `loot_tile` id is removed** — `6000` is now the first file id (`6000+0`). `loot_tile` (program loot) is now `CONTROL_NODE`-only and its id must be kept disjoint from the `6000–6999` file range.
 - **`copied_file_paths` is index-based, not resource_path-based**: `MEMORY_UNIT` harvest tracking stores the **indices** (as strings) of already-copied files in `tile.copied_file_paths`, not their `resource_path`. `NetFile`s may be inline-created or `duplicate()`d at runtime, in which case `resource_path` is empty/non-unique, so a path-based check would be unreliable. Always compare against the array index.

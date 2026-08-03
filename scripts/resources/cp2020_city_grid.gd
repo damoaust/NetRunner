@@ -246,6 +246,7 @@ func _open_return_popup() -> void:
 	else:
 		add_child(popup)
 	popup.add_item("Return to World Map", 998)
+	popup.add_item("Jack Out to Hub", 997)
 	popup.add_item("Cancel", 999)
 	popup.id_pressed.connect(_on_return_popup_id)
 	var world_pos := Vector2(runner_pos.x * CELL + CELL, runner_pos.y * CELL)
@@ -268,6 +269,8 @@ func _world_to_screen(world_pos: Vector2) -> Vector2:
 func _on_return_popup_id(id: int) -> void:
 	if id == 998:
 		_return_to_world_map()
+	elif id == 997:
+		_jack_out_to_hub()
 
 
 func _dive_datafort(df: Variant) -> void:
@@ -286,6 +289,16 @@ func _return_to_world_map() -> void:
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+
+
+func _jack_out_to_hub() -> void:
+	# End the run and return to the Workbench to fence loot/files and gear up.
+	print("CITY GRID: Jack Out to Hub. Run trace reset.")
+	RunState.accumulated_trace = 0
+	RunState.selected_subnet_path = ""
+	RunState.selected_city_grid_path = ""
+	RunState.selected_security_tier = 0
+	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
 
 
 # ---------------------------------------------------------------------------

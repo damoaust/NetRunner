@@ -236,10 +236,15 @@ func _input(event: InputEvent) -> void:
 			queue_redraw()
 			_check_actions_exhausted()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		# Right-click: if the clicked tile is the runner's tile and it's a hub, show popup.
+		# Right-click on the runner's tile. On a hub, show the full LDL popup
+		# (enter city grid, jump, jack out). Off-hub, show a minimal jack-out
+		# popup so the runner can always exit to the Workbench.
 		var grid := _screen_to_grid(get_global_mouse_position())
-		if grid == runner_pos and _hub_at(grid) != null:
-			_open_ldl_popup(grid)
+		if grid == runner_pos:
+			if _hub_at(grid) != null:
+				_open_ldl_popup(grid)
+			else:
+				_open_jackout_popup()
 			get_viewport().set_input_as_handled()
 
 
@@ -306,6 +311,7 @@ func _open_ldl_popup(hub_pos: Vector2i) -> void:
 		popup.add_item("Hack LDL -> %s (Sec %d, +Trace %d)" % [dest.name, int(dest.security_code), int(dest.trace_value)], 100 + i)
 		popup.add_item("Pay LDL -> %s (%d eb)" % [dest.name, int(dest.ldl_cost)], 200 + i)
 	popup.add_separator()
+	popup.add_item("Jack Out to Hub", 998)
 	popup.add_item("Cancel", 999)
 
 	popup.id_pressed.connect(_on_ldl_popup_id.bind(hub))
@@ -345,6 +351,9 @@ func _on_ldl_popup_id(id: int, hub: Dictionary) -> void:
 	if id == 0:
 		_enter_city_grid(hub)
 		return
+	if id == 998:
+		_jack_out_to_hub()
+		return
 	if id == 999:
 		return  # Cancel
 	if id >= 100 and id < 100 + _popup_nearby.size():
@@ -353,6 +362,39 @@ func _on_ldl_popup_id(id: int, hub: Dictionary) -> void:
 	if id >= 200 and id < 200 + _popup_nearby.size():
 		_pay_jump(_popup_nearby[id - 200])
 		return
+
+
+func _jack_out_to_hub() -> void:
+	# End the run and return to the Workbench to fence loot/files and gear up.
+	print("WORLD MAP: Jack Out to Hub. Run trace reset.")
+	RunState.accumulated_trace = 0
+	RunState.selected_subnet_path = ""
+	RunState.selected_city_grid_path = ""
+	RunState.selected_security_tier = 0
+	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
+
+
+func _open_jackout_popup() -> void:
+	# Minimal popup for jacking out when right-clicking off-hub.
+	var popup := PopupMenu.new()
+	var hud_layer := get_node_or_null("HUDLayer")
+	if hud_layer != null:
+		hud_layer.add_child(popup)
+	else:
+		add_child(popup)
+	popup.add_item("Jack Out to Hub", 998)
+	popup.add_item("Cancel", 999)
+	popup.id_pressed.connect(_on_jackout_popup_id)
+	var world_pos := Vector2(runner_pos.x * CELL + CELL, runner_pos.y * CELL)
+	var screen_pos := _world_to_screen(world_pos) + Vector2(20, 20)
+	popup.position = screen_pos
+	popup.popup()
+	popup.set_position(screen_pos)
+
+
+func _on_jackout_popup_id(id: int) -> void:
+	if id == 998:
+		_jack_out_to_hub()
 
 
 func _hack_jump(dest: Dictionary) -> void:
