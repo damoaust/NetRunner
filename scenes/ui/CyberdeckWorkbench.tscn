@@ -9,6 +9,8 @@
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="7_hammer"]
 [ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="8_jackhammer"]
 [ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer2.tres" id="9_killer"]
+[ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="16_killer4"]
+[ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="17_killer6"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="10_shield"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="11_wizbook"]
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="12_worm"]
@@ -25,7 +27,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ih6ts")
 available_decks = Array[ExtResource("2_gys0u")]([ExtResource("13_startdeck"), ExtResource("14_kendachi"), ExtResource("15_ziggurat")])
-available_programs = Array[ExtResource("3_prog")]([ExtResource("4_aegis"), ExtResource("5_codecracker"), ExtResource("6_flatline"), ExtResource("7_hammer"), ExtResource("8_jackhammer"), ExtResource("9_killer"), ExtResource("10_shield"), ExtResource("11_wizbook"), ExtResource("12_worm")])
+available_programs = Array[ExtResource("3_prog")]([ExtResource("4_aegis"), ExtResource("5_codecracker"), ExtResource("6_flatline"), ExtResource("7_hammer"), ExtResource("8_jackhammer"), ExtResource("9_killer"), ExtResource("16_killer4"), ExtResource("17_killer6"), ExtResource("10_shield"), ExtResource("11_wizbook"), ExtResource("12_worm")])
 
 [node name="Background" type="ColorRect" parent="." unique_id=459979431]
 layout_mode = 1

@@ -16,6 +16,8 @@
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="11_owktc"]
 [ext_resource type="Resource" uid="uid://cswmssw4eot6i" path="res://data/flatline.tres" id="12_d1l68"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="13_80o14"]
+[ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="14_owktc"]
+[ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="15_d1l68"]
 
 [node name="Cp2020Gameplay" type="Control" unique_id=170105146]
 layout_mode = 3
@@ -90,7 +92,7 @@ position_smoothing_speed = 6.0
 
 [node name="CP2020Netrunner" parent="." unique_id=366506451 instance=ExtResource("3_ei0ny")]
 script = ExtResource("4_byruw")
-installed_programs = Array[ExtResource("5_y7tfe")]([ExtResource("7_rqnxn"), ExtResource("8_llsot"), ExtResource("6_eihqs"), ExtResource("9_e28di"), ExtResource("10_v6n4y"), ExtResource("11_owktc"), ExtResource("12_d1l68"), ExtResource("13_80o14")])
+installed_programs = Array[ExtResource("5_y7tfe")]([ExtResource("7_rqnxn"), ExtResource("8_llsot"), ExtResource("6_eihqs"), ExtResource("9_e28di"), ExtResource("10_v6n4y"), ExtResource("11_owktc"), ExtResource("12_d1l68"), ExtResource("13_80o14"), ExtResource("14_owktc"), ExtResource("15_d1l68")])
 
 [node name="CP2020InteractionHandler" type="Node2D" parent="." unique_id=457133470]
 script = ExtResource("9_rqnxn")

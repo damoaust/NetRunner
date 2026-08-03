@@ -8,9 +8,9 @@
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="5_y8atb"]
 [ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer2.tres" id="6_87luw"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="7_7015w"]
+[ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="8_kylw5"]
 
 [resource]
 script = ExtResource("2_tsrmj")
-interface_rank = 6
-installed_programs = Array[ExtResource("1_x0hyd")]([ExtResource("2_c8vba"), ExtResource("3_kylw5"), ExtResource("4_dnonk"), ExtResource("5_y8atb"), ExtResource("6_87luw"), ExtResource("7_7015w")])
+installed_programs = Array[ExtResource("1_x0hyd")]([ExtResource("2_c8vba"), ExtResource("3_kylw5"), ExtResource("4_dnonk"), ExtResource("5_y8atb"), ExtResource("6_87luw"), ExtResource("7_7015w"), ExtResource("8_kylw5")])
 metadata/_custom_type_script = "uid://c8r70jm1siw14"

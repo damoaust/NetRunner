@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://c2i647ws004kk"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_d6cun"]
+
+[resource]
+script = ExtResource("1_d6cun")
+program_name = "Killer VI"
+type = 3
+effect_type = 2
+memory_cost = 5
+price = 1480
+description = "Attacks all types, 1D6 damage to target STR. Mobile"
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

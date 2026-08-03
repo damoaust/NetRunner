@@ -4,10 +4,11 @@
 
 [resource]
 script = ExtResource("1_jwtcu")
-program_name = "Killer II"
+program_name = "Killer IV"
 type = 3
 effect_type = 2
 memory_cost = 5
-strength = 2
+strength = 6
+price = 1400
 description = "Attacks all types, 1D6 damage to target STR. Mobile"
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"
