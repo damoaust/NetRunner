@@ -36,6 +36,7 @@ netrunner-v-0.006/
 │   │   └── fort1/2/3.tres
 │   └── ui/                           # Subscenes (Netrunner avatar, Black ICE, Designers, Workbench, Maps)
 │       ├── cp2020_blackice.tscn
+│       ├── cp2020_npc_netrunner.tscn      # NPC netrunner scene (NetWatch + random runners)
 │       ├── cp2020_netrunner.tscn
 │       ├── cp2020_world_net_map.tscn       # World Map scene (geographic; ENTER city → City Grid)
 │       ├── cp2020_world_map_designer.tscn  # World map authoring tool
@@ -59,6 +60,7 @@ netrunner-v-0.006/
     │   ├── cp2020_city_grid_designer.gd # @tool City Grid authoring tool
     │   ├── cp_2020_world_net_map.gd  # Runtime world map node (movement, LDL jumps, ENTER city grid)
     │   ├── cp2020_blackice.gd        # Black ICE enemy AI node (AStarGrid2D, tracing)
+    │   ├── cp2020_npc_netrunner.gd   # NPC netrunner node (NetWatch + random runners; cyberdeck, programs, AI)
     │   ├── cp2020_board_renderer.gd  # CanvasItem custom grid renderer (Fog of War)
     │   ├── cp2020_canvas.gd          # UI container grid loader (legacy/placeholder)
     │   ├── cp2020_cyberdecks.gd      # Cyberdeck data Resource class
@@ -91,6 +93,7 @@ graph TD
     BoardRenderer["BoardRenderer (cp2020_board_renderer.gd)"]
     Netrunner["CP2020Netrunner (cp2020_netrunner.gd)"]
     BlackIce["BlackIce (cp2020_blackice.gd)"]
+    NpcNetrunner["NpcNetrunner (cp2020_npc_netrunner.gd)"]
     InteractionHandler["InteractionHandler (cp2020_interaction_handler.gd)"]
     TurnManager["TurnManager (cp2020_turn_manager.gd)"]
 
@@ -107,6 +110,8 @@ graph TD
     GameSession -->|execute_decryption / shield / ice_attack| Netrunner
     TurnManager -->|turn_ended| GameSession
     BlackIce -->|attacked_netrunner(strength)| GameSession
+    NpcNetrunner -->|attacked_netrunner(strength)| GameSession
+    NpcNetrunner -->|destroyed| GameSession
     GameSession -->|travel_ldl: load_subnet (preserve trace)| GameSession
     GameSession -->|return_world_map: change_scene to City Grid (preserve trace)| CityGrid
     GameSession -->|jack_out / flatline: reset trace + clear context + change_scene| WorldMap
@@ -135,7 +140,7 @@ Represents a grid map layout for a Datafort.
   - `cpu: int`, `int_rating: int`, `datawall_strength: int`
   - `grid_tiles: Dictionary` - Maps `Vector2i(x, y)` to [CP2020TileData](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020TileData.gd)
 - **TileType Enum**:
-  - `EMPTY` (0), `WALL` (1), `DATAWALL` (2), `ENTRY` (3), `CODE_GATE` (4), `MEMORY_UNIT` (5), `CONTROL_NODE` (6), `BLACK_ICE` (7)
+  - `EMPTY` (0), `WALL` (1), `DATAWALL` (2), `ENTRY` (3), `CODE_GATE` (4), `MEMORY_UNIT` (5), `CONTROL_NODE` (6), `BLACK_ICE` (7), `NETWATCH` (8), `NETRUNNER` (9)
 
 ### 4.2 `CP2020TileData` ([CP2020TileData.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020TileData.gd))
 Represents state and attributes of a single cell in the datafort layout grid.
@@ -156,6 +161,10 @@ Represents state and attributes of a single cell in the datafort layout grid.
   - **Per-tile ICE overrides** (BLACK_ICE tiles; authored in the datafort designer's ICE editor; zero/empty = use the hub security-tier template):
     - `ice_program_name: String`, `ice_strength: int`, `ice_max_ap: int`, `ice_max_integrity: int`, `ice_traces: bool`
     - `ice_has_override: bool` — set true when any field is non-zero/non-empty; the runtime prefers tile stats over the tier template when this is set
+  - **Per-tile NPC overrides** (NETWATCH / NETRUNNER tiles; authored in the datafort designer's NPC editor; zero/empty = use the hub security-tier template):
+    - `npc_name: String`, `npc_strength: int`, `npc_max_ap: int`, `npc_max_integrity: int`, `npc_max_health: int`, `npc_max_mu: int`, `npc_deck_name: String`, `npc_disposition: int` (0 = Hostile, 1 = Neutral)
+    - `npc_has_override: bool` — set true when any field is non-zero/non-empty; the runtime prefers tile stats over the tier template when this is set
+    - `npc_programs: Array[NetProgram]` — optional hand-authored loadout (empty = template loadout)
 
 ### 4.3 `CP2020WorldMapLayout` ([CP2020WorldMapLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020WorldMapLayout.gd))
 Serializable world map authored by the world map designer and loaded at runtime by `cp_2020_world_net_map.gd`.
@@ -233,7 +242,7 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
   - `grid_offset_y = 90` px (Reserving top UI header space)
   - Coordinates match formula: `Vector2(coord.x * 40 + 20, 90 + coord.y * 40 + 20)`
 - **`_ready`**: connects interaction/turn/netrunner signals, applies `RunState.selected_deck` to the netrunner (deck name, MU capacity, duplicate of installed programs), loads the subnet from `RunState.selected_subnet_path` (or `starting_subnet_path` fallback), and refreshes deck/health/trace HUD.
-- **`load_subnet(path, entry_coord)`**: Loads a `CP2020DatafortLayout` via `ResourceLoader`, assigns it to the renderer, **resets `is_explored`/`is_visible` on every tile** (ResourceLoader returns a cached instance, so a previously-visited datafort would otherwise show as already-revealed after LDL travel), spawns the netrunner at `entry_coord`, spawns ICE, and recalculates fog. A fresh run always starts fully fogged.
+- **`load_subnet(path, entry_coord)`**: Loads a `CP2020DatafortLayout` via `ResourceLoader`, assigns it to the renderer, **resets `is_explored`/`is_visible` on every tile** (ResourceLoader returns a cached instance, so a previously-visited datafort would otherwise show as already-revealed after LDL travel), spawns the netrunner at `entry_coord`, spawns ICE + NPCs, and recalculates fog. A fresh run always starts fully fogged.
 - **LDL Travel** (`_on_action_triggered`):
   - `"travel_ldl"` — the program arg is the `CP2020TileData` of the LDL link; loads its `target_subnet_path` at `target_entry_coord`. Aborts with a terminal message if no target is set. Trace is preserved across the jump.
   - `"return_world_map"` — changes scene to the **City Grid** (`cp2020_city_grid.tscn`) via `RunState.selected_city_grid_path` (world-map fallback if no city grid recorded) and **preserves trace** (still in the run). Labelled "Returning to the City Grid via LDL."
@@ -249,6 +258,9 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
   - Initiated when player selects a decryption program (`BYPASS_GATE`) via right-click contextual menu on a Code Gate.
   - Roll: `(randi() % 10) + 1 + program.strength` (Cyberpunk 2020 1d10 + Program STR rule).
   - Check: If `total_roll >= tile.strength_str`, `tile.is_unlocked = true`, immediately clearing the movement obstacle, changing tile color from orange to green, and recalculating Line of Sight. Otherwise, the attempt fails and logs the roll details to the terminal.
+- **NPC Spawning** (`spawn_npcs`, parallel to `spawn_black_ice`): iterates NETWATCH/NETRUNNER tiles, applies per-tile `npc_*` overrides or falls back to `TIER_NPC_TEMPLATES[_current_security_tier][faction]` (NetWatch leans anti-personnel + shield; random netrunners lean utility + weak attack). Programs are `duplicate()`d at spawn. NPCs are added to `npc_nodes` and their signals connected (`message_logged`, `moved_to`, `attacked_netrunner`, `destroyed`).
+- **Turn Execution**: `_all_adversaries()` merges `ice_nodes` + `npc_nodes` into one array passed to `turn_manager.execute_ice_turns`. The turn manager calls `take_turn(target, layout)` on any node that has the method, so NPCs drop in without changing its signature.
+- **NPC Combat**: `execute_npc_attack(program, coord)` resolves an opposed 1D10+STR roll vs the NPC's strength (same convention as `execute_ice_attack`); `take_damage` handles destruction + the provoked transition. `_talk_to_npc(coord)` logs flavour text for neutral runners (placeholder for future dialogue/trading).
 
 ### 5.2 Board Renderer ([cp2020_board_renderer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_board_renderer.gd))
 Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile visibility states:
@@ -274,6 +286,15 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **Fog of War Visibility**: Dynamically updates the `skull_label` icon visibility based on the tile fog state.
 - **Stat sourcing** (see `cp2020_game_session.spawn_black_ice`): ICE stats are set on the node **before** `initialize()` (which copies `max_integrity` into `current_integrity`). Per-tile override fields (`ice_*` on `CP2020TileData`) take precedence; otherwise the hub's `security_tier` selects a default template from `TIER_ICE_TEMPLATES` (Grey→Watchdog, L1→Killer 1.0, L2→Killer 2.0, L3→Hellhound, Black→Flatline).
 
+### 5.4b NPC Netrunner AI ([cp2020_npc_netrunner.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_npc_netrunner.gd)) — *NEW*
+- Full netrunner-entity NPCs (cyberdeck, programs, health, MU) — not contact-attack pathfinders like Black ICE. One node class serves two factions via a `Faction` enum (`NETWATCH`, `NETRUNNER`) and a `Disposition` enum (`HOSTILE`, `NEUTRAL`).
+- **NetWatch** (`Faction.NETWATCH`): spawns `Disposition.HOSTILE` — pursues and attacks the player on sight.
+- **Random Netrunner** (`Faction.NETRUNNER`): spawns `Disposition.NEUTRAL` — wanders randomly (~50% idle, otherwise steps to a walkable neighbour) until provoked. `take_damage` flips NEUTRAL→HOSTILE for the rest of the run.
+- **AI**: HOSTILE NPCs reuse the Black ICE `AStarGrid2D` pursuit pattern (up to `max_ap` steps per turn; attack on reaching the player's tile). `_attack_player()` prefers a `SHIELD` program when hurt, else an anti-personnel (`DAMAGE_RUNNER`) program, falling back to base `strength`. NEUTRAL NPCs wander and do not path toward the player.
+- **Signals**: `message_logged`, `moved_to`, `attacked_netrunner(strength)`, `destroyed`, `took_damage`. The session connects `attacked_netrunner` → `_on_ice_attacked` (shared handler) and `destroyed` → `_on_npc_destroyed` (erases from `npc_nodes`).
+- **Stat sourcing** (see `cp2020_game_session.spawn_npcs`): NPC stats are set **before** `initialize()`. Per-tile override fields (`npc_*` on `CP2020TileData`) take precedence; otherwise the hub's `security_tier` selects a default template from `TIER_NPC_TEMPLATES` (per faction, per tier). Program resources from templates are `duplicate()`d at spawn to avoid mutating cached `.tres` files.
+- **Fog of War**: `update_visibility(explored, visible)` toggles the glyph label like Black ICE. The session's `recalculate_fog_of_war` syncs NPC visibility each move.
+
 ### 5.5 Contextual Right-Click Input Handler ([cp2020_interaction_handler.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_interaction_handler.gd))
 - Captures right-click mouse events over grid cells.
 - Converts mouse pixel coordinates to grid cell coordinates `Vector2i(grid_x, grid_y)`.
@@ -281,17 +302,19 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **Menu branches** (first match wins):
   - **LDL-link tiles** (`is_ldl_link`): always add "Travel to \<datafort\>" (id `3000`) + "Return to City Grid" (id `3001`), even with no matching program. Travel uses `_ldl_tile` (the stored tile data); empty target → the session aborts the travel with "no target subnet set", so an empty-target LDL link effectively offers city-grid-return only.
   - **Visible Black ICE on the tile**: offer `DEREZ_ICE` programs (ids `1000+i`).
+  - **Visible NPC netrunner on the tile**: offer `DAMAGE_RUNNER` and `DEREZ_ICE` programs (ids `2000+i`) to attack the NPC, plus a "Talk" item (id `4000`) for neutral runners. `_npc_target` stores the NPC node for the callback.
   - **Runner's own tile** (visible): offer `SHIELD` defense programs.
   - **Locked Code Gate**: offer `BYPASS_GATE` programs.
   - **Datawall**: offer `BREACH_WALL` programs.
-- `_on_menu_action_selected` checks LDL travel ids (`3000`/`3001`) **before** the `1000+i` program range to avoid id collision.
+- `_on_menu_action_selected` checks ids in this order to avoid collision: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → program use (`1000+i`).
 - Dynamically creates and opens a `PopupMenu` near mouse location (`popup_on_parent`).
 
 ### 5.6 Datafort Designer Tool ([cp2020_datafort_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_designer.gd))
 - Runs in editor (`@tool` annotation).
-- Visual editor interface for painting tiles. The toolbar has distinct **Entry** (plain datafort arrival point, `is_ldl_link=false`) and **LDL Link** (travel node, `is_ldl_link=true` with no hardcoded target) buttons, plus Datawall, Code Gate, Memory Unit, Control Node, Black ICE, and Eraser.
+- Visual editor interface for painting tiles. The toolbar has distinct **Entry** (plain datafort arrival point, `is_ldl_link=false`) and **LDL Link** (travel node, `is_ldl_link=true` with no hardcoded target) buttons, plus Datawall, Code Gate, Memory Unit, Control Node, Black ICE, **NetWatch**, **Netrunner**, and Eraser.
 - **LDL-Link Editor panel** (built in code as a `PanelContainer`+`VBox` anchored to the right edge so it stays on-screen): target subnet `LineEdit` + Browse `FileDialog` (scoped to `scenes/forts/*.tres`), target entry coord X/Y `SpinBox`es, and a "Clear target" button. In LDL mode, clicking an existing LDL link selects it for editing (does not overwrite); clicking empty space paints a new link and opens the editor. Field edits write back to the tile live and persist on save. Empty target = world-map-return-only. LDL links draw with a distinct blue frame + "L" glyph.
 - **ICE Editor panel** (built in code; shown when a BLACK_ICE tile is painted/selected): program name `LineEdit`, strength/AP/integrity `SpinBox`es, traces `CheckBox`, and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override the template for that tile. Edits write back to the tile's `ice_*` fields live and persist on save.
+- **NPC Editor panel** (built in code; shown when a NETWATCH/NETRUNNER tile is painted/selected): name `LineEdit`, strength/AP/integrity/health/MU `SpinBox`es, deck name `LineEdit`, disposition `OptionButton` (Hostile/Neutral), and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override. Edits write back to the tile's `npc_*` fields live and persist on save. NETWATCH tiles draw a red shield glyph; NETRUNNER tiles draw a gold person glyph.
 - Dynamic layout resizing (`SpinBox` input for columns/rows).
 - Native file open/save dialog integration (`FileDialog`) for loading and exporting `.tres` layout files.
 
@@ -357,6 +380,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 2. Update graphics rendering in [_draw_tile_graphics](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_board_renderer.gd#L40).
 3. Update obstacle logic in [cp2020_netrunner.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_netrunner.gd#L86), [_has_line_of_sight](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_game_session.gd#L163), and [_update_obstacles](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd#L85).
 4. Update the editor toolbar buttons in [cp2020_datafort_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_designer.gd#L88).
+5. If the tile hosts an entity (like BLACK_ICE/NETWATCH/NETRUNNER), add a `paint_tile` case, a spawn function + tier templates in [cp2020_game_session.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_game_session.gd), and an editor side panel (mirror `build_ice_panel`/`build_npc_panel`).
 
 ### 6.3 Important Conventions & Gotchas
 - **Grid Offset**: The top 90 pixels of the viewport are reserved for UI elements. Always convert world mouse clicks or tile positions using `grid_offset_y = 90` and `cell_size = 40`.
@@ -366,6 +390,8 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **Floor tiles via designer only**: Hand-authored `.tres` `Empty Path` floor tiles have failed to render in-game, but the same tiles resaved through the datafort designer render correctly. Author floor tiles through the designer; hand-edit `.tres` only for tile properties (e.g. LDL link target fields).
 - **LDL link is an ENTRY tile**: There is no separate "return" tile type. Any `ENTRY` tile with `is_ldl_link=true` auto-offers Travel (id `3000`) + Return to City Grid (id `3001`) via the interaction handler. An LDL link with an empty `target_subnet_path` is effectively city-grid-return-only.
 - **Trace lifecycle**: `accumulated_trace` resets on flatline / jack-out / return-to-world-map (City Grid return-to-world-map), but is **preserved** across in-datafort LDL travel (`travel_ldl` keeps it) AND across the datafort→City Grid return (`return_world_map` now goes to the City Grid and keeps trace).
-- **Lambda Signal Connections**: Popup menus disconnect previous `id_pressed` connections before reconnecting to prevent duplicate signal callbacks. LDL travel ids (`3000`/`3001`) are checked before the `1000+i` program range to avoid collision.
+- **Lambda Signal Connections**: Popup menus disconnect previous `id_pressed` connections before reconnecting to prevent duplicate signal callbacks. Menu id ranges are a collision hazard — check in this order in `_on_menu_action_selected`: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → program use (`1000+i`).
+- **NPC program duplication**: `TIER_NPC_TEMPLATES` stores program resource paths (not names). `spawn_npcs` loads and `duplicate()`s each program so cached `.tres` resources are never mutated across runs. The same applies to per-tile `npc_programs` via `_duplicate_programs`.
+- **NPC disposition transition**: A neutral netrunner who takes damage flips to hostile for the rest of the run (once hostile, stays hostile). Only damage triggers this — talking does not.
 - **@tool panels in code**: The datafort and world map designers build their side panels in code (anchored to stay on-screen) rather than in the `.tscn`, so the scene files stay minimal.
 - **Resource Persistence**: Layouts are saved as `.tres` resources containing `grid_tiles` dictionaries. When editing resources at runtime, prefer duplicate or freshly instantiated `CP2020TileData` objects to avoid shared reference bugs.

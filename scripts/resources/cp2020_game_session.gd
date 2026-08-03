@@ -18,7 +18,9 @@ extends Control
 @onready var camera: Camera2D = board_renderer.get_node_or_null("RunnerCamera") if board_renderer else null
 
 const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
+const NpcNetrunnerScene := preload("res://scenes/ui/cp2020_npc_netrunner.tscn")
 var ice_nodes: Array[BlackIce] = []
+var npc_nodes: Array[CP2020NpcNetrunner] = []
 
 var current_layout: CP2020DatafortLayout
 # Resolved tier for the current datafort (set at dive time by the City Grid).
@@ -35,6 +37,34 @@ const TIER_ICE_TEMPLATES: Dictionary = {
 	CP2020SecurityTier.Tier.LEVEL_2:  {"name": "Killer 2.0", "strength": 4, "max_ap": 3, "max_integrity": 5, "traces": false},
 	CP2020SecurityTier.Tier.LEVEL_3:  {"name": "Hellhound",  "strength": 5, "max_ap": 3, "max_integrity": 6, "traces": true},
 	CP2020SecurityTier.Tier.BLACK:    {"name": "Flatline",   "strength": 6, "max_ap": 4, "max_integrity": 8, "traces": true},
+}
+
+# Tier -> default NPC netrunner template, per faction. Used when a NETWATCH /
+# NETRUNNER tile has no per-tile override (npc_has_override == false). NetWatch
+# leans anti-personnel + shield (law enforcement that hunts runners); random
+# netrunners carry utility + a weak attack program. Programs are duplicated
+# at spawn time so cached .tres resources are never mutated.
+const TIER_NPC_TEMPLATES: Dictionary = {
+	CP2020SecurityTier.Tier.GREY: {
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Scout",   "deck": "Patrol Deck",     "strength": 3, "max_ap": 2, "max_integrity": 4, "max_health": 8,  "max_mu": 8,  "programs": ["res://data/killer2.tres", "res://data/aegis.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Street Runner",    "deck": "Custom Deck",     "strength": 2, "max_ap": 2, "max_integrity": 3, "max_health": 6,  "max_mu": 6,  "programs": ["res://data/codecracker.tres", "res://data/hammer.tres"]},
+	},
+	CP2020SecurityTier.Tier.LEVEL_1: {
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Officer", "deck": "Issue Deck Mk1",  "strength": 4, "max_ap": 3, "max_integrity": 5, "max_health": 10, "max_mu": 10, "programs": ["res://data/killer4.tres", "res://data/aegis.tres", "res://data/codecracker.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Freelance Runner", "deck": "Hotrod Deck",     "strength": 3, "max_ap": 2, "max_integrity": 4, "max_health": 8,  "max_mu": 8,  "programs": ["res://data/hammer.tres", "res://data/codecracker.tres", "res://data/shield.tres"]},
+	},
+	CP2020SecurityTier.Tier.LEVEL_2: {
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Sergeant", "deck": "Issue Deck Mk2",  "strength": 5, "max_ap": 3, "max_integrity": 6, "max_health": 12, "max_mu": 12, "programs": ["res://data/killer6.tres", "res://data/aegis.tres", "res://data/jackhammer.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Veteran Runner",   "deck": "Tuned Deck",      "strength": 4, "max_ap": 3, "max_integrity": 5, "max_health": 10, "max_mu": 10, "programs": ["res://data/jackhammer.tres", "res://data/killer2.tres", "res://data/shield.tres"]},
+	},
+	CP2020SecurityTier.Tier.LEVEL_3: {
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Captain",  "deck": "Issue Deck Mk3",  "strength": 6, "max_ap": 3, "max_integrity": 7, "max_health": 14, "max_mu": 14, "programs": ["res://data/killer6.tres", "res://data/flatline.tres", "res://data/aegis.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Ace Runner",        "deck": "Race Deck",       "strength": 5, "max_ap": 3, "max_integrity": 6, "max_health": 12, "max_mu": 12, "programs": ["res://data/jackhammer.tres", "res://data/killer4.tres", "res://data/shield.tres"]},
+	},
+	CP2020SecurityTier.Tier.BLACK: {
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Blackops", "deck": "Black Deck",      "strength": 7, "max_ap": 4, "max_integrity": 9, "max_health": 18, "max_mu": 18, "programs": ["res://data/flatline.tres", "res://data/killer6.tres", "res://data/aegis.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Legendary Runner",  "deck": "Master Deck",     "strength": 6, "max_ap": 3, "max_integrity": 7, "max_health": 14, "max_mu": 14, "programs": ["res://data/jackhammer.tres", "res://data/killer6.tres", "res://data/shield.tres"]},
+	},
 }
 
 func _ready() -> void:
@@ -116,6 +146,7 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 			netrunner.initialize(current_layout, entry_coord)
 		_current_security_tier = _resolve_security_tier(path)
 		spawn_black_ice()
+		spawn_npcs()
 		recalculate_fog_of_war(netrunner.current_position)
 		_update_camera_limits()
 		_center_camera_on_runner()
@@ -153,7 +184,7 @@ func _input(event: InputEvent) -> void:
 			var cs: float = board_renderer.cell_size if board_renderer else 40.0
 			var go_y: float = board_renderer.grid_offset_y if board_renderer else 90.0
 			var nr_pos: Vector2i = netrunner.current_position if netrunner else Vector2i(-1, -1)
-			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes, nr_pos)
+			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes, nr_pos, npc_nodes)
 
 	# --- KEYBOARD INPUT (Pass to Netrunner) ---
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -225,6 +256,17 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				# No city grid recorded (e.g. legacy entry) — fall back to world map.
 				RunState.accumulated_trace = 0
 				get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+		"attack_npc":
+			if program is NetProgram and current_layout:
+				if turn_manager and not turn_manager.has_actions():
+					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
+					return
+				execute_npc_attack(program, target_coord)
+				if turn_manager:
+					turn_manager.consume_action()
+				_check_actions_exhausted()
+		"talk_npc":
+			_talk_to_npc(target_coord)
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
@@ -278,6 +320,50 @@ func execute_shield(program: NetProgram) -> void:
 		return
 	log_to_terminal("Activating Protection Program '%s'...\n" % program.program_name)
 	netrunner.raise_shield(program)
+
+# Attack an NPC netrunner occupying `target_coord` with `program`. Opposed
+# 1d10+STR roll vs the NPC's strength (same convention as anti-ICE combat).
+# The NPC's raised shield (if any) is resolved inside take_damage.
+func execute_npc_attack(program: NetProgram, target_coord: Vector2i) -> void:
+	var target_npc: CP2020NpcNetrunner = null
+	for npc in npc_nodes:
+		if is_instance_valid(npc) and npc.current_position == target_coord:
+			target_npc = npc
+			break
+	if not target_npc:
+		log_to_terminal("No NPC netrunner detected at %s.\n" % target_coord)
+		return
+
+	log_to_terminal("Executing '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_npc.npc_name, target_coord])
+	var prog_roll = (randi() % 10) + 1 + program.strength
+	var npc_roll = (randi() % 10) + 1 + target_npc.strength
+	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d)\n" % [prog_roll, program.strength, target_npc.npc_name, npc_roll, target_npc.strength])
+	if prog_roll > npc_roll:
+		var damage = prog_roll - npc_roll
+		log_to_terminal("Hit! %s takes %d damage.\n" % [target_npc.npc_name, damage])
+		# take_damage handles destruction (emits destroyed -> _on_npc_destroyed).
+		target_npc.take_damage(damage)
+	else:
+		log_to_terminal("%s repelled the attack.\n" % target_npc.npc_name)
+	if board_renderer:
+		board_renderer.queue_redraw()
+
+# Placeholder talk interaction for neutral netrunners (flavour text for now;
+# future hook for trading / dialogue). Provoking does NOT flip disposition —
+# only damage does.
+func _talk_to_npc(_coord: Vector2i) -> void:
+	var npc: CP2020NpcNetrunner = null
+	for n in npc_nodes:
+		if is_instance_valid(n) and n.current_position == _coord:
+			npc = n
+			break
+	if npc:
+		if npc.disposition == CP2020NpcNetrunner.Disposition.NEUTRAL:
+			log_to_terminal("%s: \"Busy. Don't start anything and we're cool.\"\n" % npc.npc_name)
+		else:
+			log_to_terminal("%s: \"You're not getting past me, choom.\"\n" % npc.npc_name)
+	else:
+		log_to_terminal("Nobody to talk to at %s.\n" % _coord)
 
 func log_to_terminal(message: String) -> void:
 	if terminal_log:
@@ -356,6 +442,115 @@ func spawn_black_ice() -> void:
 			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program_name, coord])
 
 
+func spawn_npcs() -> void:
+	# Clear any previously spawned NPC nodes (e.g. on subnet reload)
+	for npc in npc_nodes:
+		if is_instance_valid(npc):
+			npc.queue_free()
+	npc_nodes.clear()
+
+	if not current_layout:
+		return
+
+	var layout_size := Vector2i(current_layout.columns, current_layout.rows)
+	for raw_key in current_layout.grid_tiles.keys():
+		var coord: Vector2i
+		if raw_key is String:
+			var parts = raw_key.split(",")
+			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+		else:
+			coord = raw_key
+
+		var tile = current_layout.get_tile(coord)
+		if tile == null:
+			continue
+		var faction: int = -1
+		if tile.tile_type == CP2020DatafortLayout.TileType.NETWATCH:
+			faction = CP2020NpcNetrunner.Faction.NETWATCH
+		elif tile.tile_type == CP2020DatafortLayout.TileType.NETRUNNER:
+			faction = CP2020NpcNetrunner.Faction.NETRUNNER
+		else:
+			continue
+
+		var npc: CP2020NpcNetrunner = NpcNetrunnerScene.instantiate()
+		add_child(npc)
+		npc.faction = faction
+		# Default disposition per faction; a tile override can force it.
+		npc.disposition = CP2020NpcNetrunner.Disposition.HOSTILE if faction == CP2020NpcNetrunner.Faction.NETWATCH else CP2020NpcNetrunner.Disposition.NEUTRAL
+
+		# Apply stats BEFORE initialize (initialize copies max_integrity /
+		# max_health into current). Per-tile override wins; otherwise use the
+		# tier NPC template for this faction.
+		if tile.npc_has_override:
+			if tile.npc_name != "":
+				npc.npc_name = tile.npc_name
+			if tile.npc_strength > 0:
+				npc.strength = tile.npc_strength
+			if tile.npc_max_ap > 0:
+				npc.max_ap = tile.npc_max_ap
+			if tile.npc_max_integrity > 0:
+				npc.max_integrity = tile.npc_max_integrity
+			if tile.npc_max_health > 0:
+				npc.max_health = tile.npc_max_health
+			if tile.npc_max_mu > 0:
+				npc.max_memory_units = tile.npc_max_mu
+			if tile.npc_deck_name != "":
+				npc.deck_name = tile.npc_deck_name
+			if tile.npc_disposition == CP2020NpcNetrunner.Disposition.HOSTILE or tile.npc_disposition == CP2020NpcNetrunner.Disposition.NEUTRAL:
+				npc.disposition = tile.npc_disposition
+			npc.installed_programs = _duplicate_programs(tile.npc_programs)
+		else:
+			var tier_key: int = _current_security_tier
+			if not TIER_NPC_TEMPLATES.has(tier_key):
+				tier_key = CP2020SecurityTier.Tier.LEVEL_1
+			var tier_dict: Dictionary = TIER_NPC_TEMPLATES[tier_key]
+			if not tier_dict.has(faction):
+				tier_dict = TIER_NPC_TEMPLATES[CP2020SecurityTier.Tier.LEVEL_1]
+			var tmpl: Dictionary = tier_dict[faction]
+			npc.npc_name = String(tmpl.get("name", "NPC"))
+			npc.deck_name = String(tmpl.get("deck", "Deck"))
+			npc.strength = int(tmpl.get("strength", 4))
+			npc.max_ap = int(tmpl.get("max_ap", 3))
+			npc.max_integrity = int(tmpl.get("max_integrity", 5))
+			npc.max_health = int(tmpl.get("max_health", 10))
+			npc.max_memory_units = int(tmpl.get("max_mu", 10))
+			npc.installed_programs = _load_template_programs(tmpl.get("programs", []))
+
+		npc.initialize(coord, layout_size)
+		npc.message_logged.connect(log_to_terminal)
+		npc.moved_to.connect(_on_ice_moved)
+		npc.attacked_netrunner.connect(_on_ice_attacked)
+		npc.destroyed.connect(_on_npc_destroyed.bind(npc))
+		npc_nodes.append(npc)
+		var faction_label = "NetWatch" if faction == CP2020NpcNetrunner.Faction.NETWATCH else "Netrunner"
+		log_to_terminal("%s NPC '%s' (%s) deployed at %s.\n" % [faction_label, npc.npc_name, npc.deck_name, coord])
+
+
+# Load + duplicate program resources listed by .tres path in a template, so
+# cached resources are never mutated across runs. Missing paths are skipped.
+func _load_template_programs(paths: Array) -> Array[NetProgram]:
+	var out: Array[NetProgram] = []
+	for p in paths:
+		var path := String(p)
+		if path != "" and ResourceLoader.exists(path):
+			var prog = ResourceLoader.load(path) as NetProgram
+			if prog:
+				out.append(prog.duplicate())
+	return out
+
+
+func _duplicate_programs(programs: Array) -> Array[NetProgram]:
+	var out: Array[NetProgram] = []
+	for p in programs:
+		if p is NetProgram:
+			out.append(p.duplicate())
+	return out
+
+
+func _on_npc_destroyed(npc: CP2020NpcNetrunner) -> void:
+	npc_nodes.erase(npc)
+
+
 # Resolve the security tier for the current datafort. Set at dive time by the
 # City Grid (RunState.selected_security_tier) based on the datafort icon's
 # tier. Falls back to LEVEL_1 if unset (e.g. legacy direct entry).
@@ -370,8 +565,8 @@ func _end_player_turn() -> void:
 		return
 	if not turn_manager.is_netrunner_turn:
 		return
-	log_to_terminal("--- Netrunner turn ended. ICE activating... ---\n")
-	turn_manager.execute_ice_turns(ice_nodes, netrunner.current_position, current_layout)
+	log_to_terminal("--- Netrunner turn ended. Adversaries activating... ---\n")
+	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout)
 
 func _on_turn_ended(is_netrunner_turn: bool) -> void:
 	if is_netrunner_turn:
@@ -384,8 +579,17 @@ func _on_actions_changed(remaining: int, max_actions: int) -> void:
 
 func _check_actions_exhausted() -> void:
 	if turn_manager and turn_manager.actions_remaining <= 0:
-		log_to_terminal("Out of actions. ICE activating...\n")
-		turn_manager.execute_ice_turns(ice_nodes, netrunner.current_position, current_layout)
+		log_to_terminal("Out of actions. Adversaries activating...\n")
+		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout)
+
+# Combined adversaries (Black ICE + NPC netrunners) for the turn manager. The
+# turn manager only requires each entry to have a take_turn(target, layout)
+# method, which both share.
+func _all_adversaries() -> Array:
+	var out: Array = []
+	out.append_array(ice_nodes)
+	out.append_array(npc_nodes)
+	return out
 
 func _on_health_changed(current: int, max_hp: int) -> void:
 	if health_bar:
@@ -408,9 +612,10 @@ func _on_ice_moved(_new_pos: Vector2i) -> void:
 		board_renderer.queue_redraw()
 
 func _on_ice_attacked(strength: int) -> void:
-	log_to_terminal("WARNING: Black ICE attacks for %d!\n" % strength)
+	# Shared by Black ICE and NPC netrunners — both emit attacked_netrunner.
+	log_to_terminal("WARNING: Adversary attacks for %d!\n" % strength)
 	if netrunner:
-		netrunner.apply_damage(strength, "Black ICE")
+		netrunner.apply_damage(strength, "Adversary")
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
@@ -534,6 +739,13 @@ func recalculate_fog_of_war(player_pos: Vector2i) -> void:
 			var ice_tile = current_layout.get_tile(ice.current_position)
 			if ice_tile:
 				ice.update_visibility(ice_tile.is_explored, ice_tile.is_visible)
+
+	# Sync NPC glyph visibility with the fog state too
+	for npc in npc_nodes:
+		if is_instance_valid(npc):
+			var npc_tile = current_layout.get_tile(npc.current_position)
+			if npc_tile:
+				npc.update_visibility(npc_tile.is_explored, npc_tile.is_visible)
 
 
 func _has_line_of_sight(from: Vector2i, to: Vector2i) -> bool:

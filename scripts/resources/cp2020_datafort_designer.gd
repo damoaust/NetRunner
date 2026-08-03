@@ -42,6 +42,19 @@ var ice_int_spinbox: SpinBox
 var ice_traces_check: CheckBox
 var selected_ice_coord: Vector2i = Vector2i(-1, -1)
 
+# NPC editor panel (built in code; shown when a NETWATCH/NETRUNNER tile is selected).
+var npc_panel: VBoxContainer
+var npc_panel_bg: PanelContainer
+var npc_name_edit: LineEdit
+var npc_str_spinbox: SpinBox
+var npc_ap_spinbox: SpinBox
+var npc_int_spinbox: SpinBox
+var npc_health_spinbox: SpinBox
+var npc_mu_spinbox: SpinBox
+var npc_deck_edit: LineEdit
+var npc_disposition_option: OptionButton
+var selected_npc_coord: Vector2i = Vector2i(-1, -1)
+
 func _ready() -> void:
 	setup_new_map()
 	setup_file_dialogs_if_missing()
@@ -49,6 +62,7 @@ func _ready() -> void:
 	setup_toolbar_buttons()
 	build_ldl_panel()
 	build_ice_panel()
+	build_npc_panel()
 	queue_redraw()
 
 func setup_new_map() -> void:
@@ -117,6 +131,8 @@ func setup_toolbar_buttons() -> void:
 	add_tool_button("Memory Unit", CP2020DatafortLayout.TileType.MEMORY_UNIT)
 	add_tool_button("Control Node", CP2020DatafortLayout.TileType.CONTROL_NODE)
 	add_tool_button("Black ICE", CP2020DatafortLayout.TileType.BLACK_ICE)
+	add_tool_button("NetWatch", CP2020DatafortLayout.TileType.NETWATCH)
+	add_tool_button("Netrunner", CP2020DatafortLayout.TileType.NETRUNNER)
 	add_ldl_tool_button("LDL Link")
 	add_tool_button("Eraser", CP2020DatafortLayout.TileType.EMPTY)
 	
@@ -141,6 +157,7 @@ func add_tool_button(label_text: String, tile_type: CP2020DatafortLayout.TileTyp
 		ldl_link_mode = false
 		_hide_ldl_panel()
 		_hide_ice_panel()
+		_hide_npc_panel()
 		print("Selected Tool: ", label_text)
 	)
 	dynamic_button_row.add_child(btn)
@@ -153,6 +170,7 @@ func add_entry_tool_button(label_text: String) -> void:
 		ldl_link_mode = false
 		_hide_ldl_panel()
 		_hide_ice_panel()
+		_hide_npc_panel()
 		print("Selected Tool: ", label_text, " (plain datafort entrance)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -163,6 +181,8 @@ func add_ldl_tool_button(label_text: String) -> void:
 	btn.pressed.connect(func():
 		selected_tile_type = CP2020DatafortLayout.TileType.ENTRY
 		ldl_link_mode = true
+		_hide_ice_panel()
+		_hide_npc_panel()
 		print("Selected Tool: ", label_text, " (paint/select an LDL link, then edit it in the side panel)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -262,8 +282,11 @@ func _gui_input(event: InputEvent) -> void:
 					var painted = current_layout.get_tile(coord) if current_layout else null
 					if painted and painted.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
 						_open_ice_editor(coord)
+					elif painted and (painted.tile_type == CP2020DatafortLayout.TileType.NETWATCH or painted.tile_type == CP2020DatafortLayout.TileType.NETRUNNER):
+						_open_npc_editor(coord)
 					else:
 						_hide_ice_panel()
+						_hide_npc_panel()
 
 # Update paint_tile to flag LDL options if needed
 func paint_tile(coord: Vector2i) -> void:
@@ -296,6 +319,12 @@ func paint_tile(coord: Vector2i) -> void:
 		CP2020DatafortLayout.TileType.BLACK_ICE:
 			tile_data.tile_name = "Black ICE"
 			tile_data.ice_has_override = false
+		CP2020DatafortLayout.TileType.NETWATCH:
+			tile_data.tile_name = "NetWatch Agent"
+			tile_data.npc_has_override = false
+		CP2020DatafortLayout.TileType.NETRUNNER:
+			tile_data.tile_name = "Netrunner"
+			tile_data.npc_has_override = false
 			
 	current_layout.grid_tiles[coord] = tile_data
 	queue_redraw()
@@ -389,6 +418,38 @@ func _draw() -> void:
 						draw_circle(center, 12, Color(0.3, 0, 0))
 						draw_arc(center, 10, 0, TAU, 16, Color.CRIMSON, 2)
 						draw_circle(center, 3, Color.CRIMSON)
+					CP2020DatafortLayout.TileType.NETWATCH:
+						# NetWatch: red shield/badge glyph.
+						var center_nw = cell_rect.get_center()
+						draw_rect(inner_rect, Color(0.3, 0.05, 0.05), true)
+						draw_rect(inner_rect, Color.CRIMSON, false)
+						# Shield shape.
+						var s_left = center_nw + Vector2(-9, -10)
+						var s_right = center_nw + Vector2(9, -10)
+						var s_bottom = center_nw + Vector2(0, 11)
+						var shield = PackedVector2Array([
+							s_left,
+							s_right,
+							center_nw + Vector2(6, 2),
+							s_bottom,
+							center_nw + Vector2(-6, 2)
+						])
+						draw_polygon(shield, PackedColorArray([Color.CRIMSON]))
+					CP2020DatafortLayout.TileType.NETRUNNER:
+						# Netrunner: yellow person glyph.
+						var center_nr = cell_rect.get_center()
+						draw_rect(inner_rect, Color(0.25, 0.2, 0.0), true)
+						draw_rect(inner_rect, Color.GOLD, false)
+						# Head.
+						draw_circle(center_nr + Vector2(0, -7), 4, Color.GOLD)
+						# Body.
+						var body = PackedVector2Array([
+							center_nr + Vector2(-7, 10),
+							center_nr + Vector2(7, 10),
+							center_nr + Vector2(4, -1),
+							center_nr + Vector2(-4, -1)
+						])
+						draw_polygon(body, PackedColorArray([Color.GOLD]))
 
 # ---------------------------------------------------------------------------
 # LDL link editor side panel
@@ -678,3 +739,186 @@ func _clear_ice_override() -> void:
 	ice_int_spinbox.value = 0
 	ice_traces_check.button_pressed = false
 	_write_ice_field()
+
+
+# ---------------------------------------------------------------------------
+# NPC editor side panel (NETWATCH / NETRUNNER tiles)
+# ---------------------------------------------------------------------------
+
+func build_npc_panel() -> void:
+	var panel_bg = PanelContainer.new()
+	panel_bg.name = "NpcEditorPanel"
+	panel_bg.anchor_left = 1.0
+	panel_bg.anchor_right = 1.0
+	panel_bg.anchor_top = 0.0
+	panel_bg.anchor_bottom = 1.0
+	panel_bg.offset_left = -300
+	panel_bg.offset_right = -10
+	panel_bg.offset_top = 90
+	panel_bg.offset_bottom = -10
+	panel_bg.visible = false
+	add_child(panel_bg)
+	npc_panel_bg = panel_bg
+
+	npc_panel = VBoxContainer.new()
+	npc_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	npc_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel_bg.add_child(npc_panel)
+
+	var title = Label.new()
+	title.text = "NPC Editor"
+	npc_panel.add_child(title)
+
+	var hint = Label.new()
+	hint.text = "Leave fields at 0/empty to use the hub security-tier template. Set any field to override the template for this tile."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	npc_panel.add_child(hint)
+
+	var name_lbl = Label.new()
+	name_lbl.text = "Name:"
+	npc_panel.add_child(name_lbl)
+	npc_name_edit = LineEdit.new()
+	npc_name_edit.placeholder_text = "e.g. NetWatch Officer (blank = template)"
+	npc_name_edit.text_changed.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_name_edit)
+
+	var str_lbl = Label.new()
+	str_lbl.text = "Strength:"
+	npc_panel.add_child(str_lbl)
+	npc_str_spinbox = SpinBox.new()
+	npc_str_spinbox.min_value = 0
+	npc_str_spinbox.max_value = 20
+	npc_str_spinbox.value_changed.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_str_spinbox)
+
+	var ap_lbl = Label.new()
+	ap_lbl.text = "Max AP:"
+	npc_panel.add_child(ap_lbl)
+	npc_ap_spinbox = SpinBox.new()
+	npc_ap_spinbox.min_value = 0
+	npc_ap_spinbox.max_value = 20
+	npc_ap_spinbox.value_changed.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_ap_spinbox)
+
+	var int_lbl = Label.new()
+	int_lbl.text = "Max integrity:"
+	npc_panel.add_child(int_lbl)
+	npc_int_spinbox = SpinBox.new()
+	npc_int_spinbox.min_value = 0
+	npc_int_spinbox.max_value = 20
+	npc_int_spinbox.value_changed.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_int_spinbox)
+
+	var hp_lbl = Label.new()
+	hp_lbl.text = "Max health:"
+	npc_panel.add_child(hp_lbl)
+	npc_health_spinbox = SpinBox.new()
+	npc_health_spinbox.min_value = 0
+	npc_health_spinbox.max_value = 40
+	npc_health_spinbox.value_changed.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_health_spinbox)
+
+	var mu_lbl = Label.new()
+	mu_lbl.text = "Max MU:"
+	npc_panel.add_child(mu_lbl)
+	npc_mu_spinbox = SpinBox.new()
+	npc_mu_spinbox.min_value = 0
+	npc_mu_spinbox.max_value = 40
+	npc_mu_spinbox.value_changed.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_mu_spinbox)
+
+	var deck_lbl = Label.new()
+	deck_lbl.text = "Cyberdeck name:"
+	npc_panel.add_child(deck_lbl)
+	npc_deck_edit = LineEdit.new()
+	npc_deck_edit.placeholder_text = "e.g. Cyberdyne (blank = template)"
+	npc_deck_edit.text_changed.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_deck_edit)
+
+	var disp_lbl = Label.new()
+	disp_lbl.text = "Disposition:"
+	npc_panel.add_child(disp_lbl)
+	npc_disposition_option = OptionButton.new()
+	npc_disposition_option.add_item("Hostile", 0)
+	npc_disposition_option.add_item("Neutral", 1)
+	npc_disposition_option.item_selected.connect(_on_npc_field_changed)
+	npc_panel.add_child(npc_disposition_option)
+
+	var clear_btn = Button.new()
+	clear_btn.text = "Reset to template (clear override)"
+	clear_btn.pressed.connect(_clear_npc_override)
+	npc_panel.add_child(clear_btn)
+
+
+func _open_npc_editor(coord: Vector2i) -> void:
+	if not current_layout:
+		return
+	var tile = current_layout.get_tile(coord)
+	if tile == null or (tile.tile_type != CP2020DatafortLayout.TileType.NETWATCH and tile.tile_type != CP2020DatafortLayout.TileType.NETRUNNER):
+		return
+	selected_npc_coord = coord
+	npc_name_edit.set_block_signals(true)
+	npc_str_spinbox.set_block_signals(true)
+	npc_ap_spinbox.set_block_signals(true)
+	npc_int_spinbox.set_block_signals(true)
+	npc_health_spinbox.set_block_signals(true)
+	npc_mu_spinbox.set_block_signals(true)
+	npc_deck_edit.set_block_signals(true)
+	npc_disposition_option.set_block_signals(true)
+	npc_name_edit.text = tile.npc_name
+	npc_str_spinbox.value = tile.npc_strength
+	npc_ap_spinbox.value = tile.npc_max_ap
+	npc_int_spinbox.value = tile.npc_max_integrity
+	npc_health_spinbox.value = tile.npc_max_health
+	npc_mu_spinbox.value = tile.npc_max_mu
+	npc_deck_edit.text = tile.npc_deck_name
+	npc_disposition_option.select(0 if tile.npc_disposition <= 0 else 1)
+	npc_name_edit.set_block_signals(false)
+	npc_str_spinbox.set_block_signals(false)
+	npc_ap_spinbox.set_block_signals(false)
+	npc_int_spinbox.set_block_signals(false)
+	npc_health_spinbox.set_block_signals(false)
+	npc_mu_spinbox.set_block_signals(false)
+	npc_deck_edit.set_block_signals(false)
+	npc_disposition_option.set_block_signals(false)
+	npc_panel_bg.visible = true
+
+
+func _hide_npc_panel() -> void:
+	if npc_panel_bg:
+		npc_panel_bg.visible = false
+	selected_npc_coord = Vector2i(-1, -1)
+
+
+func _write_npc_field() -> void:
+	if not current_layout or selected_npc_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_npc_coord)
+	if tile == null:
+		return
+	tile.npc_name = npc_name_edit.text.strip_edges()
+	tile.npc_strength = int(npc_str_spinbox.value)
+	tile.npc_max_ap = int(npc_ap_spinbox.value)
+	tile.npc_max_integrity = int(npc_int_spinbox.value)
+	tile.npc_max_health = int(npc_health_spinbox.value)
+	tile.npc_max_mu = int(npc_mu_spinbox.value)
+	tile.npc_deck_name = npc_deck_edit.text.strip_edges()
+	tile.npc_disposition = npc_disposition_option.selected
+	tile.npc_has_override = tile.npc_name != "" or tile.npc_strength > 0 or tile.npc_max_ap > 0 or tile.npc_max_integrity > 0 or tile.npc_max_health > 0 or tile.npc_max_mu > 0 or tile.npc_deck_name != ""
+	queue_redraw()
+
+
+func _on_npc_field_changed(_value: Variant = null) -> void:
+	_write_npc_field()
+
+
+func _clear_npc_override() -> void:
+	npc_name_edit.text = ""
+	npc_str_spinbox.value = 0
+	npc_ap_spinbox.value = 0
+	npc_int_spinbox.value = 0
+	npc_health_spinbox.value = 0
+	npc_mu_spinbox.value = 0
+	npc_deck_edit.text = ""
+	npc_disposition_option.select(0)
+	_write_npc_field()

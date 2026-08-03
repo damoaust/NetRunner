@@ -13,12 +13,16 @@ var _current_programs: Array[NetProgram] = []
 # emit travel actions with the tile data).
 var _ldl_tile: CP2020TileData = null
 
-func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1)) -> void:
+# The NPC the current popup was built for (so attack/talk callbacks can target
+# the right node even if it moves before the menu is dismissed).
+var _npc_target: CP2020NpcNetrunner = null
+
+func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = []) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
-		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes, netrunner_pos)
+		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes, netrunner_pos, npc_nodes)
 
-func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1)) -> void:
+func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = []) -> void:
 	if not layout:
 		print("DEBUG: Layout is missing!")
 		return
@@ -76,6 +80,13 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 			ice_here = ice
 			break
 
+	# Check if an NPC netrunner (NetWatch / random runner) occupies this tile.
+	var npc_here: CP2020NpcNetrunner = null
+	for npc in npc_nodes:
+		if is_instance_valid(npc) and npc.current_position == target_coord:
+			npc_here = npc
+			break
+
 	# LDL-link tiles offer matrix travel to another datafort or back to the
 	# world map. These appear even when no program matches the tile, so a
 	# bare ENTRY/LDL tile right-click opens the travel menu.
@@ -99,6 +110,26 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var prog_id = 1000 + i
 				_dynamic_menu.add_item(menu_label, prog_id)
 				options_added = true
+
+	elif npc_here and tile_data.is_visible:
+		# NPC netrunner (NetWatch / random runner) present and visible — offer
+		# attack programs (anti-personnel DAMAGE_RUNNER or anti-ICE DEREZ) in
+		# the 2000+i id range, plus a Talk option for neutral runners.
+		_npc_target = npc_here
+		var added_attack = false
+		for i in range(available_programs.size()):
+			var prog = available_programs[i] as NetProgram
+			if prog and prog.effect_type in [NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE]:
+				var menu_label = "Attack %s: %s (STR %d, %d MU)" % [npc_here.npc_name, prog.program_name, prog.strength, prog.memory_cost]
+				var prog_id = 2000 + i
+				_dynamic_menu.add_item(menu_label, prog_id)
+				added_attack = true
+		if added_attack:
+			options_added = true
+		# Neutral runners can be talked to (id 4000).
+		if npc_here.disposition == CP2020NpcNetrunner.Disposition.NEUTRAL:
+			_dynamic_menu.add_item("Talk to %s" % npc_here.npc_name, 4000)
+			options_added = true
 
 	elif target_coord == netrunner_pos and tile_data.is_visible:
 		# Right-click on the Netrunner's own tile — offer protection (SHIELD) programs
@@ -157,6 +188,18 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 		return
 	if id == 3001:
 		action_triggered.emit("return_world_map", target_coord, null)
+		return
+	# NPC talk (neutral runners) — id 4000.
+	if id == 4000:
+		action_triggered.emit("talk_npc", target_coord, _npc_target)
+		return
+	# NPC attack programs — id range 2000+i (checked before the 1000+i program
+	# range to avoid collision).
+	if id >= 2000 and id < 3000:
+		var idx = id - 2000
+		if idx >= 0 and idx < available_programs.size():
+			var prog = available_programs[idx] as NetProgram
+			action_triggered.emit("attack_npc", target_coord, prog)
 		return
 	if id >= 1000:
 		var idx = id - 1000

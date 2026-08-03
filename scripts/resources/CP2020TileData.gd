@@ -26,3 +26,23 @@ extends Resource
 @export var ice_max_integrity: int = 0
 @export var ice_traces: bool = false
 @export var ice_has_override: bool = false
+
+# --- Per-tile NPC overrides (NETWATCH / NETRUNNER tiles). Zero/empty = use the
+# tier NPC template from cp2020_game_session.TIER_NPC_TEMPLATES. Non-zero
+# values take precedence and let designers hand-tune individual NPCs, exactly
+# like the ice_* override pattern above. ---
+@export var npc_name: String = ""
+@export var npc_strength: int = 0
+@export var npc_max_ap: int = 0
+@export var npc_max_integrity: int = 0
+@export var npc_max_health: int = 0
+@export var npc_max_mu: int = 0
+@export var npc_deck_name: String = ""
+# CP2020NpcNetrunner.Disposition as int (0 = HOSTILE, 1 = NEUTRAL).
+# NetWatch tiles default hostile; Netrunner tiles default neutral. A designer
+# override of 0/1 forces the disposition regardless of faction.
+@export var npc_disposition: int = -1
+@export var npc_has_override: bool = false
+# Optional hand-authored program loadout (empty = use the tier template loadout).
+# Must be duplicated at spawn time to avoid mutating cached .tres resources.
+@export var npc_programs: Array[NetProgram] = []

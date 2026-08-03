@@ -17,7 +17,12 @@ enum TileType {
 	CODE_GATE,
 	MEMORY_UNIT,
 	CONTROL_NODE,
-	BLACK_ICE
+	BLACK_ICE,
+	# NPC netrunner spawn points (full netrunner entities, not contact-attack
+	# pathfinders like Black ICE). NETWATCH is hostile on sight; NETRUNNER is
+	# neutral until provoked (takes damage -> turns hostile).
+	NETWATCH,
+	NETRUNNER
 }
 
 # Dictionary mapping Vector2i grid coordinates to a custom TileData structure or dictionary properties
