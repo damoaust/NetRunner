@@ -4,8 +4,10 @@
 
 [resource]
 script = ExtResource("1_ai1st")
-program_name = "Killer 1.0"
+program_name = "Killer II"
 type = 3
 effect_type = 2
-description = "Anti-program watchdog. Derezes and destroys active ICE."
+memory_cost = 5
+strength = 2
+description = "Attacks all types, 1D6 damage to target STR. Mobile"
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

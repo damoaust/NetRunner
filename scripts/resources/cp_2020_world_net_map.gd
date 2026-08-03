@@ -123,11 +123,12 @@ func _build_world() -> void:
 				"name": hub.name,
 				"pos": hub.pos,
 				"subnet_path": hub.subnet_path,
-				"ldl_cost": hub.ldl_cost,
-				"security_code": hub.security_code,
-				"trace_value": hub.trace_value,
-				"security_tier": int(hub.security_tier),
-			})
+					"city_grid_path": hub.city_grid_path,
+					"ldl_cost": hub.ldl_cost,
+					"security_code": hub.security_code,
+					"trace_value": hub.trace_value,
+					"security_tier": int(hub.security_tier),
+				})
 			hub_tiles[hub.pos] = true
 
 
@@ -170,20 +171,8 @@ func _draw() -> void:
 	var runner_color := Color(0.2, 0.9, 1.0, 1.0)
 	var font := _theme_font()
 
-	# CITY GRID title strip.
-	draw_string(font, Vector2(8, 18), "CITY GRID", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.7, 0.9, 1.0, 0.9))
-
-	# Tier legend (top-right).
-	var legend_x := grid_cols * CELL - 8
-	var legend_y := 14
-	for i in range(CP2020WorldHub.SecurityTier.size()):
-		var tier_color: Color = CP2020WorldHub.TIER_COLORS[i]
-		var short := String(CP2020WorldHub.TIER_SHORT[i])
-		var label_text := short
-		var tw := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-		legend_x -= tw + 18
-		draw_rect(Rect2(legend_x, legend_y, 12, 12), tier_color, true)
-		draw_string(font, Vector2(legend_x + 16, legend_y + 11), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.85, 0.85, 0.9))
+	# WORLD MAP title strip.
+	draw_string(font, Vector2(8, 18), "WORLD MAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.7, 0.9, 1.0, 0.9))
 
 	for x in range(grid_cols):
 		for y in range(grid_rows):
@@ -195,24 +184,17 @@ func _draw() -> void:
 				draw_rect(rect, regions[region_index].color, true)
 			else:
 				draw_rect(rect, ocean_color, true)
-			# Hub tile: filled tier-coloured chip (outline drawn later over grid lines).
-			if hub_tiles.get(cell, false):
-				var hub: Dictionary = _hub_at(cell)
-				var tc: Color = CP2020WorldHub.TIER_COLORS.get(int(hub.security_tier), Color(0.0, 1.0, 0.9, 1.0))
-				draw_rect(rect, Color(tc.r, tc.g, tc.b, 0.45), true)
 			# Grid lines.
 			draw_rect(rect, grid_color, false, 1.0)
 
-	# Hub chips: outline + glyph + label (drawn after grid lines for crispness).
+	# Hub markers: plain city markers (tier lives on the City Grid dataforts).
+	var city_marker := Color(0.0, 1.0, 0.7, 1.0)
 	for hub in city_hubs:
-		var tier: int = int(hub.security_tier)
-		var tier_color: Color = CP2020WorldHub.TIER_COLORS.get(tier, Color(0.0, 1.0, 0.9, 1.0))
 		var rect := Rect2(hub.pos.x * CELL, hub.pos.y * CELL, CELL, CELL)
-		draw_rect(rect, tier_color, false, 2.0)
-		var glyph := String(CP2020WorldHub.TIER_GLYPHS.get(tier, "?"))
-		draw_string(font, Vector2(hub.pos.x * CELL + 12, hub.pos.y * CELL + 26), glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, tier_color)
+		draw_rect(rect, Color(city_marker.r, city_marker.g, city_marker.b, 0.25), true)
+		draw_rect(rect, city_marker, false, 2.0)
 		var label_pos := Vector2(hub.pos.x * CELL + 4, hub.pos.y * CELL + CELL + 2)
-		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, tier_color)
+		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, city_marker)
 		# Spawn hub: LDL entry marker (cyan ring + "LDL" tag).
 		if hub.name == spawn_hub_name:
 			var center := rect.get_center()
@@ -315,16 +297,14 @@ func _open_ldl_popup(hub_pos: Vector2i) -> void:
 	# Build the nearby-hub jump list (Chebyshev <= 5, excluding self).
 	_popup_nearby = _nearby_hubs(hub_pos)
 
-	# Dive into the current hub's datafort. Trace is built by jumps, not by
-	# diving, so the dive itself adds no trace.
-	var tier_tag := String(CP2020WorldHub.TIER_SHORT.get(int(hub.security_tier), "?"))
-	popup.add_item("DIVE into %s [%s]" % [hub.name, tier_tag], 0)
+	# Enter the city's City Grid. Trace is built by inter-city jumps, not by
+	# entering a city, so the enter itself adds no trace.
+	popup.add_item("ENTER %s City Grid" % hub.name, 0)
 	popup.add_separator()
 	for i in range(_popup_nearby.size()):
 		var dest: Dictionary = _popup_nearby[i]
-		var dest_tag := String(CP2020WorldHub.TIER_SHORT.get(int(dest.security_tier), "?"))
-		popup.add_item("Hack LDL -> %s [%s] (Sec %d, +Trace %d)" % [dest.name, dest_tag, int(dest.security_code), int(dest.trace_value)], 100 + i)
-		popup.add_item("Pay LDL -> %s [%s] (%d eb)" % [dest.name, dest_tag, int(dest.ldl_cost)], 200 + i)
+		popup.add_item("Hack LDL -> %s (Sec %d, +Trace %d)" % [dest.name, int(dest.security_code), int(dest.trace_value)], 100 + i)
+		popup.add_item("Pay LDL -> %s (%d eb)" % [dest.name, int(dest.ldl_cost)], 200 + i)
 	popup.add_separator()
 	popup.add_item("Cancel", 999)
 
@@ -363,7 +343,7 @@ func _world_to_screen(world_pos: Vector2) -> Vector2:
 
 func _on_ldl_popup_id(id: int, hub: Dictionary) -> void:
 	if id == 0:
-		_dive_datafort(hub)
+		_enter_city_grid(hub)
 		return
 	if id == 999:
 		return  # Cancel
@@ -423,30 +403,6 @@ func _caught_table(hub: Dictionary) -> void:
 	_update_hud()
 
 
-func _pay_for_ldl(hub: Dictionary) -> void:
-	# Legacy single-hub pay entry — dives into the datafort (no trace added).
-	var cost: int = int(hub.ldl_cost)
-	if RunState.credits < cost:
-		print("WORLD MAP: Insufficient credits (%d eb) for %s LDL (%d eb)." % [RunState.credits, hub.name, cost])
-		_update_hud()
-		return
-	RunState.credits -= cost
-	print("WORLD MAP: Paid %d eb for %s LDL. Credits remaining: %d" % [cost, hub.name, RunState.credits])
-	_dive_datafort(hub)
-
-
-func _hack_ldl(hub: Dictionary) -> void:
-	# Legacy single-hub hack entry — dives into the datafort on success.
-	var roll := randi_range(1, 10)
-	print("WORLD MAP: Hack LDL vs %s — 1D10 %d vs Security Code %d." % [hub.name, roll, int(hub.security_code)])
-	if roll >= int(hub.security_code):
-		print("WORLD MAP: Hack succeeded — entering %s." % hub.name)
-		_dive_datafort(hub)
-		return
-	print("WORLD MAP: Hack failed — caught scamming the LDL.")
-	_caught_table(hub)
-
-
 func _handle_netcop_bust() -> void:
 	var bust := randi_range(1, 6)
 	print("WORLD MAP: NetCops bust attempt — 1D6 = %d" % bust)
@@ -462,13 +418,16 @@ func _handle_netcop_bust() -> void:
 			print("WORLD MAP: You escape, but an All-Net Bulletin is issued. They are looking for you.")
 
 
-func _dive_datafort(hub: Dictionary) -> void:
-	var subnet_path: String = hub.subnet_path
-	# Trace is built by hub-to-hub LDL jumps; diving itself adds none.
-	print("WORLD MAP: Diving into %s. Run trace difficulty: %d" % [hub.name, RunState.accumulated_trace])
-	RunState.selected_subnet_path = subnet_path
-	sub_net_selected.emit(subnet_path, hub.name)
-	get_tree().change_scene_to_file("res://scenes/cp2020_gameplay.tscn")
+func _enter_city_grid(hub: Dictionary) -> void:
+	var grid_path: String = String(hub.get("city_grid_path", ""))
+	if grid_path == "":
+		print("WORLD MAP: %s has no City Grid assigned." % hub.name)
+		_update_hud()
+		return
+	# Trace is built by inter-city LDL jumps; entering a city adds none.
+	print("WORLD MAP: Entering %s City Grid. Run trace difficulty: %d" % [hub.name, RunState.accumulated_trace])
+	RunState.selected_city_grid_path = grid_path
+	get_tree().change_scene_to_file("res://scenes/ui/cp2020_city_grid.tscn")
 
 
 # ---------------------------------------------------------------------------

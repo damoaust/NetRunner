@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="CP2020CityGridLayout" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_datafort.gd" id="1_1rtfo"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_layout.gd" id="2_extgg"]
+
+[sub_resource type="Resource" id="Resource_d6bru"]
+script = ExtResource("1_1rtfo")
+name = "Arasaka Tower"
+pos = Vector2i(3, 2)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+security_tier = 4
+security_code = 3
+
+[sub_resource type="Resource" id="Resource_gnnpk"]
+script = ExtResource("1_1rtfo")
+name = "Kendachi Industries"
+pos = Vector2i(7, 2)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+security_tier = 3
+ldl_cost = 60
+
+[sub_resource type="Resource" id="Resource_8ekv1"]
+script = ExtResource("1_1rtfo")
+name = "Imperial Palace"
+pos = Vector2i(11, 2)
+security_tier = 0
+ldl_cost = 70
+security_code = 5
+
+[sub_resource type="Resource" id="Resource_a00h1"]
+script = ExtResource("1_1rtfo")
+name = "Sato Shipping"
+pos = Vector2i(15, 2)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+security_tier = 2
+ldl_cost = 80
+security_code = 6
+
+[resource]
+script = ExtResource("2_extgg")
+city_name = "Tokyo"
+dataforts = Array[ExtResource("1_1rtfo")]([SubResource("Resource_d6bru"), SubResource("Resource_gnnpk"), SubResource("Resource_8ekv1"), SubResource("Resource_a00h1")])
+ldl_entry = Vector2i(9, 5)

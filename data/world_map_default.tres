@@ -1,8 +1,128 @@
-[gd_resource type="Resource" script_class="CP2020WorldMapLayout" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="CP2020WorldMapLayout" format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/cp2020_world_map_layout.gd" id="1_layout"]
 [ext_resource type="Script" path="res://scripts/resources/cp2020_world_region.gd" id="2_region"]
 [ext_resource type="Script" path="res://scripts/resources/cp2020_world_hub.gd" id="3_hub"]
+
+[sub_resource type="Resource" id="Hub_0"]
+script = ExtResource("3_hub")
+name = "Night City"
+pos = Vector2i(4, 4)
+security_tier = 4
+city_grid_path = "res://data/city_grids/night_city.tres"
+
+[sub_resource type="Resource" id="Hub_1"]
+script = ExtResource("3_hub")
+name = "London"
+pos = Vector2i(14, 3)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+ldl_cost = 80
+security_code = 6
+trace_value = 7
+security_tier = 3
+city_grid_path = "res://data/city_grids/london.tres"
+
+[sub_resource type="Resource" id="Hub_2"]
+script = ExtResource("3_hub")
+name = "Tokyo"
+pos = Vector2i(27, 5)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+ldl_cost = 100
+security_code = 8
+trace_value = 9
+security_tier = 4
+city_grid_path = "res://data/city_grids/tokyo.tres"
+
+[sub_resource type="Resource" id="Hub_3"]
+script = ExtResource("3_hub")
+name = "Sao Paulo"
+pos = Vector2i(7, 13)
+ldl_cost = 120
+security_code = 7
+trace_value = 8
+security_tier = 2
+city_grid_path = "res://data/city_grids/sao_paulo.tres"
+
+[sub_resource type="Resource" id="Hub_4"]
+script = ExtResource("3_hub")
+name = "Lagos"
+pos = Vector2i(16, 10)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+ldl_cost = 150
+security_code = 8
+trace_value = 10
+security_tier = 2
+city_grid_path = "res://data/city_grids/lagos.tres"
+
+[sub_resource type="Resource" id="Hub_5"]
+script = ExtResource("3_hub")
+name = "Sydney"
+pos = Vector2i(27, 15)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+ldl_cost = 180
+security_code = 9
+trace_value = 12
+security_tier = 3
+city_grid_path = "res://data/city_grids/sydney.tres"
+
+[sub_resource type="Resource" id="Hub_6"]
+script = ExtResource("3_hub")
+name = "Chicago"
+pos = Vector2i(9, 4)
+ldl_cost = 40
+security_code = 3
+trace_value = 3
+city_grid_path = "res://data/city_grids/chicago.tres"
+
+[sub_resource type="Resource" id="Hub_7"]
+script = ExtResource("3_hub")
+name = "Mexico City"
+pos = Vector2i(6, 9)
+ldl_cost = 40
+security_code = 3
+trace_value = 3
+city_grid_path = "res://data/city_grids/mexico_city.tres"
+
+[sub_resource type="Resource" id="Hub_8"]
+script = ExtResource("3_hub")
+name = "Moscow"
+pos = Vector2i(19, 4)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+ldl_cost = 60
+security_code = 5
+trace_value = 4
+security_tier = 2
+city_grid_path = "res://data/city_grids/moscow.tres"
+
+[sub_resource type="Resource" id="Hub_9"]
+script = ExtResource("3_hub")
+name = "Cairo"
+pos = Vector2i(15, 8)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+ldl_cost = 60
+security_code = 5
+trace_value = 4
+city_grid_path = "res://data/city_grids/cairo.tres"
+
+[sub_resource type="Resource" id="Hub_10"]
+script = ExtResource("3_hub")
+name = "Seoul"
+pos = Vector2i(24, 5)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+ldl_cost = 70
+security_code = 6
+security_tier = 3
+city_grid_path = "res://data/city_grids/seoul.tres"
+
+[sub_resource type="Resource" id="Hub_11"]
+script = ExtResource("3_hub")
+name = "Manila"
+pos = Vector2i(27, 10)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+ldl_cost = 70
+security_code = 6
+security_tier = 2
+city_grid_path = "res://data/city_grids/manila.tres"
 
 [sub_resource type="Resource" id="Region_0"]
 script = ExtResource("2_region")
@@ -34,133 +154,313 @@ script = ExtResource("2_region")
 name = "OCEANIA"
 color = Color(0.12, 0.32, 0.3, 1)
 
-[sub_resource type="Resource" id="Hub_0"]
-script = ExtResource("3_hub")
-name = "Night City"
-pos = Vector2i(4, 4)
-subnet_path = "res://scenes/forts/night_city_subnet.tres"
-ldl_cost = 50
-security_code = 4
-trace_value = 5
-security_tier = 4
-
-[sub_resource type="Resource" id="Hub_1"]
-script = ExtResource("3_hub")
-name = "London"
-pos = Vector2i(14, 3)
-subnet_path = "res://scenes/forts/london_subnet.tres"
-ldl_cost = 80
-security_code = 6
-trace_value = 7
-security_tier = 3
-
-[sub_resource type="Resource" id="Hub_2"]
-script = ExtResource("3_hub")
-name = "Tokyo"
-pos = Vector2i(27, 5)
-subnet_path = "res://scenes/forts/tokyo_subnet.tres"
-ldl_cost = 100
-security_code = 8
-trace_value = 9
-security_tier = 4
-
-[sub_resource type="Resource" id="Hub_3"]
-script = ExtResource("3_hub")
-name = "Sao Paulo"
-pos = Vector2i(7, 13)
-subnet_path = "res://scenes/forts/night_city_subnet.tres"
-ldl_cost = 120
-security_code = 7
-trace_value = 8
-security_tier = 2
-
-[sub_resource type="Resource" id="Hub_4"]
-script = ExtResource("3_hub")
-name = "Lagos"
-pos = Vector2i(16, 10)
-subnet_path = "res://scenes/forts/london_subnet.tres"
-ldl_cost = 150
-security_code = 8
-trace_value = 10
-security_tier = 2
-
-[sub_resource type="Resource" id="Hub_5"]
-script = ExtResource("3_hub")
-name = "Sydney"
-pos = Vector2i(27, 15)
-subnet_path = "res://scenes/forts/tokyo_subnet.tres"
-ldl_cost = 180
-security_code = 9
-trace_value = 12
-security_tier = 3
-
-[sub_resource type="Resource" id="Hub_6"]
-script = ExtResource("3_hub")
-name = "Chicago"
-pos = Vector2i(9, 4)
-subnet_path = "res://scenes/forts/night_city_subnet.tres"
-ldl_cost = 40
-security_code = 3
-trace_value = 3
-security_tier = 1
-
-[sub_resource type="Resource" id="Hub_7"]
-script = ExtResource("3_hub")
-name = "Mexico City"
-pos = Vector2i(6, 9)
-subnet_path = "res://scenes/forts/night_city_subnet.tres"
-ldl_cost = 40
-security_code = 3
-trace_value = 3
-security_tier = 1
-
-[sub_resource type="Resource" id="Hub_8"]
-script = ExtResource("3_hub")
-name = "Moscow"
-pos = Vector2i(19, 4)
-subnet_path = "res://scenes/forts/london_subnet.tres"
-ldl_cost = 60
-security_code = 5
-trace_value = 4
-security_tier = 2
-
-[sub_resource type="Resource" id="Hub_9"]
-script = ExtResource("3_hub")
-name = "Cairo"
-pos = Vector2i(15, 8)
-subnet_path = "res://scenes/forts/london_subnet.tres"
-ldl_cost = 60
-security_code = 5
-trace_value = 4
-security_tier = 1
-
-[sub_resource type="Resource" id="Hub_10"]
-script = ExtResource("3_hub")
-name = "Seoul"
-pos = Vector2i(24, 5)
-subnet_path = "res://scenes/forts/tokyo_subnet.tres"
-ldl_cost = 70
-security_code = 6
-trace_value = 5
-security_tier = 3
-
-[sub_resource type="Resource" id="Hub_11"]
-script = ExtResource("3_hub")
-name = "Manila"
-pos = Vector2i(27, 10)
-subnet_path = "res://scenes/forts/tokyo_subnet.tres"
-ldl_cost = 70
-security_code = 6
-trace_value = 5
-security_tier = 2
-
 [resource]
 script = ExtResource("1_layout")
-grid_cols = 32
-grid_rows = 18
-regions = [SubResource("Region_0"), SubResource("Region_1"), SubResource("Region_2"), SubResource("Region_3"), SubResource("Region_4"), SubResource("Region_5")]
+regions = Array[ExtResource("2_region")]([SubResource("Region_0"), SubResource("Region_1"), SubResource("Region_2"), SubResource("Region_3"), SubResource("Region_4"), SubResource("Region_5")])
 tile_region = {
-"0,1": 0, "0,2": 0, "0,3": 0, "0,4": 0, "0,5": 0, "0,6": 0, "0,7": 0, "1,1": 0, "1,2": 0, "1,3": 0, "1,4": 0, "1,5": 0, "1,6": 0, "1,7": 0, "2,1": 0, "2,2": 0, "2,3": 0, "2,4": 0, "2,5": 0, "2,6": 0, "2,7": 0, "3,1": 0, "3,2": 0, "3,3": 0, "3,4": 0, "3,5": 0, "3,6": 0, "3,7": 0, "4,1": 0, "4,2": 0, "4,3": 0, "4,4": 0, "4,5": 0, "4,6": 0, "4,7": 0, "5,1": 0, "5,2": 0, "5,3": 0, "5,4": 0, "5,5": 0, "5,6": 0, "5,7": 0, "6,1": 0, "6,2": 0, "6,3": 0, "6,4": 0, "6,5": 0, "6,6": 0, "6,7": 0, "7,1": 0, "7,2": 0, "7,3": 0, "7,4": 0, "7,5": 0, "7,6": 0, "7,7": 0, "8,1": 0, "8,2": 0, "8,3": 0, "8,4": 0, "8,5": 0, "8,6": 0, "8,7": 0, "4,9": 1, "4,10": 1, "4,11": 1, "4,12": 1, "4,13": 1, "4,14": 1, "4,15": 1, "4,16": 1, "5,9": 1, "5,10": 1, "5,11": 1, "5,12": 1, "5,13": 1, "5,14": 1, "5,15": 1, "5,16": 1, "6,9": 1, "6,10": 1, "6,11": 1, "6,12": 1, "6,13": 1, "6,14": 1, "6,15": 1, "6,16": 1, "7,9": 1, "7,10": 1, "7,11": 1, "7,12": 1, "7,13": 1, "7,14": 1, "7,15": 1, "7,16": 1, "8,9": 1, "8,10": 1, "8,11": 1, "8,12": 1, "8,13": 1, "8,14": 1, "8,15": 1, "8,16": 1, "9,9": 1, "9,10": 1, "9,11": 1, "9,12": 1, "9,13": 1, "9,14": 1, "9,15": 1, "9,16": 1, "11,1": 2, "11,2": 2, "11,3": 2, "11,4": 2, "11,5": 2, "12,1": 2, "12,2": 2, "12,3": 2, "12,4": 2, "12,5": 2, "13,1": 2, "13,2": 2, "13,3": 2, "13,4": 2, "13,5": 2, "14,1": 2, "14,2": 2, "14,3": 2, "14,4": 2, "14,5": 2, "15,1": 2, "15,2": 2, "15,3": 2, "15,4": 2, "15,5": 2, "16,1": 2, "16,2": 2, "16,3": 2, "16,4": 2, "16,5": 2, "17,1": 2, "17,2": 2, "17,3": 2, "17,4": 2, "17,5": 2, "13,6": 3, "13,7": 3, "13,8": 3, "13,9": 3, "13,10": 3, "13,11": 3, "13,12": 3, "13,13": 3, "13,14": 3, "13,15": 3, "14,6": 3, "14,7": 3, "14,8": 3, "14,9": 3, "14,10": 3, "14,11": 3, "14,12": 3, "14,13": 3, "14,14": 3, "14,15": 3, "15,6": 3, "15,7": 3, "15,8": 3, "15,9": 3, "15,10": 3, "15,11": 3, "15,12": 3, "15,13": 3, "15,14": 3, "15,15": 3, "16,6": 3, "16,7": 3, "16,8": 3, "16,9": 3, "16,10": 3, "16,11": 3, "16,12": 3, "16,13": 3, "16,14": 3, "16,15": 3, "17,6": 3, "17,7": 3, "17,8": 3, "17,9": 3, "17,10": 3, "17,11": 3, "17,12": 3, "17,13": 3, "17,14": 3, "17,15": 3, "18,6": 3, "18,7": 3, "18,8": 3, "18,9": 3, "18,10": 3, "18,11": 3, "18,12": 3, "18,13": 3, "18,14": 3, "18,15": 3, "22,2": 4, "22,3": 4, "22,4": 4, "22,5": 4, "22,6": 4, "22,7": 4, "22,8": 4, "23,2": 4, "23,3": 4, "23,4": 4, "23,5": 4, "23,6": 4, "23,7": 4, "23,8": 4, "24,2": 4, "24,3": 4, "24,4": 4, "24,5": 4, "24,6": 4, "24,7": 4, "24,8": 4, "25,2": 4, "25,3": 4, "25,4": 4, "25,5": 4, "25,6": 4, "25,7": 4, "25,8": 4, "26,2": 4, "26,3": 4, "26,4": 4, "26,5": 4, "26,6": 4, "26,7": 4, "26,8": 4, "27,2": 4, "27,3": 4, "27,4": 4, "27,5": 4, "27,6": 4, "27,7": 4, "27,8": 4, "28,2": 4, "28,3": 4, "28,4": 4, "28,5": 4, "28,6": 4, "28,7": 4, "28,8": 4, "29,2": 4, "29,3": 4, "29,4": 4, "29,5": 4, "29,6": 4, "29,7": 4, "29,8": 4, "30,2": 4, "30,3": 4, "30,4": 4, "30,5": 4, "30,6": 4, "30,7": 4, "30,8": 4, "24,13": 5, "24,14": 5, "24,15": 5, "24,16": 5, "24,17": 5, "25,13": 5, "25,14": 5, "25,15": 5, "25,16": 5, "25,17": 5, "26,13": 5, "26,14": 5, "26,15": 5, "26,16": 5, "26,17": 5, "27,13": 5, "27,14": 5, "27,15": 5, "27,16": 5, "27,17": 5, "28,13": 5, "28,14": 5, "28,15": 5, "28,16": 5, "28,17": 5, "29,13": 5, "29,14": 5, "29,15": 5, "29,16": 5, "29,17": 5, "30,13": 5, "30,14": 5, "30,15": 5, "30,16": 5, "30,17": 5
+"0,1": 0,
+"0,2": 0,
+"0,3": 0,
+"0,4": 0,
+"0,5": 0,
+"0,6": 0,
+"0,7": 0,
+"1,1": 0,
+"1,2": 0,
+"1,3": 0,
+"1,4": 0,
+"1,5": 0,
+"1,6": 0,
+"1,7": 0,
+"11,1": 2,
+"11,2": 2,
+"11,3": 2,
+"11,4": 2,
+"11,5": 2,
+"12,1": 2,
+"12,2": 2,
+"12,3": 2,
+"12,4": 2,
+"12,5": 2,
+"13,1": 2,
+"13,10": 3,
+"13,11": 3,
+"13,12": 3,
+"13,13": 3,
+"13,14": 3,
+"13,15": 3,
+"13,2": 2,
+"13,3": 2,
+"13,4": 2,
+"13,5": 2,
+"13,6": 3,
+"13,7": 3,
+"13,8": 3,
+"13,9": 3,
+"14,1": 2,
+"14,10": 3,
+"14,11": 3,
+"14,12": 3,
+"14,13": 3,
+"14,14": 3,
+"14,15": 3,
+"14,2": 2,
+"14,3": 2,
+"14,4": 2,
+"14,5": 2,
+"14,6": 3,
+"14,7": 3,
+"14,8": 3,
+"14,9": 3,
+"15,1": 2,
+"15,10": 3,
+"15,11": 3,
+"15,12": 3,
+"15,13": 3,
+"15,14": 3,
+"15,15": 3,
+"15,2": 2,
+"15,3": 2,
+"15,4": 2,
+"15,5": 2,
+"15,6": 3,
+"15,7": 3,
+"15,8": 3,
+"15,9": 3,
+"16,1": 2,
+"16,10": 3,
+"16,11": 3,
+"16,12": 3,
+"16,13": 3,
+"16,14": 3,
+"16,15": 3,
+"16,2": 2,
+"16,3": 2,
+"16,4": 2,
+"16,5": 2,
+"16,6": 3,
+"16,7": 3,
+"16,8": 3,
+"16,9": 3,
+"17,1": 2,
+"17,10": 3,
+"17,11": 3,
+"17,12": 3,
+"17,13": 3,
+"17,14": 3,
+"17,15": 3,
+"17,2": 2,
+"17,3": 2,
+"17,4": 2,
+"17,5": 2,
+"17,6": 3,
+"17,7": 3,
+"17,8": 3,
+"17,9": 3,
+"18,10": 3,
+"18,11": 3,
+"18,12": 3,
+"18,13": 3,
+"18,14": 3,
+"18,15": 3,
+"18,6": 3,
+"18,7": 3,
+"18,8": 3,
+"18,9": 3,
+"2,1": 0,
+"2,2": 0,
+"2,3": 0,
+"2,4": 0,
+"2,5": 0,
+"2,6": 0,
+"2,7": 0,
+"22,2": 4,
+"22,3": 4,
+"22,4": 4,
+"22,5": 4,
+"22,6": 4,
+"22,7": 4,
+"22,8": 4,
+"23,2": 4,
+"23,3": 4,
+"23,4": 4,
+"23,5": 4,
+"23,6": 4,
+"23,7": 4,
+"23,8": 4,
+"24,13": 5,
+"24,14": 5,
+"24,15": 5,
+"24,16": 5,
+"24,17": 5,
+"24,2": 4,
+"24,3": 4,
+"24,4": 4,
+"24,5": 4,
+"24,6": 4,
+"24,7": 4,
+"24,8": 4,
+"25,13": 5,
+"25,14": 5,
+"25,15": 5,
+"25,16": 5,
+"25,17": 5,
+"25,2": 4,
+"25,3": 4,
+"25,4": 4,
+"25,5": 4,
+"25,6": 4,
+"25,7": 4,
+"25,8": 4,
+"26,13": 5,
+"26,14": 5,
+"26,15": 5,
+"26,16": 5,
+"26,17": 5,
+"26,2": 4,
+"26,3": 4,
+"26,4": 4,
+"26,5": 4,
+"26,6": 4,
+"26,7": 4,
+"26,8": 4,
+"27,13": 5,
+"27,14": 5,
+"27,15": 5,
+"27,16": 5,
+"27,17": 5,
+"27,2": 4,
+"27,3": 4,
+"27,4": 4,
+"27,5": 4,
+"27,6": 4,
+"27,7": 4,
+"27,8": 4,
+"28,13": 5,
+"28,14": 5,
+"28,15": 5,
+"28,16": 5,
+"28,17": 5,
+"28,2": 4,
+"28,3": 4,
+"28,4": 4,
+"28,5": 4,
+"28,6": 4,
+"28,7": 4,
+"28,8": 4,
+"29,13": 5,
+"29,14": 5,
+"29,15": 5,
+"29,16": 5,
+"29,17": 5,
+"29,2": 4,
+"29,3": 4,
+"29,4": 4,
+"29,5": 4,
+"29,6": 4,
+"29,7": 4,
+"29,8": 4,
+"3,1": 0,
+"3,2": 0,
+"3,3": 0,
+"3,4": 0,
+"3,5": 0,
+"3,6": 0,
+"3,7": 0,
+"30,13": 5,
+"30,14": 5,
+"30,15": 5,
+"30,16": 5,
+"30,17": 5,
+"30,2": 4,
+"30,3": 4,
+"30,4": 4,
+"30,5": 4,
+"30,6": 4,
+"30,7": 4,
+"30,8": 4,
+"4,1": 0,
+"4,10": 1,
+"4,11": 1,
+"4,12": 1,
+"4,13": 1,
+"4,14": 1,
+"4,15": 1,
+"4,16": 1,
+"4,2": 0,
+"4,3": 0,
+"4,4": 0,
+"4,5": 0,
+"4,6": 0,
+"4,7": 0,
+"4,9": 1,
+"5,1": 0,
+"5,10": 1,
+"5,11": 1,
+"5,12": 1,
+"5,13": 1,
+"5,14": 1,
+"5,15": 1,
+"5,16": 1,
+"5,2": 0,
+"5,3": 0,
+"5,4": 0,
+"5,5": 0,
+"5,6": 0,
+"5,7": 0,
+"5,9": 1,
+"6,1": 0,
+"6,10": 1,
+"6,11": 1,
+"6,12": 1,
+"6,13": 1,
+"6,14": 1,
+"6,15": 1,
+"6,16": 1,
+"6,2": 0,
+"6,3": 0,
+"6,4": 0,
+"6,5": 0,
+"6,6": 0,
+"6,7": 0,
+"6,9": 1,
+"7,1": 0,
+"7,10": 1,
+"7,11": 1,
+"7,12": 1,
+"7,13": 1,
+"7,14": 1,
+"7,15": 1,
+"7,16": 1,
+"7,2": 0,
+"7,3": 0,
+"7,4": 0,
+"7,5": 0,
+"7,6": 0,
+"7,7": 0,
+"7,9": 1,
+"8,1": 0,
+"8,10": 1,
+"8,11": 1,
+"8,12": 1,
+"8,13": 1,
+"8,14": 1,
+"8,15": 1,
+"8,16": 1,
+"8,2": 0,
+"8,3": 0,
+"8,4": 0,
+"8,5": 0,
+"8,6": 0,
+"8,7": 0,
+"8,9": 1,
+"9,10": 1,
+"9,11": 1,
+"9,12": 1,
+"9,13": 1,
+"9,14": 1,
+"9,15": 1,
+"9,16": 1,
+"9,9": 1
 }
-hubs = [SubResource("Hub_0"), SubResource("Hub_1"), SubResource("Hub_2"), SubResource("Hub_3"), SubResource("Hub_4"), SubResource("Hub_5"), SubResource("Hub_6"), SubResource("Hub_7"), SubResource("Hub_8"), SubResource("Hub_9"), SubResource("Hub_10"), SubResource("Hub_11")]
-runner_spawn_hub = "Night City"
+hubs = Array[ExtResource("3_hub")]([SubResource("Hub_0"), SubResource("Hub_1"), SubResource("Hub_2"), SubResource("Hub_3"), SubResource("Hub_4"), SubResource("Hub_5"), SubResource("Hub_6"), SubResource("Hub_7"), SubResource("Hub_8"), SubResource("Hub_9"), SubResource("Hub_10"), SubResource("Hub_11")])

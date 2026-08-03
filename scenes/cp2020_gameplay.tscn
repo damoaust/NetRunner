@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://cv3qbo8qed61v" path="res://scripts/resources/cp2020_netrunner.gd" id="4_byruw"]
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="5_y7tfe"]
 [ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="6_eihqs"]
-[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer_2_0.tres" id="7_rqnxn"]
+[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer2.tres" id="7_rqnxn"]
 [ext_resource type="Script" uid="uid://dkjy1jvw2xgfp" path="res://scripts/resources/cp2020_board_renderer.gd" id="8_eihqs"]
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="8_llsot"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="9_e28di"]
@@ -85,10 +85,8 @@ text = "[ JACK OUT ]"
 script = ExtResource("8_eihqs")
 
 [node name="RunnerCamera" type="Camera2D" parent="BoardRenderer" unique_id=710234561]
-enabled = true
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
-zoom = Vector2(1, 1)
 
 [node name="CP2020Netrunner" parent="." unique_id=366506451 instance=ExtResource("3_ei0ny")]
 script = ExtResource("4_byruw")

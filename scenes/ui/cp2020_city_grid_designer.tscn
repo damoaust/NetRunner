@@ -1,15 +1,15 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/resources/cp2020_world_map_designer.gd" id="1_wmdesigner"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_designer.gd" id="1_cgdesigner"]
 
-[node name="Cp2020WorldMapDesigner" type="Control"]
+[node name="Cp2020CityGridDesigner" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_wmdesigner")
+script = ExtResource("1_cgdesigner")
 
 [node name="TopPanel" type="VBoxContainer" parent="."]
 layout_mode = 0
@@ -19,22 +19,13 @@ offset_bottom = 80.0
 [node name="ToolRow" type="HBoxContainer" parent="TopPanel"]
 layout_mode = 2
 
-[node name="RegionOption" type="OptionButton" parent="TopPanel/ToolRow"]
+[node name="DatafortButton" type="Button" parent="TopPanel/ToolRow"]
 layout_mode = 2
-size_flags_horizontal = 3
-item_count = 0
+text = "Datafort"
 
-[node name="AddRegionButton" type="Button" parent="TopPanel/ToolRow"]
+[node name="LdlEntryButton" type="Button" parent="TopPanel/ToolRow"]
 layout_mode = 2
-text = "Add Region"
-
-[node name="RegionPaintButton" type="Button" parent="TopPanel/ToolRow"]
-layout_mode = 2
-text = "Region Paint"
-
-[node name="HubButton" type="Button" parent="TopPanel/ToolRow"]
-layout_mode = 2
-text = "Hub"
+text = "LDL Entry"
 
 [node name="EraserButton" type="Button" parent="TopPanel/ToolRow"]
 layout_mode = 2
@@ -51,16 +42,26 @@ text = "Load"
 [node name="SettingsRow" type="HBoxContainer" parent="TopPanel"]
 layout_mode = 2
 
+[node name="CityNameLabel" type="Label" parent="TopPanel/SettingsRow"]
+layout_mode = 2
+text = "City:"
+
+[node name="CityNameEdit" type="LineEdit" parent="TopPanel/SettingsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "New City"
+custom_minimum_size = Vector2(160, 0)
+
 [node name="ColsLabel" type="Label" parent="TopPanel/SettingsRow"]
 layout_mode = 2
 text = "Cols:"
 
 [node name="ColumnsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow"]
 layout_mode = 2
-min_value = 4.0
-max_value = 128.0
+min_value = 6.0
+max_value = 64.0
 step = 1.0
-value = 32.0
+value = 20.0
 
 [node name="RowsLabel" type="Label" parent="TopPanel/SettingsRow"]
 layout_mode = 2
@@ -69,9 +70,9 @@ text = "Rows:"
 [node name="RowsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow"]
 layout_mode = 2
 min_value = 4.0
-max_value = 64.0
+max_value = 48.0
 step = 1.0
-value = 18.0
+value = 12.0
 
 [node name="ApplySizeButton" type="Button" parent="TopPanel/SettingsRow"]
 layout_mode = 2
@@ -85,11 +86,11 @@ offset_top = 90.0
 offset_right = 1270.0
 offset_bottom = 600.0
 
-[node name="HubNameLabel" type="Label" parent="SidePanel"]
+[node name="DatafortNameLabel" type="Label" parent="SidePanel"]
 layout_mode = 2
-text = "Hub Name"
+text = "Datafort Name"
 
-[node name="HubNameEdit" type="LineEdit" parent="SidePanel"]
+[node name="DatafortNameEdit" type="LineEdit" parent="SidePanel"]
 layout_mode = 2
 
 [node name="SubnetPathLabel" type="Label" parent="SidePanel"]
@@ -103,16 +104,13 @@ layout_mode = 2
 layout_mode = 2
 text = "Browse..."
 
-[node name="CityGridPathLabel" type="Label" parent="SidePanel"]
+[node name="SecurityTierLabel" type="Label" parent="SidePanel"]
 layout_mode = 2
-text = "City Grid Path"
+text = "Security Tier"
 
-[node name="CityGridPathEdit" type="LineEdit" parent="SidePanel"]
+[node name="SecurityTierOption" type="OptionButton" parent="SidePanel"]
+unique_name_in_owner = true
 layout_mode = 2
-
-[node name="CityGridBrowseButton" type="Button" parent="SidePanel"]
-layout_mode = 2
-text = "Browse City Grid..."
 
 [node name="LdlCostLabel" type="Label" parent="SidePanel"]
 layout_mode = 2
@@ -147,20 +145,6 @@ max_value = 99.0
 step = 1.0
 value = 5.0
 
-[node name="SecurityTierLabel" type="Label" parent="SidePanel"]
-visible = false
+[node name="DeleteDatafortButton" type="Button" parent="SidePanel"]
 layout_mode = 2
-text = "Security Tier"
-
-[node name="SecurityTierOption" type="OptionButton" parent="SidePanel"]
-visible = false
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="SetSpawnButton" type="Button" parent="SidePanel"]
-layout_mode = 2
-text = "Set as Runner Spawn"
-
-[node name="DeleteHubButton" type="Button" parent="SidePanel"]
-layout_mode = 2
-text = "Delete Hub"
+text = "Delete Datafort"

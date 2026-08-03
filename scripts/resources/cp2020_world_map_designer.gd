@@ -31,6 +31,8 @@ var current_layout: CP2020WorldMapLayout = null
 @onready var hub_name_edit: LineEdit = $SidePanel/HubNameEdit
 @onready var subnet_path_edit: LineEdit = $SidePanel/SubnetPathEdit
 @onready var browse_button: Button = $SidePanel/BrowseButton
+@onready var city_grid_path_edit: LineEdit = $SidePanel/CityGridPathEdit
+@onready var city_grid_browse_button: Button = $SidePanel/CityGridBrowseButton
 @onready var ldl_cost_spinbox: SpinBox = $SidePanel/LdlCostSpinBox
 @onready var security_code_spinbox: SpinBox = $SidePanel/SecurityCodeSpinBox
 @onready var trace_value_spinbox: SpinBox = $SidePanel/TraceValueSpinBox
@@ -41,6 +43,7 @@ var current_layout: CP2020WorldMapLayout = null
 @onready var save_dialog: FileDialog = get_node_or_null("SaveDialog")
 @onready var load_dialog: FileDialog = get_node_or_null("LoadDialog")
 @onready var browse_dialog: FileDialog = get_node_or_null("BrowseDialog")
+@onready var city_grid_browse_dialog: FileDialog = get_node_or_null("CityGridBrowseDialog")
 
 
 func _ready() -> void:
@@ -94,6 +97,12 @@ func _setup_file_dialogs_if_missing() -> void:
 		browse_dialog.access = FileDialog.ACCESS_RESOURCES
 		browse_dialog.add_filter("*.tres", "Subnet Resource")
 		add_child(browse_dialog)
+	if not city_grid_browse_dialog:
+		city_grid_browse_dialog = FileDialog.new()
+		city_grid_browse_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+		city_grid_browse_dialog.access = FileDialog.ACCESS_RESOURCES
+		city_grid_browse_dialog.add_filter("*.tres", "City Grid Layout")
+		add_child(city_grid_browse_dialog)
 
 
 func _setup_signals() -> void:
@@ -137,6 +146,12 @@ func _setup_signals() -> void:
 		load_dialog.file_selected.connect(_on_file_loaded)
 	if browse_dialog and not browse_dialog.file_selected.is_connected(_on_browsed_file):
 		browse_dialog.file_selected.connect(_on_browsed_file)
+	if city_grid_browse_button and not city_grid_browse_button.pressed.is_connected(_on_city_grid_browse_pressed):
+		city_grid_browse_button.pressed.connect(_on_city_grid_browse_pressed)
+	if city_grid_path_edit and not city_grid_path_edit.text_changed.is_connected(_on_city_grid_path_changed):
+		city_grid_path_edit.text_changed.connect(_on_city_grid_path_changed)
+	if city_grid_browse_dialog and not city_grid_browse_dialog.file_selected.is_connected(_on_city_grid_browsed_file):
+		city_grid_browse_dialog.file_selected.connect(_on_city_grid_browsed_file)
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +257,23 @@ func _on_browsed_file(path: String) -> void:
 		queue_redraw()
 
 
+func _on_city_grid_browse_pressed() -> void:
+	if city_grid_browse_dialog:
+		city_grid_browse_dialog.popup_centered(Vector2i(600, 400))
+
+
+func _on_city_grid_path_changed(new_text: String) -> void:
+	if selected_hub:
+		selected_hub.city_grid_path = new_text
+
+
+func _on_city_grid_browsed_file(path: String) -> void:
+	if selected_hub:
+		selected_hub.city_grid_path = path
+		if city_grid_path_edit:
+			city_grid_path_edit.text = path
+
+
 # ---------------------------------------------------------------------------
 # Side-panel (hub editor) callbacks
 # ---------------------------------------------------------------------------
@@ -280,8 +312,8 @@ func _populate_tier_option() -> void:
 	if not security_tier_option:
 		return
 	security_tier_option.clear()
-	for i in range(CP2020WorldHub.SecurityTier.size()):
-		security_tier_option.add_item(String(CP2020WorldHub.TIER_LABELS[i]), i)
+	for i in range(CP2020SecurityTier.Tier.size()):
+		security_tier_option.add_item(String(CP2020SecurityTier.LABELS[i]), i)
 
 
 func _on_set_spawn() -> void:
@@ -318,6 +350,8 @@ func _refresh_side_panel() -> void:
 		hub_name_edit.text = selected_hub.name
 	if subnet_path_edit and subnet_path_edit.text_changed.is_connected(_on_subnet_path_changed):
 		subnet_path_edit.text = selected_hub.subnet_path
+	if city_grid_path_edit and city_grid_path_edit.text_changed.is_connected(_on_city_grid_path_changed):
+		city_grid_path_edit.text = selected_hub.city_grid_path
 	if ldl_cost_spinbox and ldl_cost_spinbox.value_changed.is_connected(_on_ldl_cost_changed):
 		ldl_cost_spinbox.value = selected_hub.ldl_cost
 	if security_code_spinbox and security_code_spinbox.value_changed.is_connected(_on_security_code_changed):
@@ -325,7 +359,7 @@ func _refresh_side_panel() -> void:
 	if trace_value_spinbox and trace_value_spinbox.value_changed.is_connected(_on_trace_value_changed):
 		trace_value_spinbox.value = selected_hub.trace_value
 	if security_tier_option and security_tier_option.item_selected.is_connected(_on_security_tier_changed):
-		var tier := clampi(int(selected_hub.security_tier), 0, CP2020WorldHub.SecurityTier.size() - 1)
+		var tier := clampi(int(selected_hub.security_tier), 0, CP2020SecurityTier.Tier.size() - 1)
 		security_tier_option.select(tier)
 
 
@@ -410,26 +444,22 @@ func _draw() -> void:
 	for y in range(current_layout.grid_rows + 1):
 		draw_line(Vector2(0, GRID_OFFSET_Y + y * CELL), Vector2(total_w, GRID_OFFSET_Y + y * CELL), grid_line, 1.0)
 
-	# Hubs.
+	# Hubs (plain city markers — tier now lives on city-grid datafort icons).
 	var font := _theme_font()
 	for hub in current_layout.hubs:
 		var rect := Rect2(hub.pos.x * CELL, GRID_OFFSET_Y + hub.pos.y * CELL, CELL, CELL)
-		var tier_color: Color = CP2020WorldHub.TIER_COLORS.get(hub.security_tier, Color(0.0, 1.0, 0.9, 1.0))
-		var outline := tier_color
+		var outline := Color(0.0, 1.0, 0.9, 1.0)
 		if hub == selected_hub:
 			outline = Color(1.0, 1.0, 0.0, 1.0)
-		# Filled tier chip.
-		draw_rect(rect, Color(tier_color.r, tier_color.g, tier_color.b, 0.35), true)
+		draw_rect(rect, Color(outline.r, outline.g, outline.b, 0.25), true)
 		draw_rect(rect, outline, false, 2.0)
-		# Tier glyph.
-		var glyph := String(CP2020WorldHub.TIER_GLYPHS.get(hub.security_tier, "?"))
-		draw_string(font, Vector2(hub.pos.x * CELL + 12, GRID_OFFSET_Y + hub.pos.y * CELL + 26), glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, outline)
+		var center := rect.get_center()
+		draw_arc(center, CELL * 0.28, 0, TAU, 20, outline, 2.0)
 		var label_pos := Vector2(hub.pos.x * CELL + 4, GRID_OFFSET_Y + hub.pos.y * CELL + CELL + 2)
 		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, outline)
 		# Spawn hub marker.
 		if hub.name == current_layout.runner_spawn_hub:
-			var center := rect.get_center()
-			draw_arc(center, CELL * 0.35, 0, TAU, 24, Color(0.2, 0.9, 1.0, 1.0), 2.0)
+			draw_arc(center, CELL * 0.42, 0, TAU, 24, Color(0.2, 0.9, 1.0, 1.0), 2.0)
 
 
 func _theme_font() -> Font:

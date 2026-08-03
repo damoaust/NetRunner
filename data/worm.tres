@@ -5,9 +5,7 @@
 [resource]
 script = ExtResource("1_m76mi")
 program_name = "Worm"
-type = 0
 effect_type = 0
-memory_cost = 2
 strength = 5
 price = 660
 description = "Self-replicating intrusion worm. Bypasses code gates with high strength."

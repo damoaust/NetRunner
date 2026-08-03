@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="CP2020CityGridLayout" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_datafort.gd" id="1_lmceq"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_layout.gd" id="2_2bqky"]
+
+[sub_resource type="Resource" id="Resource_ublbk"]
+script = ExtResource("1_lmceq")
+name = "Oz Defence"
+pos = Vector2i(3, 2)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+security_tier = 3
+security_code = 3
+
+[sub_resource type="Resource" id="Resource_7iw8h"]
+script = ExtResource("1_lmceq")
+name = "Harbour Trading"
+pos = Vector2i(7, 2)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+ldl_cost = 60
+
+[sub_resource type="Resource" id="Resource_qacmk"]
+script = ExtResource("1_lmceq")
+name = "Outback Relay"
+pos = Vector2i(11, 2)
+security_tier = 0
+ldl_cost = 70
+security_code = 5
+
+[resource]
+script = ExtResource("2_2bqky")
+city_name = "Sydney"
+dataforts = Array[ExtResource("1_lmceq")]([SubResource("Resource_ublbk"), SubResource("Resource_7iw8h"), SubResource("Resource_qacmk")])
+ldl_entry = Vector2i(9, 5)

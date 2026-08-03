@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="CP2020CityGridLayout" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_datafort.gd" id="1_af45r"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_layout.gd" id="2_xp1i0"]
+
+[sub_resource type="Resource" id="Resource_av3mt"]
+script = ExtResource("1_af45r")
+name = "Lagos Stock Exchange"
+pos = Vector2i(3, 2)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+security_tier = 2
+security_code = 3
+
+[sub_resource type="Resource" id="Resource_k6g7f"]
+script = ExtResource("1_af45r")
+name = "Nigeria GovNet"
+pos = Vector2i(7, 2)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+ldl_cost = 60
+
+[sub_resource type="Resource" id="Resource_sknof"]
+script = ExtResource("1_af45r")
+name = "Petrol Corp"
+pos = Vector2i(11, 2)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+security_tier = 3
+ldl_cost = 70
+security_code = 5
+
+[resource]
+script = ExtResource("2_xp1i0")
+city_name = "Lagos"
+dataforts = Array[ExtResource("1_af45r")]([SubResource("Resource_av3mt"), SubResource("Resource_k6g7f"), SubResource("Resource_sknof")])
+ldl_entry = Vector2i(9, 5)

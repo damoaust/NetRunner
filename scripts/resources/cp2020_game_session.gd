@@ -21,9 +21,8 @@ const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
 var ice_nodes: Array[BlackIce] = []
 
 var current_layout: CP2020DatafortLayout
-# Cached world map layout + resolved tier for the current subnet.
-var _world_map_layout_cache: CP2020WorldMapLayout = null
-var _current_security_tier: int = CP2020WorldHub.SecurityTier.LEVEL_1
+# Resolved tier for the current datafort (set at dive time by the City Grid).
+var _current_security_tier: int = CP2020SecurityTier.Tier.LEVEL_1
 
 # Tier -> default ICE template. Used when a BLACK_ICE tile has no per-tile
 # override (ice_has_override == false). Stats follow CP2020 progression:
@@ -31,11 +30,11 @@ var _current_security_tier: int = CP2020WorldHub.SecurityTier.LEVEL_1
 # L3 = non-fatal anti-personnel (Hellhound, tracing), Black = fatal
 # anti-personnel (Flatline, tracing).
 const TIER_ICE_TEMPLATES: Dictionary = {
-	CP2020WorldHub.SecurityTier.GREY:     {"name": "Watchdog",   "strength": 2, "max_ap": 2, "max_integrity": 3, "traces": false},
-	CP2020WorldHub.SecurityTier.LEVEL_1:  {"name": "Killer 1.0", "strength": 3, "max_ap": 2, "max_integrity": 4, "traces": false},
-	CP2020WorldHub.SecurityTier.LEVEL_2:  {"name": "Killer 2.0", "strength": 4, "max_ap": 3, "max_integrity": 5, "traces": false},
-	CP2020WorldHub.SecurityTier.LEVEL_3:  {"name": "Hellhound",  "strength": 5, "max_ap": 3, "max_integrity": 6, "traces": true},
-	CP2020WorldHub.SecurityTier.BLACK:    {"name": "Flatline",   "strength": 6, "max_ap": 4, "max_integrity": 8, "traces": true},
+	CP2020SecurityTier.Tier.GREY:     {"name": "Watchdog",   "strength": 2, "max_ap": 2, "max_integrity": 3, "traces": false},
+	CP2020SecurityTier.Tier.LEVEL_1:  {"name": "Killer 1.0", "strength": 3, "max_ap": 2, "max_integrity": 4, "traces": false},
+	CP2020SecurityTier.Tier.LEVEL_2:  {"name": "Killer 2.0", "strength": 4, "max_ap": 3, "max_integrity": 5, "traces": false},
+	CP2020SecurityTier.Tier.LEVEL_3:  {"name": "Hellhound",  "strength": 5, "max_ap": 3, "max_integrity": 6, "traces": true},
+	CP2020SecurityTier.Tier.BLACK:    {"name": "Flatline",   "strength": 6, "max_ap": 4, "max_integrity": 8, "traces": true},
 }
 
 func _ready() -> void:
@@ -217,9 +216,15 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				else:
 					log_to_terminal("LDL target '%s' could not be loaded.\n" % dest_path)
 		"return_world_map":
-			log_to_terminal("Returning to the world map via LDL. Connection severed.\n")
-			RunState.accumulated_trace = 0
-			get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+			log_to_terminal("Returning to the City Grid via LDL. Connection preserved.\n")
+			# Trace is preserved — the runner is still in the run, just back up
+			# one map level (Datafort -> City Grid).
+			if RunState.selected_city_grid_path != "":
+				get_tree().change_scene_to_file("res://scenes/ui/cp2020_city_grid.tscn")
+			else:
+				# No city grid recorded (e.g. legacy entry) — fall back to world map.
+				RunState.accumulated_trace = 0
+				get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
@@ -311,7 +316,7 @@ func spawn_black_ice() -> void:
 		return
 
 	var layout_size := Vector2i(current_layout.columns, current_layout.rows)
-	var template: Dictionary = TIER_ICE_TEMPLATES.get(_current_security_tier, TIER_ICE_TEMPLATES[CP2020WorldHub.SecurityTier.LEVEL_1])
+	var template: Dictionary = TIER_ICE_TEMPLATES.get(_current_security_tier, TIER_ICE_TEMPLATES[CP2020SecurityTier.Tier.LEVEL_1])
 	for raw_key in current_layout.grid_tiles.keys():
 		var coord: Vector2i
 		if raw_key is String:
@@ -351,19 +356,14 @@ func spawn_black_ice() -> void:
 			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program_name, coord])
 
 
-# Resolve the security tier for the current subnet by looking up the matching
-# hub in the world map layout. Falls back to LEVEL_1 if not found.
-func _resolve_security_tier(subnet_path: String) -> int:
-	if _world_map_layout_cache == null:
-		var layout_path := "res://data/world_map_default.tres"
-		if ResourceLoader.exists(layout_path):
-			_world_map_layout_cache = ResourceLoader.load(layout_path) as CP2020WorldMapLayout
-	if _world_map_layout_cache == null:
-		return CP2020WorldHub.SecurityTier.LEVEL_1
-	for hub in _world_map_layout_cache.hubs:
-		if hub is CP2020WorldHub and hub.subnet_path == subnet_path:
-			return int(hub.security_tier)
-	return CP2020WorldHub.SecurityTier.LEVEL_1
+# Resolve the security tier for the current datafort. Set at dive time by the
+# City Grid (RunState.selected_security_tier) based on the datafort icon's
+# tier. Falls back to LEVEL_1 if unset (e.g. legacy direct entry).
+func _resolve_security_tier(_subnet_path: String) -> int:
+	var tier: int = int(RunState.selected_security_tier)
+	if tier < 0 or tier >= CP2020SecurityTier.Tier.size():
+		return CP2020SecurityTier.Tier.LEVEL_1
+	return tier
 
 func _end_player_turn() -> void:
 	if not turn_manager or not current_layout or not netrunner:
@@ -414,15 +414,20 @@ func _on_ice_attacked(strength: int) -> void:
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
-	# End of run — clear the accumulated trace difficulty for the next run.
+	# End of run — clear the accumulated trace difficulty + city-grid context.
 	RunState.accumulated_trace = 0
+	RunState.selected_city_grid_path = ""
+	RunState.selected_security_tier = 0
 	# A flatline dumps the runner unceremoniously back to the workbench.
 	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
 
 func _on_jack_out_pressed() -> void:
 	log_to_terminal("Jacking out...\n")
-	# End of run — clear the accumulated trace difficulty for the next run.
+	# Full abort — end of run. Clear the accumulated trace difficulty and the
+	# city-grid/tier context for the next run.
 	RunState.accumulated_trace = 0
+	RunState.selected_city_grid_path = ""
+	RunState.selected_security_tier = 0
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 #func reveal_entry_points() -> void:
 	#if not current_layout:

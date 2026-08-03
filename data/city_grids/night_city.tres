@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="CP2020CityGridLayout" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_datafort.gd" id="1_vo1hh"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_layout.gd" id="2_kjwcc"]
+
+[sub_resource type="Resource" id="Resource_kj5fi"]
+script = ExtResource("1_vo1hh")
+name = "Arasaka Arcology"
+pos = Vector2i(3, 2)
+subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+security_tier = 4
+security_code = 3
+
+[sub_resource type="Resource" id="Resource_rljcg"]
+script = ExtResource("1_vo1hh")
+name = "City Hall"
+pos = Vector2i(7, 2)
+security_tier = 0
+ldl_cost = 60
+
+[sub_resource type="Resource" id="Resource_0jgxg"]
+script = ExtResource("1_vo1hh")
+name = "Lucky 7 Mall"
+pos = Vector2i(11, 2)
+ldl_cost = 70
+security_code = 5
+
+[sub_resource type="Resource" id="Resource_404ch"]
+script = ExtResource("1_vo1hh")
+name = "EBM"
+pos = Vector2i(15, 2)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+security_tier = 3
+ldl_cost = 80
+security_code = 6
+
+[sub_resource type="Resource" id="Resource_6hw6t"]
+script = ExtResource("1_vo1hh")
+name = "NetWatch Office"
+pos = Vector2i(3, 6)
+security_tier = 2
+ldl_cost = 90
+security_code = 7
+
+[resource]
+script = ExtResource("2_kjwcc")
+city_name = "Night City"
+dataforts = Array[ExtResource("1_vo1hh")]([SubResource("Resource_kj5fi"), SubResource("Resource_rljcg"), SubResource("Resource_0jgxg"), SubResource("Resource_404ch"), SubResource("Resource_6hw6t")])
+ldl_entry = Vector2i(9, 5)

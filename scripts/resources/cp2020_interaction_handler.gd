@@ -87,7 +87,7 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 		if tile_data.target_subnet_path != "":
 			var dest_name := _ldl_target_name(tile_data.target_subnet_path)
 			_dynamic_menu.add_item("Travel to %s" % dest_name, 3000)
-		_dynamic_menu.add_item("Return to World Map", 3001)
+		_dynamic_menu.add_item("Return to City Grid", 3001)
 		options_added = true
 
 	if ice_here and tile_data.is_visible:

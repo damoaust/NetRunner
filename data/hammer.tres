@@ -4,11 +4,6 @@
 
 [resource]
 script = ExtResource("1_q7g8w")
-program_name = "Hammer"
-type = 0
-effect_type = 1
-memory_cost = 2
-strength = 4
 price = 400
 description = "Brute-force intrusion program. Hammers down data walls."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

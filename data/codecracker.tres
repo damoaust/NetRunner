@@ -5,9 +5,7 @@
 [resource]
 script = ExtResource("1_ln41q")
 program_name = "Codecracker 1.0"
-type = 0
 effect_type = 0
-memory_cost = 2
 strength = 3
 price = 380
 description = "Bypasses code gates by cracking node security DV."

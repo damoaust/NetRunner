@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="CP2020CityGridLayout" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_datafort.gd" id="1_2lyri"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_layout.gd" id="2_2caua"]
+
+[sub_resource type="Resource" id="Resource_0jat4"]
+script = ExtResource("1_2lyri")
+name = "Mex GovNet"
+pos = Vector2i(3, 2)
+security_tier = 2
+security_code = 3
+
+[sub_resource type="Resource" id="Resource_nx7if"]
+script = ExtResource("1_2lyri")
+name = "Aztec Oil"
+pos = Vector2i(7, 2)
+ldl_cost = 60
+
+[sub_resource type="Resource" id="Resource_y2gev"]
+script = ExtResource("1_2lyri")
+name = "Cartel Relay"
+pos = Vector2i(11, 2)
+subnet_path = "res://scenes/forts/london_subnet.tres"
+security_tier = 4
+ldl_cost = 70
+security_code = 5
+
+[resource]
+script = ExtResource("2_2caua")
+city_name = "Mexico City"
+dataforts = Array[ExtResource("1_2lyri")]([SubResource("Resource_0jat4"), SubResource("Resource_nx7if"), SubResource("Resource_y2gev")])
+ldl_entry = Vector2i(9, 5)

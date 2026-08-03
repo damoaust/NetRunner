@@ -458,7 +458,7 @@ func build_ldl_panel() -> void:
 	ldl_panel.add_child(clear_btn)
 
 	var hint = Label.new()
-	hint.text = "Empty target = 'Return to World Map' only.\nSet a .tres to also offer 'Travel to <datafort>'."
+	hint.text = "Empty target = 'Return to City Grid' only.\nSet a .tres to also offer 'Travel to <datafort>'."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ldl_panel.add_child(hint)
 
