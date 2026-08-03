@@ -52,6 +52,16 @@ var buy_deck_button: Button
 var buy_program_button: Button
 var sell_loot_button: Button
 var sell_file_button: Button
+# --- Purchase Unlocks window (permanent MetaState blueprint unlocks) ---
+var unlock_button: Button
+var unlock_window: Window
+var unlock_list: ItemList
+var unlock_buy_button: Button
+var unlock_credits_label: Label
+var _selected_unlock_idx: int = -1
+var _unlockable_decks: Array[String] = []
+var _unlockable_programs: Array[String] = []
+var _unlock_scanned: bool = false
 var _selected_buy_deck_idx: int = -1
 var _selected_buy_program_idx: int = -1
 var _selected_sell_loot_idx: int = -1
@@ -564,6 +574,13 @@ func _build_shop_column() -> Control:
 	col.add_child(_make_header_label("◢ SHOP ◣"))
 	col.add_child(_make_rule())
 
+	# PURCHASE UNLOCKS (opens a separate window — permanent catalogue unlocks)
+	unlock_button = _make_button("PURCHASE UNLOCKS", COL_HEADER)
+	unlock_button.pressed.connect(_open_unlock_window)
+	col.add_child(unlock_button)
+
+	col.add_child(_make_rule())
+
 	# BUY DECKS
 	col.add_child(_make_header_label("BUY DECKS"))
 	shop_buy_decks_list = ItemList.new()
@@ -800,6 +817,189 @@ func _on_sell_file_pressed() -> void:
 		_show_message("Fenced %s for %d eb." % [file.file_name, proceeds], COL_GREEN)
 	else:
 		_show_message("Could not sell that file.")
+
+# ---------------------------------------------------------------------------
+# Purchase Unlocks window — permanent MetaState blueprint unlocks.
+# Two-tier shop: buying a blueprint adds it to the persistent catalogue
+# (survives death); the existing BUY DECKS / BUY PROGRAMS panels then let you
+# buy-to-own it for the current life.
+# ---------------------------------------------------------------------------
+func _scan_data_catalogue() -> void:
+	if _unlock_scanned:
+		return
+	_unlock_scanned = true
+	_unlockable_decks.clear()
+	_unlockable_programs.clear()
+	var dir := DirAccess.open("res://data")
+	if dir == null:
+		push_error("Workbench: could not open res://data for unlock scan.")
+		return
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir() and fname.ends_with(".tres"):
+			var path := "res://data/" + fname
+			var res := load(path)
+			if res is Cyberdeck:
+				_unlockable_decks.append(path)
+			elif res is NetProgram:
+				_unlockable_programs.append(path)
+		fname = dir.get_next()
+	dir.list_dir_end()
+
+func _open_unlock_window() -> void:
+	_scan_data_catalogue()
+	if unlock_window == null:
+		_build_unlock_window()
+	_refresh_unlock_list()
+	add_child(unlock_window)
+	unlock_window.popup_centered(Vector2i(420, 520))
+
+func _build_unlock_window() -> void:
+	unlock_window = Window.new()
+	unlock_window.title = "◢ PURCHASE UNLOCKS ◣"
+	unlock_window.min_size = Vector2i(360, 420)
+	unlock_window.wrap_controls = true
+	unlock_window.close_requested.connect(_close_unlock_window)
+	# Transparent-ish backdrop matching the workbench theme.
+	unlock_window.add_theme_color_override("embedded_border_bg", COL_BG)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	unlock_window.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	margin.add_child(col)
+
+	col.add_child(_make_header_label("◢ PURCHASE UNLOCKS ◣", true))
+	unlock_credits_label = _make_label("CREDITS: 0 eb", COL_AMBER)
+	unlock_credits_label.add_theme_font_size_override("font_size", 18)
+	col.add_child(unlock_credits_label)
+	col.add_child(_make_rule())
+
+	unlock_list = ItemList.new()
+	unlock_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	unlock_list.add_theme_stylebox_override("panel", _transparent_style())
+	unlock_list.add_theme_color_override("font_color", COL_TEXT)
+	unlock_list.item_selected.connect(_on_unlock_selected)
+	col.add_child(unlock_list)
+
+	unlock_buy_button = _make_button("UNLOCK", COL_HEADER)
+	unlock_buy_button.pressed.connect(_on_unlock_pressed)
+	unlock_buy_button.disabled = true
+	col.add_child(unlock_buy_button)
+
+	var close_btn := _make_button("CLOSE", COL_DIM)
+	close_btn.pressed.connect(_close_unlock_window)
+	col.add_child(close_btn)
+
+func _close_unlock_window() -> void:
+	if unlock_window != null and is_instance_valid(unlock_window):
+		unlock_window.hide()
+		if unlock_window.get_parent() != null:
+			unlock_window.get_parent().remove_child(unlock_window)
+
+func _refresh_unlock_list() -> void:
+	unlock_list.clear()
+	_selected_unlock_idx = -1
+	unlock_buy_button.disabled = true
+	if unlock_credits_label:
+		unlock_credits_label.text = "CREDITS: %d eb" % RunState.credits
+	# Decks first, then programs. Metadata: {"path": path, "is_deck": bool}.
+	unlock_list.add_item("-- DECKS --", null, false)
+	unlock_list.set_item_custom_fg_color(0, COL_HEADER)
+	unlock_list.set_item_disabled(0, true)
+	for path in _unlockable_decks:
+		_add_unlock_row(path, true)
+	unlock_list.add_item("-- PROGRAMS --", null, false)
+	unlock_list.set_item_custom_fg_color(unlock_list.item_count - 1, COL_HEADER)
+	unlock_list.set_item_disabled(unlock_list.item_count - 1, true)
+	for path in _unlockable_programs:
+		_add_unlock_row(path, false)
+
+func _add_unlock_row(path: String, is_deck: bool) -> void:
+	var res = load(path)
+	if res == null:
+		return
+	var name_txt: String = ""
+	var cost: int = 0
+	if is_deck:
+		var deck := res as Cyberdeck
+		if deck == null:
+			return
+		name_txt = deck.deck_name
+		cost = deck.price
+	else:
+		var prog := res as NetProgram
+		if prog == null:
+			return
+		name_txt = prog.program_name
+		cost = prog.price
+	var already := false
+	if is_deck:
+		already = MetaState.has_deck(path)
+	else:
+		already = MetaState.has_program(path)
+	if already:
+		var idxu := unlock_list.add_item("%s — ✓ UNLOCKED" % name_txt, null, false)
+		unlock_list.set_item_metadata(idxu, {"path": path, "is_deck": is_deck, "cost": cost})
+		unlock_list.set_item_disabled(idxu, true)
+		unlock_list.set_item_custom_fg_color(idxu, COL_GREY)
+		return
+	var idx := unlock_list.add_item("%s — %d eb" % [name_txt, cost], null, false)
+	unlock_list.set_item_metadata(idx, {"path": path, "is_deck": is_deck, "cost": cost})
+	if RunState.credits < cost:
+		unlock_list.set_item_disabled(idx, true)
+		unlock_list.set_item_custom_fg_color(idx, COL_GREY)
+
+func _on_unlock_selected(index: int) -> void:
+	if unlock_list.is_item_disabled(index):
+		# Disabled rows shouldn't drive the button; reset selection cleanly.
+		_selected_unlock_idx = -1
+		unlock_buy_button.disabled = true
+		return
+	_selected_unlock_idx = index
+	unlock_buy_button.disabled = false
+
+func _on_unlock_pressed() -> void:
+	if _selected_unlock_idx < 0 or _selected_unlock_idx >= unlock_list.item_count:
+		return
+	var meta: Dictionary = unlock_list.get_item_metadata(_selected_unlock_idx)
+	var path: String = meta.get("path", "")
+	var is_deck: bool = meta.get("is_deck", false)
+	var cost: int = meta.get("cost", 0)
+	if path == "":
+		return
+	if RunState.credits < cost:
+		_show_message("Insufficient credits (%d eb)." % cost)
+		return
+	RunState.credits -= cost
+	var unlocked := false
+	var item_name := ""
+	if is_deck:
+		var deck := load(path) as Cyberdeck
+		if deck != null:
+			item_name = deck.deck_name
+			MetaState.unlock_deck(path)
+			unlocked = true
+	else:
+		var prog := load(path) as NetProgram
+		if prog != null:
+			item_name = prog.program_name
+			MetaState.unlock_program(path)
+			unlocked = true
+	if unlocked:
+		_refresh_unlock_list()
+		_refresh_shop()
+		_refresh_credits()
+		_show_message("Unlocked %s blueprint for %d eb." % [item_name, cost], COL_GREEN)
+	else:
+		_show_message("Unlock failed: %s." % path)
 
 # ---------------------------------------------------------------------------
 # UI helpers

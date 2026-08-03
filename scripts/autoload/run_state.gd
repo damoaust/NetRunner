@@ -4,7 +4,9 @@ extends Node
 # on permadeath. Set at the workbench, read by the gameplay session.
 
 # --- Starting gear constants (mirror MetaState's starting catalogue) ---
-const STARTING_CREDITS: int = 1000
+# 0 eb: credits must be earned from runs (sell loot/files) before buying
+# unlocks/upgrades, so a fresh life can't farm persistent MetaState unlocks.
+const STARTING_CREDITS: int = 0
 const STARTING_DECK_PATH: String = "res://data/starting_deck.tres"
 const STARTING_PROGRAM_PATHS: Array[String] = [
 	"res://data/codecracker.tres",
