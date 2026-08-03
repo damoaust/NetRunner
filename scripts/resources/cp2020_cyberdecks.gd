@@ -6,6 +6,7 @@ extends Resource
 @export var speed_bonus: int = 2
 @export var data_wall_strength: int = 6 # Added Data Wall Strength property
 @export var interface_rank: int = 6 # Netrunner's interface skill when using this deck
+@export var price: int = 0 # Cost in Eurodollars (hub shop)
 @export var installed_programs: Array[NetProgram] = []
 
 func get_used_mu() -> int:

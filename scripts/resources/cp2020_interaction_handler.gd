@@ -175,6 +175,20 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				_dynamic_menu.add_item(menu_label, prog_id)
 				options_added = true
 
+	elif tile_data.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
+		# Lootable memory unit — offer a "Download Files" action when the tile
+		# is visible, not already looted, has loot, and is adjacent to (or
+		# the same as) the netrunner's tile. Looting requires standing next
+		# to the memory unit; adjacency is enforced ONLY for this branch.
+		if tile_data.is_visible and not tile_data.is_looted:
+			var has_loot: bool = tile_data.loot_programs.size() > 0 or tile_data.loot_credits > 0
+			var dx: int = abs(target_coord.x - netrunner_pos.x)
+			var dy: int = abs(target_coord.y - netrunner_pos.y)
+			var is_adjacent: bool = (dx + dy) <= 1
+			if has_loot and is_adjacent:
+				_dynamic_menu.add_item("Download Files", 6000)
+				options_added = true
+
 	print("DEBUG: options_added=", int(options_added), " gate_STR=", tile_data.strength_str, " is_unlocked=", tile_data.is_unlocked)
 
 	if not options_added:
@@ -219,6 +233,11 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 		if idx >= 0 and idx < available_programs.size():
 			var prog = available_programs[idx] as NetProgram
 			action_triggered.emit("crash_cpu", target_coord, prog)
+		return
+	# Loot a MEMORY_UNIT tile — single fixed id 6000 (checked before the
+	# 1000+i program range to avoid collision).
+	if id == 6000:
+		action_triggered.emit("loot_tile", target_coord, null)
 		return
 	if id >= 1000:
 		var idx = id - 1000

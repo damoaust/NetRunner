@@ -21,6 +21,7 @@ signal flatlined
 
 var current_health: int = 20
 var raised_shield: NetProgram = null
+var interface_rank: int = 6  # Netrunner's INT for initiative (set from cyberdeck)
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_layout: CP2020DatafortLayout

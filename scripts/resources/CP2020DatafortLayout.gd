@@ -4,8 +4,8 @@ extends Resource
 @export var fort_name: String = "Unnamed Datafort"
 @export var rows: int = 15
 @export var columns: int = 15
-@export var cpu: int = 5
-@export var int_rating: int = 15
+@export var cpu: int = 5   # DEPRECATED: per-CPU INT is now fixed at 3 (CP2020 PnP). Kept for .tres compat.
+@export var int_rating: int = 15  # DEPRECATED: total INT is now 3 * active CPU count. Kept for .tres compat.
 @export var datawall_strength: int = 5
 
 # Layout-level resident programs the datafort's CPUs can run against an

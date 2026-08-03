@@ -47,9 +47,28 @@ extends Resource
 # Must be duplicated at spawn time to avoid mutating cached .tres resources.
 @export var npc_programs: Array[NetProgram] = []
 
-# --- Per-CPU fields (CONTROL_NODE tiles). cpu_int = 0 means "use the layout
-# default" (layout.cpu). cpu_crashed_turns > 0 means the CPU is currently
-# crashed by a Krash anti-system program and contributes no INT / extra
-# actions until it reboots. Reset to 0 on every load_subnet (fog reset loop).---
+# --- Per-CPU fields (CONTROL_NODE tiles). DEPRECATED: per CP2020 PnP rules
+# each CPU contributes a flat 3 INT (see CP2020Datafort.INT_PER_CPU). The
+# cpu_int field is kept for backward compatibility with existing .tres files
+# but is no longer used in logic. cpu_crashed_turns > 0 means the CPU is
+# currently crashed by a Krash anti-system program and contributes no INT /
+# actions / MU until it reboots. Reset to 0 on every load_subnet (fog reset).---
 @export var cpu_int: int = 0
 @export var cpu_crashed_turns: int = 0
+
+# --- Loot (MEMORY_UNIT tiles) ---
+# Programs stored on this tile that a netrunner can download/loot during a
+# dive. Entries are shared cached .tres references; the consumer (run
+# inventory) is responsible for duplicate()ing them when moving them into the
+# runner's deck so cached resources aren't mutated across scenes.
+@export var loot_programs: Array[NetProgram] = []
+# Lootable bonus credits stashed on this tile. This is distinct from
+# reward_credits above, which is legacy/dead data that no live logic reads.
+# loot_credits is the authoritative "lootable credits" value for the
+# rogue-like loot-and-sell loop; reward_credits is kept only for backward
+# compatibility with existing .tres files.
+@export var loot_credits: int = 0
+# Runtime flag: true once the runner has looted this tile. Reset to false on
+# every load_subnet (same fog-reset pattern as is_explored / is_visible /
+# cpu_crashed_turns) because ResourceLoader returns a cached instance.
+@export var is_looted: bool = false

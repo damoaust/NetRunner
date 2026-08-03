@@ -42,6 +42,18 @@ var clear_button: Button
 var jack_button: Button
 var mu_message: Label
 
+# --- Shop panel references (built in code) ---
+var credits_label: Label
+var shop_buy_decks_list: ItemList
+var shop_buy_programs_list: ItemList
+var shop_sell_loot_list: ItemList
+var buy_deck_button: Button
+var buy_program_button: Button
+var sell_loot_button: Button
+var _selected_buy_deck_idx: int = -1
+var _selected_buy_program_idx: int = -1
+var _selected_sell_loot_idx: int = -1
+
 # Human-readable tags for each program effect type.
 const EFFECT_TAGS: Dictionary = {
 	NetProgram.EffectType.BYPASS_GATE: "Intrusion",
@@ -90,14 +102,21 @@ const COL_RED := Color(1.0, 0.25, 0.25)
 const COL_GREY := Color(0.38, 0.45, 0.42)
 
 func _ready() -> void:
+	# First launch / after permadeath: ensure a life is in progress with
+	# starting gear before building the loadout.
+	if RunState.owned_decks.is_empty():
+		RunState.start_new_life()
 	_build_ui()
-	deck_selector.clear()
-	for deck in available_decks:
-		deck_selector.add_item(deck.deck_name)
-	if not available_decks.is_empty():
-		active_deck = available_decks[0]
-		deck_selector.select(0)
+	# Default active deck to the previously equipped deck if still owned,
+	# else the first owned deck.
+	var decks := _owned_decks()
+	if RunState.selected_deck != null and decks.has(RunState.selected_deck):
+		active_deck = RunState.selected_deck
+	elif not decks.is_empty():
+		active_deck = decks[0]
+	_refresh_deck_selector()
 	update_deck_ui()
+	_refresh_shop()
 
 # ---------------------------------------------------------------------------
 # UI construction
@@ -116,8 +135,16 @@ func _build_ui() -> void:
 	root.add_theme_constant_override("separation", 12)
 	margin.add_child(root)
 
-	# Title bar.
-	root.add_child(_make_header_label("◢ CYBERDECK WORKBENCH ◣", true))
+	# Title bar + credits readout.
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 12)
+	var title := _make_header_label("◢ CYBERDECK WORKBENCH ◣", true)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title)
+	credits_label = _make_label("CREDITS: 0 eb", COL_AMBER)
+	credits_label.add_theme_font_size_override("font_size", 20)
+	title_row.add_child(credits_label)
+	root.add_child(title_row)
 
 	var main := HBoxContainer.new()
 	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -132,6 +159,9 @@ func _build_ui() -> void:
 
 	# --- RIGHT: library + filter + detail ---
 	main.add_child(_build_library_column())
+
+	# --- FAR RIGHT: shop (buy catalogue + sell loot) ---
+	main.add_child(_build_shop_column())
 
 	# MU overflow / status message + Jack In button row.
 	var footer := HBoxContainer.new()
@@ -347,7 +377,7 @@ func _refresh_library() -> void:
 	library_list.clear()
 	var free_mu := active_deck.max_mu - active_deck.get_used_mu()
 	var filter_et = _filter_effects[filter_option.selected] if filter_option else null
-	for prog in available_programs:
+	for prog in _owned_programs():
 		if not prog:
 			continue
 		if filter_et != null and prog.effect_type != filter_et:
@@ -411,8 +441,10 @@ func _show_detail(prog: NetProgram) -> void:
 # Actions
 # ---------------------------------------------------------------------------
 func _on_deck_selector_item_selected(index: int) -> void:
-	if index >= 0 and index < available_decks.size():
-		active_deck = available_decks[index]
+	var decks := _owned_decks()
+	if index >= 0 and index < decks.size():
+		active_deck = decks[index]
+		RunState.equip_deck(active_deck)
 		update_deck_ui()
 
 func _on_filter_changed(_index: int) -> void:
@@ -485,6 +517,239 @@ func _on_button_pressed() -> void:
 	print("Initiating neural link with %s... Jacking into the Net!" % active_deck.deck_name)
 	RunState.selected_deck = active_deck
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+
+# ---------------------------------------------------------------------------
+# Loadout source helpers (owned gear this life, Inspector arrays as fallback)
+# ---------------------------------------------------------------------------
+func _owned_decks() -> Array[Cyberdeck]:
+	if not RunState.owned_decks.is_empty():
+		return RunState.owned_decks
+	return available_decks
+
+func _owned_programs() -> Array[NetProgram]:
+	if not RunState.owned_programs.is_empty():
+		return RunState.owned_programs
+	return available_programs
+
+func _refresh_deck_selector() -> void:
+	deck_selector.clear()
+	var decks := _owned_decks()
+	var active_idx := -1
+	for i in range(decks.size()):
+		var d: Cyberdeck = decks[i]
+		if d == null:
+			continue
+		deck_selector.add_item(d.deck_name)
+		if d == active_deck:
+			active_idx = deck_selector.item_count - 1
+	if active_idx >= 0:
+		deck_selector.select(active_idx)
+	elif deck_selector.item_count > 0:
+		deck_selector.select(0)
+
+# ---------------------------------------------------------------------------
+# Shop panel
+# ---------------------------------------------------------------------------
+func _build_shop_column() -> Control:
+	var panel := _styled_panel()
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_stretch_ratio = 1.1
+	panel.add_child(col)
+
+	col.add_child(_make_header_label("◢ SHOP ◣"))
+	col.add_child(_make_rule())
+
+	# BUY DECKS
+	col.add_child(_make_header_label("BUY DECKS"))
+	shop_buy_decks_list = ItemList.new()
+	shop_buy_decks_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	shop_buy_decks_list.item_selected.connect(_on_buy_deck_selected)
+	shop_buy_decks_list.add_theme_stylebox_override("panel", _transparent_style())
+	shop_buy_decks_list.add_theme_color_override("font_color", COL_TEXT)
+	col.add_child(shop_buy_decks_list)
+	buy_deck_button = _make_button("BUY DECK", COL_GREEN)
+	buy_deck_button.pressed.connect(_on_buy_deck_pressed)
+	col.add_child(buy_deck_button)
+
+	col.add_child(_make_rule())
+
+	# BUY PROGRAMS
+	col.add_child(_make_header_label("BUY PROGRAMS"))
+	shop_buy_programs_list = ItemList.new()
+	shop_buy_programs_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	shop_buy_programs_list.item_selected.connect(_on_buy_program_selected)
+	shop_buy_programs_list.add_theme_stylebox_override("panel", _transparent_style())
+	shop_buy_programs_list.add_theme_color_override("font_color", COL_TEXT)
+	col.add_child(shop_buy_programs_list)
+	buy_program_button = _make_button("BUY PROGRAM", COL_GREEN)
+	buy_program_button.pressed.connect(_on_buy_program_pressed)
+	col.add_child(buy_program_button)
+
+	col.add_child(_make_rule())
+
+	# SELL LOOT
+	col.add_child(_make_header_label("SELL LOOT"))
+	shop_sell_loot_list = ItemList.new()
+	shop_sell_loot_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	shop_sell_loot_list.item_selected.connect(_on_sell_loot_selected)
+	shop_sell_loot_list.add_theme_stylebox_override("panel", _transparent_style())
+	shop_sell_loot_list.add_theme_color_override("font_color", COL_TEXT)
+	col.add_child(shop_sell_loot_list)
+	sell_loot_button = _make_button("SELL", COL_AMBER)
+	sell_loot_button.pressed.connect(_on_sell_loot_pressed)
+	col.add_child(sell_loot_button)
+
+	return panel
+
+func _refresh_credits() -> void:
+	if credits_label:
+		credits_label.text = "CREDITS: %d eb" % RunState.credits
+
+func _refresh_shop() -> void:
+	_refresh_shop_buy_decks()
+	_refresh_shop_buy_programs()
+	_refresh_shop_sell_loot()
+	_refresh_credits()
+
+func _refresh_shop_buy_decks() -> void:
+	shop_buy_decks_list.clear()
+	_selected_buy_deck_idx = -1
+	if MetaState.data == null:
+		return
+	for path in MetaState.data.unlocked_decks:
+		var deck := load(path) as Cyberdeck
+		if deck == null:
+			continue
+		if _is_deck_owned(deck, path):
+			continue
+		shop_buy_decks_list.add_item("%s — %d eb" % [deck.deck_name, deck.price], null, false)
+		var idx := shop_buy_decks_list.item_count - 1
+		shop_buy_decks_list.set_item_metadata(idx, deck)
+		if RunState.credits < deck.price:
+			shop_buy_decks_list.set_item_disabled(idx, true)
+			shop_buy_decks_list.set_item_custom_fg_color(idx, COL_GREY)
+
+func _refresh_shop_buy_programs() -> void:
+	shop_buy_programs_list.clear()
+	_selected_buy_program_idx = -1
+	if MetaState.data == null:
+		return
+	for path in MetaState.data.unlocked_programs:
+		var prog := load(path) as NetProgram
+		if prog == null:
+			continue
+		if _is_program_owned(prog, path):
+			continue
+		var tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
+		shop_buy_programs_list.add_item("%s [%s] %d MU — %d eb" % [prog.program_name, tag, prog.memory_cost, prog.price], null, false)
+		var idx := shop_buy_programs_list.item_count - 1
+		shop_buy_programs_list.set_item_metadata(idx, prog)
+		if RunState.credits < prog.price:
+			shop_buy_programs_list.set_item_disabled(idx, true)
+			shop_buy_programs_list.set_item_custom_fg_color(idx, COL_GREY)
+
+func _refresh_shop_sell_loot() -> void:
+	shop_sell_loot_list.clear()
+	_selected_sell_loot_idx = -1
+	if RunState.loot.is_empty():
+		shop_sell_loot_list.add_item("No loot to fence — jack in and download some files.", null, false)
+		shop_sell_loot_list.set_item_custom_fg_color(0, COL_GREY)
+		shop_sell_loot_list.set_item_disabled(0, true)
+		return
+	for prog in RunState.loot:
+		if prog == null:
+			continue
+		var sell_price := int(prog.price * 0.5)
+		var tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
+		shop_sell_loot_list.add_item("%s [%s] — %d eb" % [prog.program_name, tag, sell_price], null, false)
+		var idx := shop_sell_loot_list.item_count - 1
+		shop_sell_loot_list.set_item_metadata(idx, prog)
+
+# Owned-vs-catalogue comparison. Owned items are duplicates whose
+# resource_path may be cleared by duplicate(), so fall back to matching by
+# name when the owned item's path is empty.
+func _is_deck_owned(cat_deck: Cyberdeck, cat_path: String) -> bool:
+	for d in RunState.owned_decks:
+		if d == null:
+			continue
+		if cat_path != "" and d.resource_path == cat_path:
+			return true
+		if d.resource_path == "" and cat_deck.deck_name != "" and d.deck_name == cat_deck.deck_name:
+			return true
+	return false
+
+func _is_program_owned(cat_prog: NetProgram, cat_path: String) -> bool:
+	for p in RunState.owned_programs:
+		if p == null:
+			continue
+		if cat_path != "" and p.resource_path == cat_path:
+			return true
+		if p.resource_path == "" and cat_prog.program_name != "" and p.program_name == cat_prog.program_name:
+			return true
+	return false
+
+func _after_transaction() -> void:
+	_refresh_shop()
+	_refresh_deck_selector()
+	update_deck_ui()
+
+# --- Shop signal handlers ---
+func _on_buy_deck_selected(index: int) -> void:
+	_selected_buy_deck_idx = index
+
+func _on_buy_deck_pressed() -> void:
+	if _selected_buy_deck_idx < 0 or _selected_buy_deck_idx >= shop_buy_decks_list.item_count:
+		_show_message("Select a deck to buy.", COL_AMBER)
+		return
+	var deck := shop_buy_decks_list.get_item_metadata(_selected_buy_deck_idx) as Cyberdeck
+	if deck == null:
+		return
+	if RunState.credits < deck.price:
+		_show_message("Insufficient credits for %s (%d eb)." % [deck.deck_name, deck.price])
+		return
+	if RunState.buy_deck(deck):
+		_after_transaction()
+		_show_message("Purchased %s for %d eb." % [deck.deck_name, deck.price], COL_GREEN)
+	else:
+		_show_message("Purchase failed: %s." % deck.deck_name)
+
+func _on_buy_program_selected(index: int) -> void:
+	_selected_buy_program_idx = index
+
+func _on_buy_program_pressed() -> void:
+	if _selected_buy_program_idx < 0 or _selected_buy_program_idx >= shop_buy_programs_list.item_count:
+		_show_message("Select a program to buy.", COL_AMBER)
+		return
+	var prog := shop_buy_programs_list.get_item_metadata(_selected_buy_program_idx) as NetProgram
+	if prog == null:
+		return
+	if RunState.credits < prog.price:
+		_show_message("Insufficient credits for %s (%d eb)." % [prog.program_name, prog.price])
+		return
+	if RunState.buy_program(prog):
+		_after_transaction()
+		_show_message("Purchased %s for %d eb." % [prog.program_name, prog.price], COL_GREEN)
+	else:
+		_show_message("Purchase failed: %s." % prog.program_name)
+
+func _on_sell_loot_selected(index: int) -> void:
+	_selected_sell_loot_idx = index
+
+func _on_sell_loot_pressed() -> void:
+	if _selected_sell_loot_idx < 0 or _selected_sell_loot_idx >= shop_sell_loot_list.item_count:
+		_show_message("Select loot to sell.", COL_AMBER)
+		return
+	var prog := shop_sell_loot_list.get_item_metadata(_selected_sell_loot_idx) as NetProgram
+	if prog == null:
+		return
+	var proceeds := RunState.sell_loot_program(prog)
+	if proceeds > 0:
+		_after_transaction()
+		_show_message("Fenced %s for %d eb." % [prog.program_name, proceeds], COL_GREEN)
+	else:
+		_show_message("Could not sell that item.")
 
 # ---------------------------------------------------------------------------
 # UI helpers

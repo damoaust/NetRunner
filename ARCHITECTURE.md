@@ -46,7 +46,9 @@ netrunner-v-0.006/
 │       └── CyberdeckWorkbench.tscn         # Deck/program loadout UI
 └── scripts/
     ├── autoload/
-    │   └── run_state.gd              # RunState singleton — cross-scene run state
+    │   ├── run_state.gd              # RunState singleton — cross-scene PER-LIFE run state (lost on death)
+    │   ├── meta_state.gd             # MetaState singleton — PERSISTENT vendor catalogue (survives death)
+    │   └── meta_state_data.gd        # MetaStateData Resource (unlocked_decks/programs + run history)
     ├── resources/                    # Core gameplay resources, nodes & controllers
     │   ├── CP2020DatafortLayout.gd   # Datafort grid layout Resource definition
     │   ├── CP2020TileData.gd         # Individual grid tile state Resource (incl. LDL fields)
@@ -73,19 +75,24 @@ netrunner-v-0.006/
     │   ├── cp2020_turn_manager.gd    # Turn state controller
     │   └── cp2020_world_map_designer.gd # @tool world map authoring tool
     └── ui/
-        └── cyberdeck_workbench.gd    # Cyberdeck loadout & program management UI script
+        ├── cyberdeck_workbench.gd    # Hub: Cyberdeck loadout + Buy/Sell shop UI script
+        └── game_over.gd              # GameOver screen script (permadeath → New Life)
 ```
 
 ---
 
 ## 3. Core Architecture & Component Diagram
 
-The gameplay loop is built around a decoupled component architecture. Cross-scene state lives in the `RunState` autoload singleton. The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
+The game is structured as a **permadeath rogue-like**. The gameplay loop is built around a decoupled component architecture with **two autoload singleons**: `RunState` (per-life state, LOST on death) and `MetaState` (persistent vendor catalogue, SURVIVES death). The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench (hub)** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
+
+**Rogue-like meta-loop:** New life → hub (starting gear + 1000 eb) → run (loot programs from `MEMORY_UNIT` tiles, manage accumulated trace) → jack out (only if trace < `BUSTED_THRESHOLD`, else **busted** = permadeath) → return to hub, sell loot, buy upgrades from the catalogue → push deeper next run → **die** (flatline in a datafort OR busted on jack-out) → `GameOver` scene → **New Life** (fresh runner, but the `MetaState` catalogue of discovered decks/programs persists across lives, saved to `user://`).
 
 ```mermaid
 graph TD
-    RunState["RunState (autoload: selected_deck, selected_subnet_path, selected_city_grid_path, selected_security_tier, credits, accumulated_trace)"]
-    Workbench["CyberdeckWorkbench"]
+    RunState["RunState (autoload: PER-LIFE — selected_deck, credits, accumulated_trace, loot, owned_decks, owned_programs)"]
+    MetaState["MetaState (autoload: PERSISTENT — unlocked_decks, unlocked_programs, run_history; saved to user://)"]
+    Workbench["CyberdeckWorkbench (hub: loadout + Buy/Sell shop)"]
+    GameOver["GameOver (permadeath screen → New Life)"]
     WorldMap["CP2020WorldNetMap (cp_2020_world_net_map.gd)"]
     CityGrid["CP2020CityGrid (cp2020_city_grid.gd)"]
     GameSession["GameSession (cp2020_game_session.gd)"]
@@ -114,16 +121,22 @@ graph TD
     NpcNetrunner -->|destroyed| GameSession
     GameSession -->|travel_ldl: load_subnet (preserve trace)| GameSession
     GameSession -->|return_world_map: change_scene to City Grid (preserve trace)| CityGrid
-    GameSession -->|jack_out / flatline: reset trace + clear context + change_scene| WorldMap
-    BlackIce -->|flatline -> change_scene| Workbench
+    GameSession -->|loot_tile: Download MEMORY_UNIT → RunState.loot + MetaState.unlock| RunState
+    GameSession -->|jack_out (trace < BUSTED_THRESHOLD): reset trace + clear context + change_scene| WorldMap
+    GameSession -->|jack_out (trace >= BUSTED_THRESHOLD): BUSTED permadeath → record_run + change_scene| GameOver
+    GameSession -->|flatline: FLATLINED permadeath → record_run + change_scene| GameOver
+    GameOver -->|New Life button: RunState.start_new_life() + change_scene| Workbench
+    Workbench -->|Buy/Sell: MetaState catalogue ↔ RunState.credits/owned_*/loot| MetaState
 ```
+
+> **Permadeath routing:** both flatline and busted route to the `GameOver` scene, which records the run into `MetaState` and offers a "New Life" button. `New Life` calls `RunState.start_new_life()` (full wipe to starting gear) and reloads the workbench. The `MetaState` catalogue is untouched — discovered decks/programs remain purchasable in the next life.
 
 ### Scene Flow (3-Level Map Model)
 
-1. **CyberdeckWorkbench** — pick a deck and load programs, then `Jack In`.
+1. **CyberdeckWorkbench (hub)** — pick an owned deck, load programs, and use the **Shop** (buy decks/programs from the `MetaState` catalogue, sell loot from `RunState.loot`), then `Jack In`.
 2. **World Map** (`cp2020_world_net_map.tscn`) — geographic grid of regions + city markers. Move between cities; hack/pay LDL to build trace. Right-click a city → **ENTER City Grid** (loads that city's `CP2020CityGridLayout` via `hub.city_grid_path`).
 3. **City Grid** (`cp2020_city_grid.tscn`) — per-city grid of datafort icons (security-tier coded). Runner enters at the LDL entry tile, moves 5/turn. **Stepping onto a datafort icon auto-dives** into its subnet (no Hack/Pay LDL here — that's world-map only). Right-click the runner's tile to **Return to World Map** (resets trace).
-4. **Gameplay / Datafort** (`cp2020_gameplay.tscn`) — explore the datafort with fog of war, fight ICE, use programs. LDL-link tiles travel to other dataforts (preserve trace) or **Return to City Grid** (preserve trace — still in the run). Jack-out / flatline returns to the World Map and resets trace (full abort).
+4. **Gameplay / Datafort** (`cp2020_gameplay.tscn`) — explore the datafort with fog of war, fight ICE, use programs, **loot `MEMORY_UNIT` tiles** (Download Files). LDL-link tiles travel to other dataforts (preserve trace) or **Return to City Grid** (preserve trace — still in the run). Jack-out with trace < `BUSTED_THRESHOLD` returns to the World Map (reset trace, keep loot); jack-out at trace ≥ threshold = **Busted (permadeath)**. Flatline = **permadeath**. Both route to the `GameOver` scene → **New Life** restarts at the hub with starting gear (`MetaState` catalogue persists).
 
 ---
 
@@ -137,7 +150,8 @@ Represents a grid map layout for a Datafort.
   - `fort_name: String`
   - `rows: int` (default 15)
   - `columns: int` (default 15)
-  - `cpu: int`, `int_rating: int`, `datawall_strength: int`
+  - `cpu: int`, `int_rating: int` — DEPRECATED (per-CPU INT is now fixed at 3 per CP2020 PnP; total INT = 3 × active CPU count). Kept for .tres backward compat.
+  - `datawall_strength: int`
   - `resident_programs: Array[NetProgram]` — layout-level programs the datafort's CPUs run against an intruding netrunner each turn (assigned in the designer; duplicated at spawn)
   - `grid_tiles: Dictionary` - Maps `Vector2i(x, y)` to [CP2020TileData](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020TileData.gd)
 - **TileType Enum**:
@@ -166,9 +180,13 @@ Represents state and attributes of a single cell in the datafort layout grid.
     - `npc_name: String`, `npc_strength: int`, `npc_max_ap: int`, `npc_max_integrity: int`, `npc_max_health: int`, `npc_max_mu: int`, `npc_deck_name: String`, `npc_disposition: int` (0 = Hostile, 1 = Neutral)
     - `npc_has_override: bool` — set true when any field is non-zero/non-empty; the runtime prefers tile stats over the tier template when this is set
     - `npc_programs: Array[NetProgram]` — optional hand-authored loadout (empty = template loadout)
-  - **Per-CPU fields** (CONTROL_NODE tiles; authored in the datafort designer's CPU editor):
-    - `cpu_int: int` — CPU's INT contribution (0 = use the layout default `layout.cpu`)
-    - `cpu_crashed_turns: int` — >0 means the CPU is crashed by a Krash anti-system program and contributes no INT / extra actions until it reboots. Reset to 0 on every `load_subnet`.
+  - **Loot** (MEMORY_UNIT tiles; authored in the datafort designer's Loot editor):
+    - `loot_programs: Array[NetProgram]` — programs downloadable from this tile (the "loot")
+    - `loot_credits: int` — optional bonus credits bundled with the loot
+    - `is_looted: bool` — true once the runner has Downloaded this tile; reset to `false` on every `load_subnet` (same fog-reset rationale — a revisited datafort's loot must be re-downloadable)
+  - **Per-CPU fields** (CONTROL_NODE tiles):
+    - `cpu_int: int` — DEPRECATED. Per CP2020 PnP rules each CPU contributes a flat 3 INT (`CP2020Datafort.INT_PER_CPU`). Kept for .tres backward compat; no longer used in logic.
+    - `cpu_crashed_turns: int` — >0 means the CPU is crashed by a Krash anti-system program and contributes no INT / actions / MU until it reboots. Reset to 0 on every `load_subnet`.
 
 ### 4.3 `CP2020WorldMapLayout` ([CP2020WorldMapLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020WorldMapLayout.gd))
 Serializable world map authored by the world map designer and loaded at runtime by `cp_2020_world_net_map.gd`.
@@ -220,6 +238,7 @@ Represents the Netrunner's hardware deck.
   - `data_wall_strength: int`
   - `interface_rank: int` (default 6) — the Netrunner's Interface skill when using this deck; read by the world map and shown in the workbench.
   - `installed_programs: Array[NetProgram]`
+  - `price: int` (default 0) — purchase price at the hub shop; read by the workbench Buy panel.
 - **Methods**: `get_used_mu() -> int`
 
 ### 4.10 `NetProgram` ([cp2020_programs.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_programs.gd))
@@ -251,8 +270,10 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
 - **LDL Travel** (`_on_action_triggered`):
   - `"travel_ldl"` — the program arg is the `CP2020TileData` of the LDL link; loads its `target_subnet_path` at `target_entry_coord`. Aborts with a terminal message if no target is set. Trace is preserved across the jump.
   - `"return_world_map"` — changes scene to the **City Grid** (`cp2020_city_grid.tscn`) via `RunState.selected_city_grid_path` (world-map fallback if no city grid recorded) and **preserves trace** (still in the run). Labelled "Returning to the City Grid via LDL."
-- **Jack-out** (`_on_jack_out_pressed`) / **Flatline** (`_on_flatlined`): clears `accumulated_trace` + `selected_city_grid_path` + `selected_security_tier` (full abort) and changes scene to the world map.
-- **Flatline**: on `netrunner.flatlined`, clears trace and returns to the workbench scene (`CyberdeckWorkbench.tscn`).
+- **Jack-out** (`_on_jack_out_pressed`): **first checks `BUSTED_THRESHOLD`** — if `RunState.accumulated_trace >= BUSTED_THRESHOLD`, the runner is **Busted** (NetWatch arrests): records the run summary into `RunState.last_run_summary`/`last_death_cause="busted"` and changes scene to `GameOver.tscn` (permadeath). Otherwise (trace < threshold) the existing successful jack-out path runs: clears `accumulated_trace` + `selected_city_grid_path` + `selected_security_tier` and changes scene to the World Map, **keeping `RunState.loot`** for sale at the hub.
+- **Flatline** (`_on_flatlined`): permadeath — records the run summary into `RunState.last_run_summary`/`last_death_cause="flatlined"` and changes scene to `GameOver.tscn` (no trace clear, no workbench return).
+- **Loot** (`_on_action_triggered "loot_tile"`): a free action (no turn consumed) for an adjacent, visible, un-looted `MEMORY_UNIT` tile with loot. Moves the tile's `loot_programs` into `RunState.loot` (each `duplicate()`d so cached `.tres` files aren't mutated), unlocks their resource paths in `MetaState`, adds `loot_credits` to `RunState.credits`, and marks `tile.is_looted = true`.
+- **NPC defeat unlock** (`_on_npc_destroyed`): unlocks the defeated NPC's template program paths in `MetaState.unlocked_programs` (reads `TIER_NPC_TEMPLATES` paths directly — see gotcha below). NPCs carry only a `deck_name` String (no Cyberdeck resource), so deck-unlock-via-defeat is not possible.
 - **Camera Follow**: a `Camera2D` ("RunnerCamera") is parented under the board renderer; `_update_camera_limits` clamps it to the datafort rect and `_center_camera_on_runner` snaps it to the netrunner. `netrunner.position_changed` re-centres the camera.
 - **Trace HUD**: `_update_trace()` writes `RunState.accumulated_trace` to the `TraceLabel`.
 - **Line of Sight / Fog of War**:
@@ -265,10 +286,12 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
   - Check: If `total_roll >= tile.strength_str`, `tile.is_unlocked = true`, immediately clearing the movement obstacle, changing tile color from orange to green, and recalculating Line of Sight. Otherwise, the attempt fails and logs the roll details to the terminal.
 - **NPC Spawning** (`spawn_npcs`, parallel to `spawn_black_ice`): iterates NETWATCH/NETRUNNER tiles, applies per-tile `npc_*` overrides or falls back to `TIER_NPC_TEMPLATES[_current_security_tier][faction]` (NetWatch leans anti-personnel + shield; random netrunners lean utility + weak attack). Programs are `duplicate()`d at spawn. NPCs are added to `npc_nodes` and their signals connected (`message_logged`, `moved_to`, `attacked_netrunner`, `destroyed`).
 - **Turn Execution**: `_all_adversaries()` merges `datafort` + `ice_nodes` + `npc_nodes` into one array passed to `turn_manager.execute_ice_turns` (datafort first so it acts first). The turn manager calls `take_turn(target, layout)` on any node that has the method, so NPCs and the datafort drop in without changing its signature.
+- **Initiative**: `execute_ice_turns` now accepts `netrunner_int` and `system_int` params. After adversaries finish, if `system_int > 0`, the turn manager rolls 1D10 + netrunner INT vs 1D10 + system INT and emits `initiative_rolled`. If the system wins, adversaries act again (system goes first in the new round) before `start_netrunner_turn()`. Ties go to the netrunner (`nr_roll >= sys_roll`). No datafort / all CPUs crashed (system INT = 0) → initiative skipped, player goes first. The session passes `netrunner.interface_rank` and `datafort.total_int()` (or 0) from both call sites (`_end_player_turn`, `_check_actions_exhausted`). If the system wins initiative in consecutive rounds, it acts at end of round N and start of round N+1 — two adversary phases back to back. This is correct per CP2020 PnP. NPC netrunners do NOT roll initiative separately — they act during the adversary phase.
 - **NPC Combat**: `execute_npc_attack(program, coord)` resolves an opposed 1D10+STR roll vs the NPC's strength (same convention as `execute_ice_attack`); `take_damage` handles destruction + the provoked transition. `_talk_to_npc(coord)` logs flavour text for neutral runners (placeholder for future dialogue/trading).
-- **Datafort Adversary** (`spawn_datafort`, after `spawn_npcs`): spawns a [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) node that treats the datafort itself as an adversary. It owns the CPU list (built from `CONTROL_NODE` tiles), computes total INT and actions-per-turn (`1 + floor(active_cpus / 2)`), takes a turn each round running `resident_programs` (anti-runner `DAMAGE_RUNNER` programs) against the netrunner, and decrements crashed-CPU reboot timers. Signals: `message_logged`, `attacked_netrunner` (→ `_on_ice_attacked`), `cpu_crashed`, `cpu_rebooted`, `state_changed` (→ `update_datafort_info`). The datafort is **prepended** to `_all_adversaries()` so it acts before ICE/NPC, but it does **not** command them — ICE and NPCs stay independent.
-- **Krash / CPU Crash**: the `crash_cpu` action (right-click a visible `CONTROL_NODE` tile → Krash, ids `5000+i`) calls `datafort.crash_cpu(program, coord)`: opposed 1d10+program.STR vs 1d10+CPU INT; on a hit the CPU is crashed for `1D6+1` turns (`tile.cpu_crashed_turns`), dropping the datafort's INT and extra actions until it reboots. `load_subnet` resets all `cpu_crashed_turns` to 0 (alongside the fog reset).
-- **HUD**: `update_datafort_info()` refreshes the `DatafortLabel` (datafort name, active/total CPUs, total INT, actions/turn) on spawn, crash, reboot, and turn boundaries.
+- **Datafort Adversary** (`spawn_datafort`, after `spawn_npcs`): spawns a [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) node that treats the datafort itself as an adversary. It owns the CPU list (built from `CONTROL_NODE` tiles), computes total INT (`3 × active CPUs`), actions-per-turn (`1 × active CPUs`), and MU capacity (`10 × active CPUs`) per CP2020 PnP rules. It takes a turn each round running `resident_programs` (anti-runner `DAMAGE_RUNNER` programs) against the netrunner, and decrements crashed-CPU reboot timers. Signals: `message_logged`, `attacked_netrunner` (→ `_on_ice_attacked`), `cpu_crashed`, `cpu_rebooted`, `state_changed` (→ `update_datafort_info`). The datafort is **prepended** to `_all_adversaries()` so it acts before ICE/NPC, but it does **not** command them — ICE and NPCs stay independent.
+- **Krash / CPU Crash**: the `crash_cpu` action (right-click a visible `CONTROL_NODE` tile → Krash, ids `5000+i`) calls `datafort.crash_cpu(program, coord)`: opposed 1d10+program.STR vs 1d10+**system INT** (`total_int()`, which drops as CPUs are crashed); on a hit the CPU is crashed for `1D6+1` turns (`tile.cpu_crashed_turns`), dropping the datafort's INT, actions, and MU until it reboots. `load_subnet` resets all `cpu_crashed_turns` to 0 (alongside the fog reset).
+- **Initiative log**: `_on_initiative_rolled(netrunner_roll, system_roll, netrunner_first)` logs who acts first to the terminal (e.g. "Initiative: Netrunner 14 vs System 12 — Netrunner acts first!").
+- **HUD**: `update_datafort_info()` refreshes the `DatafortLabel` (datafort name, active/total CPUs, total INT, actions/turn, MU used/total) on spawn, crash, reboot, and turn boundaries.
 
 ### 5.2 Board Renderer ([cp2020_board_renderer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_board_renderer.gd))
 Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile visibility states:
@@ -284,6 +307,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Checks boundaries against layout bounds (`0..columns-1`, `0..rows-1`).
 - Validates movement obstacles: blocks movement into `DATAWALL` tiles or locked `CODE_GATE` tiles. Empty cells (no tile) are walkable.
 - `initialize(layout, entry_coord)`: spawns at `entry_coord` if supplied, in-bounds, and a tile exists there (used by mid-run LDL travel); otherwise falls back to the first `ENTRY` tile.
+- **`interface_rank: int`** (default 6) — the netrunner's INT for initiative rolls, set from the cyberdeck's `interface_rank` when the deck is applied in the game session's `_ready()`.
 - Emits `position_changed`, `message_logged`, `deck_updated`, `shield_raised`, `shield_consumed`, `health_changed`, and `flatlined` (when `current_health <= 0`).
 
 ### 5.4 Hostile Black ICE AI ([cp2020_blackice.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd))
@@ -305,12 +329,13 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 
 ### 5.4c Datafort CPU Adversary ([cp2020_datafort.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd)) — *NEW*
 
-The datafort itself is an adversary, not just a passive map. Its CPUs determine its INT, actions per turn, and program-running ability — modelled on the Cyberpunk 2020 pen-and-paper netrunning rules.
+The datafort itself is an adversary, not just a passive map. Its CPUs determine its INT, actions per turn, MU capacity, and program-running ability — modelled on the Cyberpunk 2020 pen-and-paper netrunning rules. Per CP2020 PnP, each CPU is identical: **3 INT**, **1 action/turn**, **10 MU**.
 
-- **class_name CP2020Datafort extends Node** — one node per subnet, spawned by `spawn_datafort` after `spawn_npcs`. Inner `Cpu` class holds `coord`, `tile` (CP2020TileData), and `int_rating`. CPUs are built from all `CONTROL_NODE` tiles in the layout; each CPU's INT is `tile.cpu_int` (or the layout default `layout.cpu` when `cpu_int == 0`).
-- **Total INT** = sum of active CPUs' INT ratings. **Extra actions per turn** = `1 + floor(active_cpu_count / 2)` (one extra action per two additional CPUs, per CP2020 rules).
-- **Krash / CPU crash** (`crash_cpu(program, coord)`): opposed `1d10 + program.strength` vs `1d10 + CPU INT`; on a hit the CPU is crashed for `1D6+1` turns (`tile.cpu_crashed_turns = randi_range(1,6)+1`), emitting `cpu_crashed(coord)` + `state_changed`. A crashed CPU contributes no INT and no extra actions until it reboots.
-- **take_turn(layout)** — called by the turn manager: decrements every `cpu_crashed_turns > 0`; at 0 the CPU reboots (emit `cpu_rebooted(coord)`). Then runs `resident_programs` (anti-runner `DAMAGE_RUNNER` programs `duplicate()`d from the layout) up to `actions_per_turn` against the runner: opposed `1d10 + INT` roll, emits `attacked_netrunner(strength)` on a hit. Emits `state_changed` at the end.
+- **class_name CP2020Datafort extends Node** — one node per subnet, spawned by `spawn_datafort` after `spawn_npcs`. Inner `Cpu` class holds `coord` and `tile` (CP2020TileData). CPUs are built from all `CONTROL_NODE` tiles in the layout. Constants: `INT_PER_CPU = 3`, `ACTIONS_PER_CPU = 1`, `MU_PER_CPU = 10`.
+- **Total INT** = `INT_PER_CPU × active_cpu_count()` (3 per active CPU). **Actions per turn** = `ACTIONS_PER_CPU × active_cpu_count()` (1 per active CPU). **Total MU** = `MU_PER_CPU × active_cpu_count()` (10 per active CPU). A crashed CPU contributes zero to all three until it reboots. System INT also feeds the **initiative roll** — see §5.1 Turn Execution.
+- **MU capacity**: `total_mu()` = 10 × active CPUs. `used_mu()` = sum of `memory_cost` across all `resident_programs`. `available_mu()` = `total_mu() - used_mu()`. The designer enforces this — adding a program that would overflow available MU is rejected with a warning.
+- **Krash / CPU crash** (`crash_cpu(program, coord)`): opposed `1d10 + program.strength` vs `1d10 + total_int()` (current **system INT**, which drops as CPUs are crashed); on a hit the CPU is crashed for `1D6+1` turns (`tile.cpu_crashed_turns = randi_range(1,6)+1`), emitting `cpu_crashed(coord)` + `state_changed`. A crashed CPU contributes no INT, actions, or MU until it reboots.
+- **take_turn(layout)** — called by the turn manager: decrements every `cpu_crashed_turns > 0`; at 0 the CPU reboots (emit `cpu_rebooted(coord)`). Then runs `resident_programs` (anti-runner `DAMAGE_RUNNER` programs `duplicate()`d from the layout) up to `actions_per_turn` against the runner: emits `attacked_netrunner(strength)`. Emits `state_changed` at the end.
 - **Independence**: the datafort does **not** command the Black ICE or NPC netrunners — they stay independent turn-manager adversaries with their own `take_turn`. The datafort is simply one more entry in `_all_adversaries()` (prepended so it acts first) running its own resident programs. Any program the datafort spawns follows its own programming (same principle as ICE).
 - **Signals**: `message_logged`, `attacked_netrunner(strength)`, `cpu_crashed(coord)`, `cpu_rebooted(coord)`, `state_changed`. The session connects `attacked_netrunner` → `_on_ice_attacked` (shared handler) and `state_changed` → `update_datafort_info`.
 
@@ -323,10 +348,11 @@ The datafort itself is an adversary, not just a passive map. Its CPUs determine 
   - **Visible Black ICE on the tile**: offer `DEREZ_ICE` programs (ids `1000+i`).
   - **Visible NPC netrunner on the tile**: offer `DAMAGE_RUNNER` and `DEREZ_ICE` programs (ids `2000+i`) to attack the NPC, plus a "Talk" item (id `4000`) for neutral runners. `_npc_target` stores the NPC node for the callback.
   - **Visible CPU tile** (`CONTROL_NODE`): offer `CRASH_CPU` (Krash) anti-system programs (ids `5000+i`).
+  - **Visible, adjacent, un-looted `MEMORY_UNIT` with loot**: offer "Download Files" (id `6000`). Free action, no turn consumed.
   - **Runner's own tile** (visible): offer `SHIELD` defense programs.
   - **Locked Code Gate**: offer `BYPASS_GATE` programs.
   - **Datawall**: offer `BREACH_WALL` programs.
-- `_on_menu_action_selected` checks ids in this order to avoid collision: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → program use (`1000+i`).
+- `_on_menu_action_selected` checks ids in this order to avoid collision: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → **loot (`6000`)** → program use (`1000+i`). **Do not reorder — `6000` must be checked before the `1000+i` program range.**
 - Dynamically creates and opens a `PopupMenu` near mouse location (`popup_on_parent`).
 
 ### 5.6 Datafort Designer Tool ([cp2020_datafort_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_designer.gd))
@@ -335,8 +361,9 @@ The datafort itself is an adversary, not just a passive map. Its CPUs determine 
 - **LDL-Link Editor panel** (built in code as a `PanelContainer`+`VBox` anchored to the right edge so it stays on-screen): target subnet `LineEdit` + Browse `FileDialog` (scoped to `scenes/forts/*.tres`), target entry coord X/Y `SpinBox`es, and a "Clear target" button. In LDL mode, clicking an existing LDL link selects it for editing (does not overwrite); clicking empty space paints a new link and opens the editor. Field edits write back to the tile live and persist on save. Empty target = world-map-return-only. LDL links draw with a distinct blue frame + "L" glyph.
 - **ICE Editor panel** (built in code; shown when a BLACK_ICE tile is painted/selected): program name `LineEdit`, strength/AP/integrity `SpinBox`es, traces `CheckBox`, and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override the template for that tile. Edits write back to the tile's `ice_*` fields live and persist on save.
 - **NPC Editor panel** (built in code; shown when a NETWATCH/NETRUNNER tile is painted/selected): name `LineEdit`, strength/AP/integrity/health/MU `SpinBox`es, deck name `LineEdit`, disposition `OptionButton` (Hostile/Neutral), and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override. Edits write back to the tile's `npc_*` fields live and persist on save. NETWATCH tiles draw a red shield glyph; NETRUNNER tiles draw a gold person glyph.
-- **CPU Editor panel** (built in code; shown when a CONTROL_NODE tile is painted/selected): a `cpu_int` `SpinBox` (0 = use the layout default `layout.cpu` as the CPU's INT) and a "Reset to default" button. Edits write back to `tile.cpu_int` live and persist on save. CPUs are structural tiles (walkable) and render with a purple diamond glyph; a crashed CPU (`cpu_crashed_turns > 0`) renders dimmed red with an "X" glyph in the gameplay view.
-- **Resident Programs editor** (built in code; an `ItemList` with Add/Remove buttons loading `NetProgram` `.tres` files): sets `layout.resident_programs` — the programs the [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) adversary runs against the intruding netrunner each turn. Scope for this pass: Krash (player weapon) + anti-runner `DAMAGE_RUNNER` attacks; Murphy / Viral 15 later.
+- **CPU Editor panel** (built in code; shown when a CONTROL_NODE tile is painted/selected): read-only info displaying the per-CPU stats (3 INT, 1 action/turn, 10 MU) per CP2020 PnP rules. No editable fields — CPU stats are fixed. CPUs are structural tiles (walkable) and render with a purple diamond glyph; a crashed CPU (`cpu_crashed_turns > 0`) renders dimmed red with an "X" glyph in the gameplay view.
+- **Loot Editor panel** (built in code; shown when a MEMORY_UNIT/CONTROL_NODE tile is painted/selected): an `ItemList` with Add/Remove buttons loading `NetProgram` `.tres` files → writes the tile's `loot_programs`, plus a `loot_credits` `SpinBox`. This is what the runner Downloads in-game via the "Download Files" (id `6000`) interaction.
+- **Resident Programs editor** (built in code; an `ItemList` with Add/Remove buttons loading `NetProgram` `.tres` files): sets `layout.resident_programs` — the programs the [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) adversary runs against the intruding netrunner each turn. An MU capacity label shows used/total MU (10 × CPU count); adding a program that would overflow available MU is rejected with a warning. Scope for this pass: Krash (player weapon) + anti-runner `DAMAGE_RUNNER` attacks; Murphy / Viral 15 later.
 - Dynamic layout resizing (`SpinBox` input for columns/rows).
 - Native file open/save dialog integration (`FileDialog`) for loading and exporting `.tres` layout files.
 
@@ -351,8 +378,13 @@ The datafort itself is an adversary, not just a passive map. Its CPUs determine 
 - Side panel edits the selected datafort: name, subnet path (+ Browse `scenes/forts/*.tres`), **Security Tier** `OptionButton` (populated via `CP2020SecurityTier.LABELS`), LDL cost, security code, trace value, delete.
 - `_draw`: grid + datafort chips in tier colour (`CP2020SecurityTier.COLORS`) with tier glyph (`CP2020SecurityTier.GLYPHS`) + name; LDL entry ring marker.
 
-### 5.8 Cyberdeck Workbench UI ([cyberdeck_workbench.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/ui/cyberdeck_workbench.gd))
-- Deck selection via an `OptionButton` (`available_decks`); stats (Model, Speed, MU used/total + coloured MU bar, Data Wall STR, Interface Rank from the deck resource) refresh on selection. The whole UI is built in code from a minimal scene root (matching the designer-panel pattern).
+### 5.8 Cyberdeck Workbench / Hub UI ([cyberdeck_workbench.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/ui/cyberdeck_workbench.gd))
+The workbench is the rogue-like **hub** — loadout plus a Buy/Sell shop. State lives in `RunState` (per-life owned gear, loot, credits) and `MetaState` (persistent catalogue).
+- **First-life init**: on first entry (or when `RunState.owned_decks` is empty), calls `RunState.start_new_life()` to seed the starting deck + starting programs + 1000 eb.
+- **Shop — Buy Decks**: lists every deck path in `MetaState.unlocked_decks` (always includes the starting deck); shows `Cyberdeck.price`; `Buy` checks `RunState.credits >= price`, subtracts, and appends a `duplicate()`d deck to `RunState.owned_decks`.
+- **Shop — Buy Programs**: lists every program path in `MetaState.unlocked_programs`; `Buy` checks credits, subtracts `price`, appends a `duplicate()`d program to `RunState.owned_programs`.
+- **Shop — Sell Loot**: lists `RunState.loot`; `Sell` pays `price × fence_factor` (default 0.5) into `RunState.credits` and removes the item from loot.
+- **Loadout**: deck selection now reads from `RunState.owned_decks`; the program library reads from `RunState.owned_programs`. `Jack In` writes the active deck to `RunState.selected_deck` and changes scene to the world map. Loading/unloading mutates the in-memory (owned) deck resource.
 - Three-zone layout: **Deck Stats** (left) | **Loaded into Memory** + `LOAD ▶` / `◀ UNLOAD` / `CLEAR` buttons (centre) | **Program Library** + filter `OptionButton` + detail card (right).
 - Two `ItemList`s: **Library** (all `available_programs`, filtered by EffectType category) and **Loaded** (the active deck's `installed_programs`). Items are colour-coded per `EffectType`; library items that won't fit in the remaining MU are greyed out and disabled.
 - Click a list item to select it and populate the **detail card** (name, type, effect, STR, MU, price, description). Double-click (or the buttons) load/unload. Load refuses on MU overflow and shows an on-screen `MEMORY FULL` message instead of console `print`.
@@ -378,11 +410,23 @@ The datafort itself is an adversary, not just a passive map. Its CPUs determine 
 - HUD: Actions, Credits, Location (datafort/city), Trace.
 
 ### 5.11 Cross-Scene State & Trace ([run_state.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/autoload/run_state.gd))
-- `RunState` is an autoload singleton holding state that survives scene changes within a run: `selected_deck`, `selected_subnet_path`, `selected_city_grid_path`, `selected_security_tier`, `credits`, and `accumulated_trace`.
+`RunState` is an autoload singleton holding **per-life** state (LOST on death) that survives scene changes within a run.
+- **Fields**: `selected_deck`, `selected_subnet_path`, `selected_city_grid_path`, `selected_security_tier`, `credits` (`STARTING_CREDITS = 1000`), `accumulated_trace`, plus the rogue-like additions: `loot: Array[NetProgram]` (run inventory to sell at the hub), `owned_decks: Array[Cyberdeck]`, `owned_programs: Array[NetProgram]` (per-life purchases), and transient death fields `last_death_cause` / `last_run_summary` (read by the GameOver scene).
+- **`start_new_life()`** — the permadeath reset: calls `reset()` (full wipe), then loads a `duplicate()`d starting deck (`STARTING_DECK_PATH`) into `owned_decks`/`selected_deck` and `duplicate()`d starting programs (`STARTING_PROGRAM_PATHS`) into `owned_programs`, sets `credits = STARTING_CREDITS`. Used by the GameOver "New Life" button.
+- **Buy/Sell helpers**: `add_loot(prog)` (duplicate + `MetaState.unlock_program`), `sell_loot_program(prog, fence_factor=0.5)`, `buy_deck(path)`/`buy_program(path)` (check price, subtract, append duplicate), `equip_deck(deck)`.
 - **`selected_city_grid_path`** — the city grid currently in play, so the datafort LDL-return can go back to the right city grid.
 - **`selected_security_tier`** — set at dive time by the City Grid (the datafort icon's tier); read by `game_session._resolve_security_tier()` for the default ICE loadout. Fallback `LEVEL_1`.
-- **Trace** (`accumulated_trace`): the total Trace Value of all LDLs passed through in the current Net run. It drives tracing-ICE detection rolls (ICE must roll `1D10+STR ≥ trace` to locate the runner) and is shown on the world map, city grid, and datafort HUDs. It is **reset to 0** on flatline, jack-out, and return-to-world-map; it is **preserved** across in-datafort LDL travel AND across the datafort→City Grid return (mid-run retreat keeps the trace).
-- `reset()` clears the run state for a fresh run (including the new city-grid fields).
+- **Trace** (`accumulated_trace`): the total Trace Value of all LDLs passed through in the current Net run. It drives tracing-ICE detection rolls (ICE must roll `1D10+STR ≥ trace` to locate the runner) and is shown on the world map, city grid, and datafort HUDs. It is **reset to 0** on flatline, jack-out, and return-to-world-map; it is **preserved** across in-datafort LDL travel AND across the datafort→City Grid return (mid-run retreat keeps the trace). The **busted** check (`accumulated_trace >= BUSTED_THRESHOLD`) happens in `_on_jack_out_pressed` *before* trace is cleared.
+
+### 5.12 Meta State — Persistent Catalogue ([meta_state.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/autoload/meta_state.gd)) — *NEW*
+`MetaState` is the second autoload singleton (registered **after** `RunState`), holding the **persistent** vendor catalogue that **survives permadeath** and is saved/loaded to `user://netrunner_meta.tres` (Godot's writable per-user dir — never write to `res://` at runtime).
+- **Data**: a `MetaStateData` Resource (`class_name MetaStateData`) with `unlocked_decks: Array[String]` (resource paths), `unlocked_programs: Array[String]` (resource paths), and `run_history: Array`. Deduped on insert.
+- **Constants**: `STARTING_DECK = "res://data/starting_deck.tres"`, `STARTING_PROGRAMS = ["res://data/codecracker.tres","res://data/shield.tres"]` — the catalogue always contains these (the always-purchasable baseline).
+- **API**: `unlock_deck(path)` / `unlock_program(path)` / `unlock_program_resource(prog)` (no-op on empty path), `record_run(summary)`, `has_deck(path)` / `has_program(path)`, `reset_catalogue()`, `save()`. Loads on `_ready`, saves after every mutation.
+- **Unlock sources**: looting a `MEMORY_UNIT` tile (`RunState.add_loot` → `unlock_program`); defeating an NPC netrunner (`game_session._on_npc_destroyed` → unlocks the template program paths).
+
+### 5.13 Game Over Scene ([game_over.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/ui/game_over.gd) + `scenes/ui/GameOver.tscn`) — *NEW*
+Permadeath end-of-life screen, reached on **Flatline** or **Busted**. Shows a cause-specific header (`RunState.last_death_cause`), the run summary (`RunState.last_run_summary`), and a **New Life** button → `RunState.start_new_life()` + `change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")`. The `MetaState` catalogue is untouched.
 
 ### 5.11 Camera Follow
 - Both the world map and the datafort gameplay use a `Camera2D` ("RunnerCamera") parented under the rendered grid. Limits are clamped to the grid rect so the camera never shows outside the map. The camera re-centres on the runner on every position change (`netrunner.position_changed` / world map move).
@@ -409,11 +453,16 @@ The datafort itself is an adversary, not just a passive map. Its CPUs determine 
 - **Vector2i Coordinates**: Grid positions are integer vectors (`Vector2i`), used as keys in `current_layout.grid_tiles`.
 - **`.tres` string keys**: `grid_tiles` dictionaries store keys as `"x,y"` strings when serialised. Always read tiles via `layout.get_tile(coord)` (which handles both `Vector2i` and string keys); never `grid_tiles.get(Vector2i)`.
 - **Fog reset on load**: `load_subnet` resets `is_explored`/`is_visible` on every tile because `ResourceLoader` returns a cached instance. Without this, a datafort revisited via LDL travel would show as already-revealed. The same reset now zeroes `cpu_crashed_turns` so revisited CPUs boot fresh.
+- **Deprecated CPU fields**: `CP2020TileData.cpu_int`, `CP2020DatafortLayout.cpu`, and `CP2020DatafortLayout.int_rating` are DEPRECATED — per CP2020 PnP rules each CPU contributes a flat 3 INT. They are kept in the resource classes for .tres backward compat but no longer used in logic.
+- **Initiative & system INT**: When all CPUs are crashed, `total_int()` returns 0, so initiative is skipped and the player always goes first. This is intentional — a crashed system can't win initiative.
 - **Datafort does not control ICE**: The [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) adversary runs its **own** `resident_programs` against the runner; it does not command the Black ICE or NPC netrunners, which stay independent turn-manager adversaries. The datafort is prepended to `_all_adversaries()` so it acts first.
 - **Floor tiles via designer only**: Hand-authored `.tres` `Empty Path` floor tiles have failed to render in-game, but the same tiles resaved through the datafort designer render correctly. Author floor tiles through the designer; hand-edit `.tres` only for tile properties (e.g. LDL link target fields).
 - **LDL link is an ENTRY tile**: There is no separate "return" tile type. Any `ENTRY` tile with `is_ldl_link=true` auto-offers Travel (id `3000`) + Return to City Grid (id `3001`) via the interaction handler. An LDL link with an empty `target_subnet_path` is effectively city-grid-return-only.
 - **Trace lifecycle**: `accumulated_trace` resets on flatline / jack-out / return-to-world-map (City Grid return-to-world-map), but is **preserved** across in-datafort LDL travel (`travel_ldl` keeps it) AND across the datafort→City Grid return (`return_world_map` now goes to the City Grid and keeps trace).
-- **Lambda Signal Connections**: Popup menus disconnect previous `id_pressed` connections before reconnecting to prevent duplicate signal callbacks. Menu id ranges are a collision hazard — check in this order in `_on_menu_action_selected`: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → program use (`1000+i`).
+- **Lambda Signal Connections**: Popup menus disconnect previous `id_pressed` connections before reconnecting to prevent duplicate signal callbacks. Menu id ranges are a collision hazard — check in this order in `_on_menu_action_selected`: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → **loot (`6000`)** → program use (`1000+i`). Do not reorder.
+- **Loot reset on load**: `load_subnet` resets `is_looted` on every `MEMORY_UNIT` tile (same cached-instance rationale as the fog reset) so a datafort revisited via LDL travel is re-lootable. Looting is a **free action** (no turn consumed) and requires the tile to be visible, un-looted, holding loot, and Manhattan-adjacent (≤1) to the netrunner.
+- **Permadeath**: both flatline and busted route to `GameOver.tscn` (not back to the workbench). `RunState` is per-life (lost on death); `MetaState` is persistent (survives death, saved to `user://netrunner_meta.tres`). `RunState.start_new_life()` is the only correct way to begin a fresh life — it wipes to starting gear. Never write to `res://` at runtime; `MetaState` uses `user://`.
+- **NPC catalogue unlock caveat**: NPC programs are `duplicate()`d at spawn, and Godot `Resource.duplicate()` does **not** preserve `resource_path`. So `_on_npc_destroyed` must unlock the **original `.tres` paths** from `TIER_NPC_TEMPLATES[_current_security_tier][faction]["programs"]` directly via `MetaState.unlock_program(path)` — not the duplicate's (empty) `resource_path`. NPCs carry only a `deck_name` String (no `Cyberdeck` resource), so deck-unlock-via-defeat is not possible.
 - **NPC program duplication**: `TIER_NPC_TEMPLATES` stores program resource paths (not names). `spawn_npcs` loads and `duplicate()`s each program so cached `.tres` resources are never mutated across runs. The same applies to per-tile `npc_programs` via `_duplicate_programs`.
 - **NPC disposition transition**: A neutral netrunner who takes damage flips to hostile for the rest of the run (once hostile, stays hostile). Only damage triggers this — talking does not.
 - **@tool panels in code**: The datafort and world map designers build their side panels in code (anchored to stay on-screen) rather than in the `.tscn`, so the scene files stay minimal.

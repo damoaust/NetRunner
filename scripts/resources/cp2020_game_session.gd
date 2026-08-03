@@ -20,6 +20,11 @@ extends Control
 
 const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
 const NpcNetrunnerScene := preload("res://scenes/ui/cp2020_npc_netrunner.tscn")
+
+# Permadeath: if accumulated trace reaches this threshold on jack-out, NetWatch
+# arrests the runner and the run ends in a BUSTED game-over. Tunable — each
+# LDL jump adds ~5 trace, so a deep run through several dataforts risks busting.
+const BUSTED_THRESHOLD: int = 40
 var ice_nodes: Array[BlackIce] = []
 var npc_nodes: Array[CP2020NpcNetrunner] = []
 var datafort: CP2020Datafort = null
@@ -81,6 +86,8 @@ func _ready() -> void:
 			turn_manager.ice_movement_stepped.connect(_on_ice_stepped)
 		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
 			turn_manager.actions_changed.connect(_on_actions_changed)
+		if not turn_manager.initiative_rolled.is_connected(_on_initiative_rolled):
+			turn_manager.initiative_rolled.connect(_on_initiative_rolled)
 		turn_manager.start_netrunner_turn()
 
 	if netrunner:
@@ -104,6 +111,7 @@ func _ready() -> void:
 		var deck := RunState.selected_deck
 		netrunner.deck_name = deck.deck_name
 		netrunner.max_memory_units = deck.max_mu
+		netrunner.interface_rank = deck.interface_rank
 		netrunner.installed_programs = deck.installed_programs.duplicate()
 
 	# Load the subnet chosen on the world map (fall back to default)
@@ -145,6 +153,9 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 				# Reset any Krash-crashed CPUs from a prior visit so a fresh
 				# dive starts with all CPUs active.
 				t.cpu_crashed_turns = 0
+				# Reset the loot flag so a revisited datafort can be looted
+				# again on a fresh dive (cached ResourceLoader instance).
+				t.is_looted = false
 
 		# Let the Netrunner handle its own spawning!
 		if netrunner:
@@ -285,6 +296,29 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				if turn_manager:
 					turn_manager.consume_action()
 				_check_actions_exhausted()
+		"loot_tile":
+			# Download files from a MEMORY_UNIT tile. Looting is a "free" data
+			# retrieval in CP2020 — it does NOT consume an action or end the
+			# turn (unlike use_program / attack_npc / crash_cpu above).
+			if current_layout:
+				var loot_tile: CP2020TileData = current_layout.get_tile(target_coord)
+				if not loot_tile:
+					push_warning("loot_tile: no tile at %s." % target_coord)
+					return
+				if loot_tile.is_looted:
+					push_warning("loot_tile: tile at %s already looted." % target_coord)
+					return
+				if loot_tile.loot_credits > 0:
+					RunState.add_loot_credits(loot_tile.loot_credits)
+					log_to_terminal("Downloaded %d eb from %s.\n" % [loot_tile.loot_credits, target_coord])
+				for prog in loot_tile.loot_programs:
+					if prog is NetProgram:
+						RunState.add_loot(prog)
+						log_to_terminal("Downloaded program: %s.\n" % prog.program_name)
+				loot_tile.is_looted = true
+				if board_renderer:
+					board_renderer.queue_redraw()
+				log_to_terminal("Loot secured. Return to the City Grid and jack out to fence it at the hub.\n")
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
@@ -517,6 +551,10 @@ func spawn_npcs() -> void:
 			if tile.npc_disposition == CP2020NpcNetrunner.Disposition.HOSTILE or tile.npc_disposition == CP2020NpcNetrunner.Disposition.NEUTRAL:
 				npc.disposition = tile.npc_disposition
 			npc.installed_programs = _duplicate_programs(tile.npc_programs)
+			# Capture the original .tres paths of the authored override
+			# programs so they can be catalogued on defeat (the duplicates
+			# in installed_programs lose resource_path).
+			npc.source_program_paths = _collect_program_paths(tile.npc_programs)
 		else:
 			var tier_key: int = _current_security_tier
 			if not TIER_NPC_TEMPLATES.has(tier_key):
@@ -533,6 +571,9 @@ func spawn_npcs() -> void:
 			npc.max_health = int(tmpl.get("max_health", 10))
 			npc.max_memory_units = int(tmpl.get("max_mu", 10))
 			npc.installed_programs = _load_template_programs(tmpl.get("programs", []))
+			# Template "programs" is already an Array of .tres path strings;
+			# keep them verbatim for catalogue unlocking on defeat.
+			npc.source_program_paths = _collect_template_paths(tmpl.get("programs", []))
 
 		npc.initialize(coord, layout_size)
 		npc.message_logged.connect(log_to_terminal)
@@ -565,8 +606,76 @@ func _duplicate_programs(programs: Array) -> Array[NetProgram]:
 	return out
 
 
+# Collect the original .tres resource paths from an array of authored
+# NetProgram resources (per-tile override programs). Duplicates made later
+# lose resource_path, so capture the paths here at spawn time.
+func _collect_program_paths(programs: Array) -> Array[String]:
+	var out: Array[String] = []
+	for p in programs:
+		if p is NetProgram:
+			var rp := String(p.resource_path)
+			if rp != "":
+				out.append(rp)
+	return out
+
+
+# Collect .tres path strings from a tier template's "programs" entry.
+func _collect_template_paths(paths: Array) -> Array[String]:
+	var out: Array[String] = []
+	for p in paths:
+		var s := String(p)
+		if s != "":
+			out.append(s)
+	return out
+
+
 func _on_npc_destroyed(npc: CP2020NpcNetrunner) -> void:
 	npc_nodes.erase(npc)
+	if npc == null:
+		return
+	# Unlock the defeated NPC's programs into the persistent vendor catalogue.
+	#
+	# NPC programs are duplicate()d at spawn (see _load_template_programs /
+	# _duplicate_programs) and Godot's Resource.duplicate() does NOT carry
+	# over resource_path, so the live installed_programs entries have empty
+	# paths and unlock_program_resource would skip them. Instead we unlock
+	# the ORIGINAL .tres paths:
+	#   1. From the tier template (TIER_NPC_TEMPLATES[_current_security_tier]
+	#      [npc.faction]["programs"]) — always, for defeating a tier-faction
+	#      NPC. This is the common path: template-spawned NPCs.
+	#   2. From npc.source_program_paths — captured at spawn, this covers
+	#      per-tile-override NPCs whose authored programs differ from the
+	#      tier template, and also re-lists the template paths for template
+	#      NPCs. Any installed program that still carries a real
+	#      resource_path (i.e. was NOT duplicated) is unlocked too as a
+	#      defensive catch-all.
+	# The NPC carries no Cyberdeck resource (only a deck_name String), so
+	# there is no deck to unlock via defeat — this remains a known limitation.
+	var unlocked_count: int = 0
+
+	# (1) Tier template paths.
+	var tier_key: int = _current_security_tier
+	if TIER_NPC_TEMPLATES.has(tier_key):
+		var tier_dict: Dictionary = TIER_NPC_TEMPLATES[tier_key]
+		if tier_dict.has(npc.faction):
+			var tmpl: Dictionary = tier_dict[npc.faction]
+			for p in tmpl.get("programs", []):
+				var path := String(p)
+				if path != "" and MetaState.unlock_program(path):
+					unlocked_count += 1
+
+	# (2) Source paths captured at spawn (override + template re-list) and
+	#     any installed program that still has a real resource_path.
+	for path in npc.source_program_paths:
+		if path != "" and MetaState.unlock_program(path):
+			unlocked_count += 1
+	for prog in npc.installed_programs:
+		if prog is NetProgram:
+			var rp := String((prog as NetProgram).resource_path)
+			if rp != "" and MetaState.unlock_program(rp):
+				unlocked_count += 1
+
+	log_to_terminal("Defeated %s — %d program(s) added to your catalogue.\n" % [npc.npc_name, unlocked_count])
 
 
 # Spawn the datafort adversary node (the CPUs themselves). The datafort runs
@@ -599,12 +708,14 @@ func _on_cpu_state_changed(_coord: Vector2i) -> void:
 func update_datafort_info(_unused: Variant = null) -> void:
 	if not datafort_label or not datafort:
 		return
-	datafort_label.text = "Datafort: %s | CPUs %d/%d | INT %d | %d act/turn" % [
+	datafort_label.text = "Datafort: %s | CPUs %d/%d | INT %d | %d act/turn | MU %d/%d" % [
 		datafort.fort_name,
 		datafort.active_cpu_count(),
 		datafort.cpus.size(),
 		datafort.total_int(),
 		datafort.actions_per_turn(),
+		datafort.used_mu(),
+		datafort.total_mu(),
 	]
 
 
@@ -623,7 +734,8 @@ func _end_player_turn() -> void:
 	if not turn_manager.is_netrunner_turn:
 		return
 	log_to_terminal("--- Netrunner turn ended. Adversaries activating... ---\n")
-	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout)
+	var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
+	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, netrunner.interface_rank, sys_int)
 
 func _on_turn_ended(is_netrunner_turn: bool) -> void:
 	if is_netrunner_turn:
@@ -634,10 +746,17 @@ func _on_actions_changed(remaining: int, max_actions: int) -> void:
 		actions_label.text = "Actions: %d / %d" % [remaining, max_actions]
 	log_to_terminal("Actions: %d / %d\n" % [remaining, max_actions])
 
+func _on_initiative_rolled(netrunner_roll: int, system_roll: int, netrunner_first: bool) -> void:
+	if netrunner_first:
+		log_to_terminal("Initiative: Netrunner %d vs System %d — Netrunner acts first!\n" % [netrunner_roll, system_roll])
+	else:
+		log_to_terminal("Initiative: Netrunner %d vs System %d — System acts first!\n" % [netrunner_roll, system_roll])
+
 func _check_actions_exhausted() -> void:
 	if turn_manager and turn_manager.actions_remaining <= 0:
 		log_to_terminal("Out of actions. Adversaries activating...\n")
-		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout)
+		var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
+		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, netrunner.interface_rank, sys_int)
 
 # Combined adversaries (Datafort + Black ICE + NPC netrunners) for the turn
 # manager. The datafort is prepended so it acts first each round. The turn
@@ -679,17 +798,43 @@ func _on_ice_attacked(strength: int) -> void:
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
-	# End of run — clear the accumulated trace difficulty + city-grid context.
-	RunState.accumulated_trace = 0
-	RunState.selected_city_grid_path = ""
-	RunState.selected_security_tier = 0
-	# A flatline dumps the runner unceremoniously back to the workbench.
-	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
+	# Permadeath on flatline — record the run, route to the GameOver scene.
+	# The GameOver scene's "New Life" button calls start_new_life().
+	var summary: Dictionary = {
+		"cause": "Flatlined",
+		"trace": RunState.accumulated_trace,
+		"credits": RunState.credits,
+		"loot_count": RunState.loot.size(),
+		"datafort": RunState.selected_subnet_path,
+		"security_tier": RunState.selected_security_tier,
+	}
+	MetaState.record_run(summary)
+	RunState.last_death_cause = "Flatlined"
+	RunState.last_run_summary = summary
+	get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
 
 func _on_jack_out_pressed() -> void:
+	# Busted check FIRST — before clearing trace (the summary needs it). If the
+	# runner's accumulated trace has hit the threshold, NetWatch arrests them
+	# on jack-out: permadeath, run ends in a BUSTED game-over.
+	if RunState.accumulated_trace >= BUSTED_THRESHOLD:
+		log_to_terminal("BUSTED — NetWatch traced your signal and busted you on jack-out. They confiscated everything.\n")
+		var summary: Dictionary = {
+			"cause": "Busted",
+			"trace": RunState.accumulated_trace,
+			"credits": RunState.credits,
+			"loot_count": RunState.loot.size(),
+			"datafort": RunState.selected_subnet_path,
+			"security_tier": RunState.selected_security_tier,
+		}
+		MetaState.record_run(summary)
+		RunState.last_death_cause = "Busted"
+		RunState.last_run_summary = summary
+		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
+		return
+	# Successful jack-out — escape with loot intact to fence at the hub. Keep
+	# this path exactly as before (trace + context cleared, world map).
 	log_to_terminal("Jacking out...\n")
-	# Full abort — end of run. Clear the accumulated trace difficulty and the
-	# city-grid/tier context for the next run.
 	RunState.accumulated_trace = 0
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0

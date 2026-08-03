@@ -17,15 +17,19 @@ signal cpu_crashed(coord: Vector2i)
 signal cpu_rebooted(coord: Vector2i)
 signal state_changed
 
-# A single CPU within the datafort.
+# A single CPU within the datafort. Per CP2020 PnP rules each CPU contributes
+# a flat 3 INT, 1 action/turn, and 10 MU of storage capacity — there are no
+# per-CPU INT overrides.
 class Cpu:
 	var coord: Vector2i
 	var tile: CP2020TileData
-	var int_rating: int
-	func _init(c: Vector2i, t: CP2020TileData, i: int) -> void:
+	func _init(c: Vector2i, t: CP2020TileData) -> void:
 		coord = c
 		tile = t
-		int_rating = i
+
+const INT_PER_CPU := 3
+const ACTIONS_PER_CPU := 1
+const MU_PER_CPU := 10
 
 var fort_name: String = "Datafort"
 var cpus: Array = []
@@ -39,8 +43,6 @@ func initialize(layout: CP2020DatafortLayout) -> void:
 	cpus.clear()
 	if layout:
 		fort_name = layout.fort_name
-		# Default INT per CPU when a tile has no override (cpu_int == 0).
-		var default_int: int = layout.cpu if layout.cpu > 0 else 5
 		for raw_key in layout.grid_tiles.keys():
 			var coord: Vector2i
 			if raw_key is String:
@@ -50,22 +52,17 @@ func initialize(layout: CP2020DatafortLayout) -> void:
 				coord = raw_key
 			var tile = layout.get_tile(coord)
 			if tile and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
-				var cpu_int: int = tile.cpu_int if tile.cpu_int > 0 else default_int
-				cpus.append(Cpu.new(coord, tile, cpu_int))
+				cpus.append(Cpu.new(coord, tile))
 		# Duplicate resident programs (avoid mutating cached .tres resources).
 		resident_programs.clear()
 		for p in layout.resident_programs:
 			if p is NetProgram:
 				resident_programs.append(p.duplicate())
-	message_logged.emit("Datafort '%s' online: %d CPU(s), INT %d, %d action(s)/turn." % [fort_name, cpus.size(), total_int(), actions_per_turn()])
+	message_logged.emit("Datafort '%s' online: %d CPU(s), INT %d, %d action(s)/turn, %d MU." % [fort_name, cpus.size(), total_int(), actions_per_turn(), total_mu()])
 
 
 func total_int() -> int:
-	var total := 0
-	for cpu in cpus:
-		if is_instance_valid(cpu.tile) and cpu.tile.cpu_crashed_turns <= 0:
-			total += cpu.int_rating
-	return total
+	return INT_PER_CPU * active_cpu_count()
 
 
 func active_cpu_count() -> int:
@@ -76,9 +73,27 @@ func active_cpu_count() -> int:
 	return count
 
 
-# CP2020 rule: one extra action per two additional active CPUs, plus the base.
+# CP2020 rule: 1 action per turn per active CPU.
 func actions_per_turn() -> int:
-	return 1 + int(active_cpu_count() / 2)
+	return ACTIONS_PER_CPU * active_cpu_count()
+
+
+# Total MU capacity: 10 per active CPU. Crashed CPUs contribute no MU.
+func total_mu() -> int:
+	return MU_PER_CPU * active_cpu_count()
+
+
+# MU used by resident programs (sum of memory_cost).
+func used_mu() -> int:
+	var total := 0
+	for p in resident_programs:
+		if p is NetProgram:
+			total += p.memory_cost
+	return total
+
+
+func available_mu() -> int:
+	return total_mu() - used_mu()
 
 
 # Player-facing Krash: opposed 1d10+program.STR vs 1d10+CPU INT. On a hit the
@@ -97,13 +112,14 @@ func crash_cpu(program: NetProgram, target_coord: Vector2i) -> bool:
 		message_logged.emit("CPU at %s is already crashed.\n" % target_coord)
 		return false
 
+	var system_int := total_int()
 	var prog_roll = (randi() % 10) + 1 + program.strength
-	var cpu_roll = (randi() % 10) + 1 + cpu.int_rating
-	message_logged.emit("Roll: you %d (1d10+%d) vs CPU %d (1d10+%d)\n" % [prog_roll, program.strength, cpu_roll, cpu.int_rating])
+	var cpu_roll = (randi() % 10) + 1 + system_int
+	message_logged.emit("Roll: you %d (1d10+%d) vs System %d (1d10+%d)\n" % [prog_roll, program.strength, cpu_roll, system_int])
 	if prog_roll > cpu_roll:
 		var duration := randi_range(1, 6) + 1
 		cpu.tile.cpu_crashed_turns = duration
-		message_logged.emit("CPU at %s CRASHED for %d turns. Datafort INT now %d, %d action(s)/turn.\n" % [target_coord, duration, total_int(), actions_per_turn()])
+		message_logged.emit("CPU at %s CRASHED for %d turns. Datafort INT now %d, %d action(s)/turn, %d MU.\n" % [target_coord, duration, total_int(), actions_per_turn(), total_mu()])
 		cpu_crashed.emit(target_coord)
 		state_changed.emit()
 		return true
@@ -121,7 +137,7 @@ func take_turn(_target_pos: Vector2i, _layout: CP2020DatafortLayout) -> void:
 		if is_instance_valid(cpu.tile) and cpu.tile.cpu_crashed_turns > 0:
 			cpu.tile.cpu_crashed_turns -= 1
 			if cpu.tile.cpu_crashed_turns <= 0:
-				message_logged.emit("CPU at %s rebooted. Datafort INT now %d.\n" % [cpu.coord, total_int()])
+				message_logged.emit("CPU at %s rebooted. Datafort INT now %d, %d MU.\n" % [cpu.coord, total_int(), total_mu()])
 				cpu_rebooted.emit(cpu.coord)
 				state_changed.emit()
 

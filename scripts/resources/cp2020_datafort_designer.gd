@@ -58,14 +58,25 @@ var selected_npc_coord: Vector2i = Vector2i(-1, -1)
 # CPU editor panel (built in code; shown when a CONTROL_NODE tile is selected).
 var cpu_panel: VBoxContainer
 var cpu_panel_bg: PanelContainer
-var cpu_int_spinbox: SpinBox
 var selected_cpu_coord: Vector2i = Vector2i(-1, -1)
+
+# Loot editor panel (built in code; shown when a MEMORY_UNIT or CONTROL_NODE
+# tile is selected). Lets designers author the programs/credits a runner gets
+# when looting the tile. Mirrors the ICE/NPC override panel pattern.
+var loot_panel: VBoxContainer
+var loot_panel_bg: PanelContainer
+var loot_credits_spinbox: SpinBox
+var loot_programs_list: ItemList
+var loot_add_dialog: FileDialog
+var loot_cpu_info_label: Label
+var selected_loot_coord: Vector2i = Vector2i(-1, -1)
 
 # Layout-level resident programs editor (programs the datafort's CPUs run).
 var programs_panel: VBoxContainer
 var programs_panel_bg: PanelContainer
 var programs_list: ItemList
 var programs_add_dialog: FileDialog
+var programs_mu_label: Label
 
 func _ready() -> void:
 	setup_new_map()
@@ -76,6 +87,7 @@ func _ready() -> void:
 	build_ice_panel()
 	build_npc_panel()
 	build_cpu_panel()
+	build_loot_panel()
 	build_programs_panel()
 	queue_redraw()
 
@@ -172,6 +184,7 @@ func add_tool_button(label_text: String, tile_type: CP2020DatafortLayout.TileTyp
 		_hide_ldl_panel()
 		_hide_ice_panel()
 		_hide_npc_panel()
+		_hide_loot_panel()
 		print("Selected Tool: ", label_text)
 	)
 	dynamic_button_row.add_child(btn)
@@ -185,6 +198,7 @@ func add_entry_tool_button(label_text: String) -> void:
 		_hide_ldl_panel()
 		_hide_ice_panel()
 		_hide_npc_panel()
+		_hide_loot_panel()
 		print("Selected Tool: ", label_text, " (plain datafort entrance)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -197,6 +211,7 @@ func add_ldl_tool_button(label_text: String) -> void:
 		ldl_link_mode = true
 		_hide_ice_panel()
 		_hide_npc_panel()
+		_hide_loot_panel()
 		print("Selected Tool: ", label_text, " (paint/select an LDL link, then edit it in the side panel)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -299,11 +314,15 @@ func _gui_input(event: InputEvent) -> void:
 					elif painted and (painted.tile_type == CP2020DatafortLayout.TileType.NETWATCH or painted.tile_type == CP2020DatafortLayout.TileType.NETRUNNER):
 						_open_npc_editor(coord)
 					elif painted and painted.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
-						_open_cpu_editor(coord)
+						_hide_cpu_panel()
+						_open_loot_editor(coord)
+					elif painted and painted.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
+						_open_loot_editor(coord)
 					else:
 						_hide_ice_panel()
 						_hide_npc_panel()
 						_hide_cpu_panel()
+						_hide_loot_panel()
 
 # Update paint_tile to flag LDL options if needed
 func paint_tile(coord: Vector2i) -> void:
@@ -974,23 +993,13 @@ func build_cpu_panel() -> void:
 	cpu_panel.add_child(title)
 
 	var hint = Label.new()
-	hint.text = "Each CPU contributes its INT to the datafort. Set 0 to use the layout default (layout.cpu). A Krash anti-system program crashes a CPU for 1D6+1 turns."
+	hint.text = "Per CP2020 PnP rules, each CPU contributes a flat 3 INT, 1 action/turn, and 10 MU of storage capacity. A Krash anti-system program crashes a CPU for 1D6+1 turns."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cpu_panel.add_child(hint)
 
-	var int_lbl = Label.new()
-	int_lbl.text = "CPU INT (0 = layout default):"
-	cpu_panel.add_child(int_lbl)
-	cpu_int_spinbox = SpinBox.new()
-	cpu_int_spinbox.min_value = 0
-	cpu_int_spinbox.max_value = 20
-	cpu_int_spinbox.value_changed.connect(_on_cpu_field_changed)
-	cpu_panel.add_child(cpu_int_spinbox)
-
-	var clear_btn = Button.new()
-	clear_btn.text = "Reset to default (0)"
-	clear_btn.pressed.connect(_clear_cpu_override)
-	cpu_panel.add_child(clear_btn)
+	var stats = Label.new()
+	stats.text = "Stats per CPU: INT 3 | Actions 1 | MU 10"
+	cpu_panel.add_child(stats)
 
 
 func _open_cpu_editor(coord: Vector2i) -> void:
@@ -1000,9 +1009,6 @@ func _open_cpu_editor(coord: Vector2i) -> void:
 	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.CONTROL_NODE:
 		return
 	selected_cpu_coord = coord
-	cpu_int_spinbox.set_block_signals(true)
-	cpu_int_spinbox.value = tile.cpu_int
-	cpu_int_spinbox.set_block_signals(false)
 	cpu_panel_bg.visible = true
 
 
@@ -1012,23 +1018,193 @@ func _hide_cpu_panel() -> void:
 	selected_cpu_coord = Vector2i(-1, -1)
 
 
-func _write_cpu_field() -> void:
-	if not current_layout or selected_cpu_coord == Vector2i(-1, -1):
+# ---------------------------------------------------------------------------
+# Loot editor side panel (MEMORY_UNIT / CONTROL_NODE tiles)
+# ---------------------------------------------------------------------------
+
+func build_loot_panel() -> void:
+	var panel_bg = PanelContainer.new()
+	panel_bg.name = "LootEditorPanel"
+	panel_bg.anchor_left = 1.0
+	panel_bg.anchor_right = 1.0
+	panel_bg.anchor_top = 0.0
+	panel_bg.anchor_bottom = 1.0
+	panel_bg.offset_left = -300
+	panel_bg.offset_right = -10
+	panel_bg.offset_top = 90
+	panel_bg.offset_bottom = -10
+	panel_bg.visible = false
+	add_child(panel_bg)
+	loot_panel_bg = panel_bg
+
+	loot_panel = VBoxContainer.new()
+	loot_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	loot_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel_bg.add_child(loot_panel)
+
+	var title = Label.new()
+	title.text = "Loot Editor"
+	loot_panel.add_child(title)
+
+	var hint = Label.new()
+	hint.text = "Programs and credits a netrunner receives when looting this tile. Loot is granted once per run (the is_looted flag is reset on load)."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	loot_panel.add_child(hint)
+
+	# CPU info label — only visible when the selected tile is a CONTROL_NODE,
+	# so the designer still sees the fixed CPU stats when the loot panel
+	# replaces the standalone CPU editor for that tile type.
+	loot_cpu_info_label = Label.new()
+	loot_cpu_info_label.text = "CPU stats: INT 3 | Actions 1 | MU 10\nEach CPU contributes a flat 3 INT, 1 action/turn, 10 MU storage."
+	loot_cpu_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	loot_cpu_info_label.visible = false
+	loot_panel.add_child(loot_cpu_info_label)
+
+	var credits_lbl = Label.new()
+	credits_lbl.text = "Loot credits:"
+	loot_panel.add_child(credits_lbl)
+	loot_credits_spinbox = SpinBox.new()
+	loot_credits_spinbox.min_value = 0
+	loot_credits_spinbox.max_value = 100000
+	loot_credits_spinbox.suffix = " eb"
+	loot_credits_spinbox.value_changed.connect(_on_loot_credits_changed)
+	loot_panel.add_child(loot_credits_spinbox)
+
+	var prog_lbl = Label.new()
+	prog_lbl.text = "Loot programs:"
+	loot_panel.add_child(prog_lbl)
+
+	loot_programs_list = ItemList.new()
+	loot_programs_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	loot_programs_list.custom_minimum_size = Vector2(0, 120)
+	loot_panel.add_child(loot_programs_list)
+
+	var add_btn = Button.new()
+	add_btn.text = "Add program (.tres)..."
+	add_btn.pressed.connect(_open_loot_add_dialog)
+	loot_panel.add_child(add_btn)
+
+	var remove_btn = Button.new()
+	remove_btn.text = "Remove selected"
+	remove_btn.pressed.connect(_remove_selected_loot_program)
+	loot_panel.add_child(remove_btn)
+
+	var clear_btn = Button.new()
+	clear_btn.text = "Clear loot list"
+	clear_btn.pressed.connect(_clear_loot_list)
+	loot_panel.add_child(clear_btn)
+
+	# Dedicated file dialog for picking loot program .tres files. Kept separate
+	# from the layout-level programs_add_dialog so the two editors don't fight
+	# over a shared dialog state.
+	loot_add_dialog = FileDialog.new()
+	loot_add_dialog.name = "LootAddDialog"
+	loot_add_dialog.access = FileDialog.ACCESS_RESOURCES
+	loot_add_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	loot_add_dialog.filters = PackedStringArray(["*.tres ; Program resource"])
+	loot_add_dialog.file_selected.connect(_on_loot_program_added)
+	add_child(loot_add_dialog)
+
+
+func _open_loot_editor(coord: Vector2i) -> void:
+	if not current_layout:
 		return
-	var tile = current_layout.get_tile(selected_cpu_coord)
+	var tile = current_layout.get_tile(coord)
 	if tile == null:
 		return
-	tile.cpu_int = int(cpu_int_spinbox.value)
+	if tile.tile_type != CP2020DatafortLayout.TileType.MEMORY_UNIT and tile.tile_type != CP2020DatafortLayout.TileType.CONTROL_NODE:
+		return
+	selected_loot_coord = coord
+	# Show the CPU info block only when editing a CONTROL_NODE tile.
+	loot_cpu_info_label.visible = tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE
+	loot_credits_spinbox.set_block_signals(true)
+	loot_credits_spinbox.value = tile.loot_credits
+	loot_credits_spinbox.set_block_signals(false)
+	_refresh_loot_programs_list()
+	loot_panel_bg.visible = true
+
+
+func _hide_loot_panel() -> void:
+	if loot_panel_bg:
+		loot_panel_bg.visible = false
+	selected_loot_coord = Vector2i(-1, -1)
+
+
+func _on_loot_credits_changed(_value: float) -> void:
+	_write_loot_credits()
+
+
+func _write_loot_credits() -> void:
+	if not current_layout or selected_loot_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_loot_coord)
+	if tile == null:
+		return
+	tile.loot_credits = int(loot_credits_spinbox.value)
 	queue_redraw()
 
 
-func _on_cpu_field_changed(_value: Variant = null) -> void:
-	_write_cpu_field()
+func _refresh_loot_programs_list() -> void:
+	if not loot_programs_list or not current_layout or selected_loot_coord == Vector2i(-1, -1):
+		return
+	loot_programs_list.clear()
+	var tile = current_layout.get_tile(selected_loot_coord)
+	if tile == null:
+		return
+	for p in tile.loot_programs:
+		if p is NetProgram:
+			loot_programs_list.add_item("%s (STR %d, %d MU)" % [p.program_name, p.strength, p.memory_cost])
+		else:
+			loot_programs_list.add_item("(invalid program)")
 
 
-func _clear_cpu_override() -> void:
-	cpu_int_spinbox.value = 0
-	_write_cpu_field()
+func _open_loot_add_dialog() -> void:
+	if loot_add_dialog:
+		loot_add_dialog.popup_centered(Vector2i(600, 400))
+
+
+func _on_loot_program_added(path: String) -> void:
+	if not current_layout or selected_loot_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_loot_coord)
+	if tile == null:
+		return
+	if ResourceLoader.exists(path):
+		var prog = ResourceLoader.load(path) as NetProgram
+		if prog:
+			tile.loot_programs.append(prog)
+			_refresh_loot_programs_list()
+			queue_redraw()
+		else:
+			print("Selected file is not a NetProgram resource: ", path)
+
+
+func _remove_selected_loot_program() -> void:
+	if not current_layout or not loot_programs_list or selected_loot_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_loot_coord)
+	if tile == null:
+		return
+	var idxs = loot_programs_list.get_selected_items()
+	if idxs.is_empty():
+		return
+	idxs.reverse()
+	for i in idxs:
+		if i >= 0 and i < tile.loot_programs.size():
+			tile.loot_programs.remove_at(i)
+	_refresh_loot_programs_list()
+	queue_redraw()
+
+
+func _clear_loot_list() -> void:
+	if not current_layout or selected_loot_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_loot_coord)
+	if tile == null:
+		return
+	tile.loot_programs.clear()
+	_refresh_loot_programs_list()
+	queue_redraw()
 
 
 # ---------------------------------------------------------------------------
@@ -1068,6 +1244,10 @@ func build_programs_panel() -> void:
 	programs_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	programs_list.custom_minimum_size = Vector2(0, 120)
 	programs_panel.add_child(programs_list)
+
+	programs_mu_label = Label.new()
+	programs_mu_label.text = "MU: 0/0"
+	programs_panel.add_child(programs_mu_label)
 
 	var add_btn = Button.new()
 	add_btn.text = "Add program (.tres)..."
@@ -1113,9 +1293,36 @@ func _refresh_programs_list() -> void:
 	if not programs_list or not current_layout:
 		return
 	programs_list.clear()
+	var used := 0
 	for p in current_layout.resident_programs:
 		if p is NetProgram:
 			programs_list.add_item("%s (STR %d, %d MU)" % [p.program_name, p.strength, p.memory_cost])
+			used += p.memory_cost
+	var cpu_count := _count_cpus()
+	var total_mu := cpu_count * 10
+	programs_mu_label.text = "MU: %d/%d" % [used, total_mu]
+	if used > total_mu:
+		programs_mu_label.text += " (OVERFLOW!)"
+		programs_mu_label.add_theme_color_override("font_color", Color.RED)
+	else:
+		programs_mu_label.add_theme_color_override("font_color", Color.WHITE)
+
+
+func _count_cpus() -> int:
+	if not current_layout:
+		return 0
+	var count := 0
+	for raw_key in current_layout.grid_tiles.keys():
+		var coord: Vector2i
+		if raw_key is String:
+			var parts = raw_key.split(",")
+			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+		else:
+			coord = raw_key
+		var tile = current_layout.get_tile(coord)
+		if tile and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+			count += 1
+	return count
 
 
 func _open_programs_add_dialog() -> void:
@@ -1129,6 +1336,16 @@ func _on_program_added(path: String) -> void:
 	if ResourceLoader.exists(path):
 		var prog = ResourceLoader.load(path) as NetProgram
 		if prog:
+			var cpu_count := _count_cpus()
+			var total_mu := cpu_count * 10
+			var used_mu := 0
+			for p in current_layout.resident_programs:
+				if p is NetProgram:
+					used_mu += p.memory_cost
+			if used_mu + prog.memory_cost > total_mu:
+				programs_mu_label.text = "MU FULL: %d/%d — cannot add %s (%d MU)" % [used_mu, total_mu, prog.program_name, prog.memory_cost]
+				programs_mu_label.add_theme_color_override("font_color", Color.RED)
+				return
 			current_layout.resident_programs.append(prog)
 			_refresh_programs_list()
 			queue_redraw()

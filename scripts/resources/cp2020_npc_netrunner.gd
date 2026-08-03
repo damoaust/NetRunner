@@ -31,6 +31,13 @@ enum Disposition { HOSTILE, NEUTRAL }
 @export var max_memory_units: int = 10
 @export var installed_programs: Array[NetProgram] = []
 
+# Original .tres resource paths of the programs this NPC was spawned with,
+# captured at spawn time (see CP2020GameSession.spawn_npcs). The live
+# installed_programs entries are duplicate()d at spawn and lose their
+# resource_path, so this array preserves the authored paths needed to unlock
+# the programs into the persistent vendor catalogue on defeat.
+var source_program_paths: Array[String] = []
+
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
 @export var label_visual_offset: Vector2 = Vector2(-2, -4)
