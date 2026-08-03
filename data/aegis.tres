@@ -10,4 +10,5 @@ effect_type = 6
 memory_cost = 4
 strength = 6
 price = 650
+description = "Reinforced shield program. Recharges armor to absorb ICE damage."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

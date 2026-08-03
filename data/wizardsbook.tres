@@ -8,4 +8,5 @@ program_name = "Wizard's Book"
 type = 1
 effect_type = 0
 price = 400
+description = "Decryption suite. Bypasses code-gate security DV."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

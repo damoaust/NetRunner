@@ -162,6 +162,7 @@ Represents the Netrunner's hardware deck.
   - `max_mu: int` (Maximum Memory Units storage capacity)
   - `speed_bonus: int`
   - `data_wall_strength: int`
+  - `interface_rank: int` (default 6) — the Netrunner's Interface skill when using this deck; read by the world map and shown in the workbench.
   - `installed_programs: Array[NetProgram]`
 - **Methods**: `get_used_mu() -> int`
 
@@ -176,7 +177,7 @@ Represents an executable program software tool loaded into a cyberdeck.
   - `REVEAL_NODES`: Scans hidden layout nodes
   - `MODIFY_MU`: Modifies deck speed or memory capacity
   - `SHIELD`: Defense program (raised on the runner's own tile)
-- **Properties**: `program_name`, `type`, `effect_type`, `memory_cost` (MU), `strength`, `price`, `icon`
+- **Properties**: `program_name`, `type`, `effect_type`, `memory_cost` (MU), `strength`, `price`, `icon`, `description` (one-line summary shown in the workbench detail card)
 
 ---
 
@@ -254,9 +255,13 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Side panel edits the selected hub: name, subnet path (+ Browse), LDL cost, security code, trace value, set-as-spawn, delete. Region list with add/paint.
 
 ### 5.8 Cyberdeck Workbench UI ([cyberdeck_workbench.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/ui/cyberdeck_workbench.gd))
-- Deck selection via an `OptionButton` (`available_decks`); stats (Model, Speed, MU used/total + bar, Data Wall STR, Interface Rank) refresh on selection.
-- Two `ItemList`s: **Library** (all `available_programs`, with `[LOADED]` suffix) and **Loaded** (the active deck's `installed_programs`). Selecting a library item loads it (MU permitting); selecting a loaded item unloads it.
-- `Jack In` writes the active deck to `RunState.selected_deck` and changes scene to the world map.
+- Deck selection via an `OptionButton` (`available_decks`); stats (Model, Speed, MU used/total + coloured MU bar, Data Wall STR, Interface Rank from the deck resource) refresh on selection. The whole UI is built in code from a minimal scene root (matching the designer-panel pattern).
+- Three-zone layout: **Deck Stats** (left) | **Loaded into Memory** + `LOAD ▶` / `◀ UNLOAD` / `CLEAR` buttons (centre) | **Program Library** + filter `OptionButton` + detail card (right).
+- Two `ItemList`s: **Library** (all `available_programs`, filtered by EffectType category) and **Loaded** (the active deck's `installed_programs`). Items are colour-coded per `EffectType`; library items that won't fit in the remaining MU are greyed out and disabled.
+- Click a list item to select it and populate the **detail card** (name, type, effect, STR, MU, price, description). Double-click (or the buttons) load/unload. Load refuses on MU overflow and shows an on-screen `MEMORY FULL` message instead of console `print`.
+- MU bar colour states: green (<70%), amber (70–95%), red (≥95%/over).
+- `Jack In` writes the active deck to `RunState.selected_deck` and changes scene to the world map. Jacking in with zero programs loaded shows a warning and is blocked until at least one program is loaded.
+- Loadouts persist across deck switches within a session (edits mutate the in-memory deck resource directly).
 
 ### 5.9 World Map Runtime ([cp_2020_world_net_map.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp_2020_world_net_map.gd))
 - Grid-based world map. Runner spawns on the configured spawn hub (Night City fallback) and moves tile-by-tile with a 5-action turn limit (no ICE on the world map). Regions are categorising only — any in-bounds tile is traversable, including open ocean.

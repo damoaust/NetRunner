@@ -29,3 +29,4 @@ enum EffectType {
 @export var strength: int = 4   # Added to attack/defense rolls[cite: 16]
 @export var price: int = 600    # Cost in Eurodollars
 @export var icon: Texture2D     # UI Icon[cite: 16]
+@export var description: String = "" # One-line summary shown in the workbench detail card

@@ -7,4 +7,5 @@ script = ExtResource("1_ai1st")
 program_name = "Killer 1.0"
 type = 3
 effect_type = 2
+description = "Anti-program watchdog. Derezes and destroys active ICE."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

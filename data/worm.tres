@@ -10,4 +10,5 @@ effect_type = 0
 memory_cost = 2
 strength = 5
 price = 660
+description = "Self-replicating intrusion worm. Bypasses code gates with high strength."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

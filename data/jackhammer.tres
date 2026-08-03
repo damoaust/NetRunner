@@ -10,4 +10,5 @@ effect_type = 1
 memory_cost = 2
 strength = 2
 price = 360
+description = "Lightweight breach tool. Low-cost data wall striker."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

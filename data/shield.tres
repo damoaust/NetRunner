@@ -10,4 +10,5 @@ effect_type = 6
 memory_cost = 1
 strength = 3
 price = 150
+description = "Basic defense program. Recharges netrunner shield against ICE."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

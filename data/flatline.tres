@@ -9,4 +9,5 @@ type = 4
 effect_type = 3
 strength = 3
 price = 570
+description = "Anti-personnel virus. Damages a runner directly through the net."
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

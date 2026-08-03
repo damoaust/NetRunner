@@ -5,6 +5,7 @@ extends Resource
 @export var max_mu: int = 20
 @export var speed_bonus: int = 2
 @export var data_wall_strength: int = 6 # Added Data Wall Strength property
+@export var interface_rank: int = 6 # Netrunner's interface skill when using this deck
 @export var installed_programs: Array[NetProgram] = []
 
 func get_used_mu() -> int:
