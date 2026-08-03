@@ -82,8 +82,11 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	var options_added = false
 	if tile_data.is_ldl_link:
 		_ldl_tile = tile_data
-		var dest_name := _ldl_target_name(tile_data.target_subnet_path)
-		_dynamic_menu.add_item("Travel to %s" % dest_name, 3000)
+		# Only offer outbound travel when a target subnet is configured; an
+		# LDL link with an empty target is world-map-return-only.
+		if tile_data.target_subnet_path != "":
+			var dest_name := _ldl_target_name(tile_data.target_subnet_path)
+			_dynamic_menu.add_item("Travel to %s" % dest_name, 3000)
 		_dynamic_menu.add_item("Return to World Map", 3001)
 		options_added = true
 

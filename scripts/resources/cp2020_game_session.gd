@@ -67,37 +67,44 @@ func _ready() -> void:
 	_update_trace()
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
 
-func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> void:
-	if ResourceLoader.exists(path):
-		current_layout = ResourceLoader.load(path) as CP2020DatafortLayout
-		if board_renderer and current_layout:
-			board_renderer.current_layout = current_layout
-			#reveal_entry_points()
+func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool:
+	if not ResourceLoader.exists(path):
+		push_error("load_subnet: resource not found: %s" % path)
+		return false
+	var loaded := ResourceLoader.load(path) as CP2020DatafortLayout
+	if loaded == null:
+		push_error("load_subnet: %s is not a CP2020DatafortLayout." % path)
+		return false
+	current_layout = loaded
+	if board_renderer and current_layout:
+		board_renderer.current_layout = current_layout
+		#reveal_entry_points()
 
-			# Reset fog state on every tile. ResourceLoader returns a cached
-			# instance, so a datafort visited on a previous run (or earlier in
-			# this run via LDL travel) would otherwise retain is_explored=true
-			# and show as already-revealed. A fresh run starts fully fogged.
-			for raw_key in current_layout.grid_tiles.keys():
-				var c: Vector2i
-				if raw_key is String:
-					var p = raw_key.split(",")
-					c = Vector2i(p[0].to_int(), p[1].to_int())
-				else:
-					c = raw_key
-				var t = current_layout.get_tile(c)
-				if t:
-					t.is_explored = false
-					t.is_visible = false
+		# Reset fog state on every tile. ResourceLoader returns a cached
+		# instance, so a datafort visited on a previous run (or earlier in
+		# this run via LDL travel) would otherwise retain is_explored=true
+		# and show as already-revealed. A fresh run starts fully fogged.
+		for raw_key in current_layout.grid_tiles.keys():
+			var c: Vector2i
+			if raw_key is String:
+				var p = raw_key.split(",")
+				c = Vector2i(p[0].to_int(), p[1].to_int())
+			else:
+				c = raw_key
+			var t = current_layout.get_tile(c)
+			if t:
+				t.is_explored = false
+				t.is_visible = false
 
-			# Let the Netrunner handle its own spawning!
-			if netrunner:
-				netrunner.initialize(current_layout, entry_coord)
-			spawn_black_ice()
-			recalculate_fog_of_war(netrunner.current_position)
-			_update_camera_limits()
-			_center_camera_on_runner()
-			board_renderer.queue_redraw()
+		# Let the Netrunner handle its own spawning!
+		if netrunner:
+			netrunner.initialize(current_layout, entry_coord)
+		spawn_black_ice()
+		recalculate_fog_of_war(netrunner.current_position)
+		_update_camera_limits()
+		_center_camera_on_runner()
+		board_renderer.queue_redraw()
+	return true
 
 func _update_trace() -> void:
 	if trace_label:
@@ -186,10 +193,12 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				if dest_path == "":
 					log_to_terminal("LDL link has no target subnet set.\n")
 					return
-				log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, dest_coord])
-				load_subnet(dest_path, dest_coord)
-				update_deck_info()
-				_update_trace()
+				if load_subnet(dest_path, dest_coord):
+					log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, dest_coord])
+					update_deck_info()
+					_update_trace()
+				else:
+					log_to_terminal("LDL target '%s' could not be loaded.\n" % dest_path)
 		"return_world_map":
 			log_to_terminal("Returning to the world map via LDL. Connection severed.\n")
 			RunState.accumulated_trace = 0
