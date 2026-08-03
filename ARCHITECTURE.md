@@ -138,6 +138,7 @@ Represents a grid map layout for a Datafort.
   - `rows: int` (default 15)
   - `columns: int` (default 15)
   - `cpu: int`, `int_rating: int`, `datawall_strength: int`
+  - `resident_programs: Array[NetProgram]` — layout-level programs the datafort's CPUs run against an intruding netrunner each turn (assigned in the designer; duplicated at spawn)
   - `grid_tiles: Dictionary` - Maps `Vector2i(x, y)` to [CP2020TileData](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020TileData.gd)
 - **TileType Enum**:
   - `EMPTY` (0), `WALL` (1), `DATAWALL` (2), `ENTRY` (3), `CODE_GATE` (4), `MEMORY_UNIT` (5), `CONTROL_NODE` (6), `BLACK_ICE` (7), `NETWATCH` (8), `NETRUNNER` (9)
@@ -165,6 +166,9 @@ Represents state and attributes of a single cell in the datafort layout grid.
     - `npc_name: String`, `npc_strength: int`, `npc_max_ap: int`, `npc_max_integrity: int`, `npc_max_health: int`, `npc_max_mu: int`, `npc_deck_name: String`, `npc_disposition: int` (0 = Hostile, 1 = Neutral)
     - `npc_has_override: bool` — set true when any field is non-zero/non-empty; the runtime prefers tile stats over the tier template when this is set
     - `npc_programs: Array[NetProgram]` — optional hand-authored loadout (empty = template loadout)
+  - **Per-CPU fields** (CONTROL_NODE tiles; authored in the datafort designer's CPU editor):
+    - `cpu_int: int` — CPU's INT contribution (0 = use the layout default `layout.cpu`)
+    - `cpu_crashed_turns: int` — >0 means the CPU is crashed by a Krash anti-system program and contributes no INT / extra actions until it reboots. Reset to 0 on every `load_subnet`.
 
 ### 4.3 `CP2020WorldMapLayout` ([CP2020WorldMapLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020WorldMapLayout.gd))
 Serializable world map authored by the world map designer and loaded at runtime by `cp_2020_world_net_map.gd`.
@@ -229,6 +233,7 @@ Represents an executable program software tool loaded into a cyberdeck.
   - `REVEAL_NODES`: Scans hidden layout nodes
   - `MODIFY_MU`: Modifies deck speed or memory capacity
   - `SHIELD`: Defense program (raised on the runner's own tile)
+  - `CRASH_CPU`: Anti-system program (Krash) — crashes a datafort CPU for 1D6+1 turns, dropping the datafort's INT and extra actions until it reboots
 - **Properties**: `program_name`, `type`, `effect_type`, `memory_cost` (MU), `strength`, `price`, `icon`, `description` (one-line summary shown in the workbench detail card)
 
 ---
@@ -259,8 +264,11 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
   - Roll: `(randi() % 10) + 1 + program.strength` (Cyberpunk 2020 1d10 + Program STR rule).
   - Check: If `total_roll >= tile.strength_str`, `tile.is_unlocked = true`, immediately clearing the movement obstacle, changing tile color from orange to green, and recalculating Line of Sight. Otherwise, the attempt fails and logs the roll details to the terminal.
 - **NPC Spawning** (`spawn_npcs`, parallel to `spawn_black_ice`): iterates NETWATCH/NETRUNNER tiles, applies per-tile `npc_*` overrides or falls back to `TIER_NPC_TEMPLATES[_current_security_tier][faction]` (NetWatch leans anti-personnel + shield; random netrunners lean utility + weak attack). Programs are `duplicate()`d at spawn. NPCs are added to `npc_nodes` and their signals connected (`message_logged`, `moved_to`, `attacked_netrunner`, `destroyed`).
-- **Turn Execution**: `_all_adversaries()` merges `ice_nodes` + `npc_nodes` into one array passed to `turn_manager.execute_ice_turns`. The turn manager calls `take_turn(target, layout)` on any node that has the method, so NPCs drop in without changing its signature.
+- **Turn Execution**: `_all_adversaries()` merges `datafort` + `ice_nodes` + `npc_nodes` into one array passed to `turn_manager.execute_ice_turns` (datafort first so it acts first). The turn manager calls `take_turn(target, layout)` on any node that has the method, so NPCs and the datafort drop in without changing its signature.
 - **NPC Combat**: `execute_npc_attack(program, coord)` resolves an opposed 1D10+STR roll vs the NPC's strength (same convention as `execute_ice_attack`); `take_damage` handles destruction + the provoked transition. `_talk_to_npc(coord)` logs flavour text for neutral runners (placeholder for future dialogue/trading).
+- **Datafort Adversary** (`spawn_datafort`, after `spawn_npcs`): spawns a [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) node that treats the datafort itself as an adversary. It owns the CPU list (built from `CONTROL_NODE` tiles), computes total INT and actions-per-turn (`1 + floor(active_cpus / 2)`), takes a turn each round running `resident_programs` (anti-runner `DAMAGE_RUNNER` programs) against the netrunner, and decrements crashed-CPU reboot timers. Signals: `message_logged`, `attacked_netrunner` (→ `_on_ice_attacked`), `cpu_crashed`, `cpu_rebooted`, `state_changed` (→ `update_datafort_info`). The datafort is **prepended** to `_all_adversaries()` so it acts before ICE/NPC, but it does **not** command them — ICE and NPCs stay independent.
+- **Krash / CPU Crash**: the `crash_cpu` action (right-click a visible `CONTROL_NODE` tile → Krash, ids `5000+i`) calls `datafort.crash_cpu(program, coord)`: opposed 1d10+program.STR vs 1d10+CPU INT; on a hit the CPU is crashed for `1D6+1` turns (`tile.cpu_crashed_turns`), dropping the datafort's INT and extra actions until it reboots. `load_subnet` resets all `cpu_crashed_turns` to 0 (alongside the fog reset).
+- **HUD**: `update_datafort_info()` refreshes the `DatafortLabel` (datafort name, active/total CPUs, total INT, actions/turn) on spawn, crash, reboot, and turn boundaries.
 
 ### 5.2 Board Renderer ([cp2020_board_renderer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_board_renderer.gd))
 Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile visibility states:
@@ -295,6 +303,17 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **Stat sourcing** (see `cp2020_game_session.spawn_npcs`): NPC stats are set **before** `initialize()`. Per-tile override fields (`npc_*` on `CP2020TileData`) take precedence; otherwise the hub's `security_tier` selects a default template from `TIER_NPC_TEMPLATES` (per faction, per tier). Program resources from templates are `duplicate()`d at spawn to avoid mutating cached `.tres` files.
 - **Fog of War**: `update_visibility(explored, visible)` toggles the glyph label like Black ICE. The session's `recalculate_fog_of_war` syncs NPC visibility each move.
 
+### 5.4c Datafort CPU Adversary ([cp2020_datafort.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd)) — *NEW*
+
+The datafort itself is an adversary, not just a passive map. Its CPUs determine its INT, actions per turn, and program-running ability — modelled on the Cyberpunk 2020 pen-and-paper netrunning rules.
+
+- **class_name CP2020Datafort extends Node** — one node per subnet, spawned by `spawn_datafort` after `spawn_npcs`. Inner `Cpu` class holds `coord`, `tile` (CP2020TileData), and `int_rating`. CPUs are built from all `CONTROL_NODE` tiles in the layout; each CPU's INT is `tile.cpu_int` (or the layout default `layout.cpu` when `cpu_int == 0`).
+- **Total INT** = sum of active CPUs' INT ratings. **Extra actions per turn** = `1 + floor(active_cpu_count / 2)` (one extra action per two additional CPUs, per CP2020 rules).
+- **Krash / CPU crash** (`crash_cpu(program, coord)`): opposed `1d10 + program.strength` vs `1d10 + CPU INT`; on a hit the CPU is crashed for `1D6+1` turns (`tile.cpu_crashed_turns = randi_range(1,6)+1`), emitting `cpu_crashed(coord)` + `state_changed`. A crashed CPU contributes no INT and no extra actions until it reboots.
+- **take_turn(layout)** — called by the turn manager: decrements every `cpu_crashed_turns > 0`; at 0 the CPU reboots (emit `cpu_rebooted(coord)`). Then runs `resident_programs` (anti-runner `DAMAGE_RUNNER` programs `duplicate()`d from the layout) up to `actions_per_turn` against the runner: opposed `1d10 + INT` roll, emits `attacked_netrunner(strength)` on a hit. Emits `state_changed` at the end.
+- **Independence**: the datafort does **not** command the Black ICE or NPC netrunners — they stay independent turn-manager adversaries with their own `take_turn`. The datafort is simply one more entry in `_all_adversaries()` (prepended so it acts first) running its own resident programs. Any program the datafort spawns follows its own programming (same principle as ICE).
+- **Signals**: `message_logged`, `attacked_netrunner(strength)`, `cpu_crashed(coord)`, `cpu_rebooted(coord)`, `state_changed`. The session connects `attacked_netrunner` → `_on_ice_attacked` (shared handler) and `state_changed` → `update_datafort_info`.
+
 ### 5.5 Contextual Right-Click Input Handler ([cp2020_interaction_handler.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_interaction_handler.gd))
 - Captures right-click mouse events over grid cells.
 - Converts mouse pixel coordinates to grid cell coordinates `Vector2i(grid_x, grid_y)`.
@@ -303,10 +322,11 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
   - **LDL-link tiles** (`is_ldl_link`): always add "Travel to \<datafort\>" (id `3000`) + "Return to City Grid" (id `3001`), even with no matching program. Travel uses `_ldl_tile` (the stored tile data); empty target → the session aborts the travel with "no target subnet set", so an empty-target LDL link effectively offers city-grid-return only.
   - **Visible Black ICE on the tile**: offer `DEREZ_ICE` programs (ids `1000+i`).
   - **Visible NPC netrunner on the tile**: offer `DAMAGE_RUNNER` and `DEREZ_ICE` programs (ids `2000+i`) to attack the NPC, plus a "Talk" item (id `4000`) for neutral runners. `_npc_target` stores the NPC node for the callback.
+  - **Visible CPU tile** (`CONTROL_NODE`): offer `CRASH_CPU` (Krash) anti-system programs (ids `5000+i`).
   - **Runner's own tile** (visible): offer `SHIELD` defense programs.
   - **Locked Code Gate**: offer `BYPASS_GATE` programs.
   - **Datawall**: offer `BREACH_WALL` programs.
-- `_on_menu_action_selected` checks ids in this order to avoid collision: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → program use (`1000+i`).
+- `_on_menu_action_selected` checks ids in this order to avoid collision: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → program use (`1000+i`).
 - Dynamically creates and opens a `PopupMenu` near mouse location (`popup_on_parent`).
 
 ### 5.6 Datafort Designer Tool ([cp2020_datafort_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_designer.gd))
@@ -315,6 +335,8 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **LDL-Link Editor panel** (built in code as a `PanelContainer`+`VBox` anchored to the right edge so it stays on-screen): target subnet `LineEdit` + Browse `FileDialog` (scoped to `scenes/forts/*.tres`), target entry coord X/Y `SpinBox`es, and a "Clear target" button. In LDL mode, clicking an existing LDL link selects it for editing (does not overwrite); clicking empty space paints a new link and opens the editor. Field edits write back to the tile live and persist on save. Empty target = world-map-return-only. LDL links draw with a distinct blue frame + "L" glyph.
 - **ICE Editor panel** (built in code; shown when a BLACK_ICE tile is painted/selected): program name `LineEdit`, strength/AP/integrity `SpinBox`es, traces `CheckBox`, and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override the template for that tile. Edits write back to the tile's `ice_*` fields live and persist on save.
 - **NPC Editor panel** (built in code; shown when a NETWATCH/NETRUNNER tile is painted/selected): name `LineEdit`, strength/AP/integrity/health/MU `SpinBox`es, deck name `LineEdit`, disposition `OptionButton` (Hostile/Neutral), and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override. Edits write back to the tile's `npc_*` fields live and persist on save. NETWATCH tiles draw a red shield glyph; NETRUNNER tiles draw a gold person glyph.
+- **CPU Editor panel** (built in code; shown when a CONTROL_NODE tile is painted/selected): a `cpu_int` `SpinBox` (0 = use the layout default `layout.cpu` as the CPU's INT) and a "Reset to default" button. Edits write back to `tile.cpu_int` live and persist on save. CPUs are structural tiles (walkable) and render with a purple diamond glyph; a crashed CPU (`cpu_crashed_turns > 0`) renders dimmed red with an "X" glyph in the gameplay view.
+- **Resident Programs editor** (built in code; an `ItemList` with Add/Remove buttons loading `NetProgram` `.tres` files): sets `layout.resident_programs` — the programs the [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) adversary runs against the intruding netrunner each turn. Scope for this pass: Krash (player weapon) + anti-runner `DAMAGE_RUNNER` attacks; Murphy / Viral 15 later.
 - Dynamic layout resizing (`SpinBox` input for columns/rows).
 - Native file open/save dialog integration (`FileDialog`) for loading and exporting `.tres` layout files.
 
@@ -386,11 +408,12 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **Grid Offset**: The top 90 pixels of the viewport are reserved for UI elements. Always convert world mouse clicks or tile positions using `grid_offset_y = 90` and `cell_size = 40`.
 - **Vector2i Coordinates**: Grid positions are integer vectors (`Vector2i`), used as keys in `current_layout.grid_tiles`.
 - **`.tres` string keys**: `grid_tiles` dictionaries store keys as `"x,y"` strings when serialised. Always read tiles via `layout.get_tile(coord)` (which handles both `Vector2i` and string keys); never `grid_tiles.get(Vector2i)`.
-- **Fog reset on load**: `load_subnet` resets `is_explored`/`is_visible` on every tile because `ResourceLoader` returns a cached instance. Without this, a datafort revisited via LDL travel would show as already-revealed.
+- **Fog reset on load**: `load_subnet` resets `is_explored`/`is_visible` on every tile because `ResourceLoader` returns a cached instance. Without this, a datafort revisited via LDL travel would show as already-revealed. The same reset now zeroes `cpu_crashed_turns` so revisited CPUs boot fresh.
+- **Datafort does not control ICE**: The [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) adversary runs its **own** `resident_programs` against the runner; it does not command the Black ICE or NPC netrunners, which stay independent turn-manager adversaries. The datafort is prepended to `_all_adversaries()` so it acts first.
 - **Floor tiles via designer only**: Hand-authored `.tres` `Empty Path` floor tiles have failed to render in-game, but the same tiles resaved through the datafort designer render correctly. Author floor tiles through the designer; hand-edit `.tres` only for tile properties (e.g. LDL link target fields).
 - **LDL link is an ENTRY tile**: There is no separate "return" tile type. Any `ENTRY` tile with `is_ldl_link=true` auto-offers Travel (id `3000`) + Return to City Grid (id `3001`) via the interaction handler. An LDL link with an empty `target_subnet_path` is effectively city-grid-return-only.
 - **Trace lifecycle**: `accumulated_trace` resets on flatline / jack-out / return-to-world-map (City Grid return-to-world-map), but is **preserved** across in-datafort LDL travel (`travel_ldl` keeps it) AND across the datafort→City Grid return (`return_world_map` now goes to the City Grid and keeps trace).
-- **Lambda Signal Connections**: Popup menus disconnect previous `id_pressed` connections before reconnecting to prevent duplicate signal callbacks. Menu id ranges are a collision hazard — check in this order in `_on_menu_action_selected`: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → program use (`1000+i`).
+- **Lambda Signal Connections**: Popup menus disconnect previous `id_pressed` connections before reconnecting to prevent duplicate signal callbacks. Menu id ranges are a collision hazard — check in this order in `_on_menu_action_selected`: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → program use (`1000+i`).
 - **NPC program duplication**: `TIER_NPC_TEMPLATES` stores program resource paths (not names). `spawn_npcs` loads and `duplicate()`s each program so cached `.tres` resources are never mutated across runs. The same applies to per-tile `npc_programs` via `_duplicate_programs`.
 - **NPC disposition transition**: A neutral netrunner who takes damage flips to hostile for the rest of the run (once hostile, stays hostile). Only damage triggers this — talking does not.
 - **@tool panels in code**: The datafort and world map designers build their side panels in code (anchored to stay on-screen) rather than in the `.tscn`, so the scene files stay minimal.

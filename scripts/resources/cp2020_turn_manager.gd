@@ -37,9 +37,17 @@ func execute_ice_turns(ice_nodes: Array, target_pos: Vector2i, layout: CP2020Dat
 	is_netrunner_turn = false
 	end_player_turn()
 	for ice in ice_nodes:
-		if ice and ice.has_method("take_turn"):
-			await ice.take_turn(target_pos, layout)
-			await get_tree().create_timer(0.3).timeout
-			ice_movement_stepped.emit()
+		if not is_instance_valid(ice) or not ice.has_method("take_turn"):
+			continue
+		await ice.take_turn(target_pos, layout)
+		# An adversary may have flatlined the netrunner, triggering a scene
+		# change that detaches this node from the tree. Bail before touching
+		# get_tree() to avoid a null reference.
+		if not is_inside_tree():
+			return
+		await get_tree().create_timer(0.3).timeout
+		if not is_inside_tree():
+			return
+		ice_movement_stepped.emit()
 
 	start_netrunner_turn()

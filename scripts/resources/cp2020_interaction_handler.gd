@@ -131,6 +131,18 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 			_dynamic_menu.add_item("Talk to %s" % npc_here.npc_name, 4000)
 			options_added = true
 
+	elif tile_data.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE and tile_data.is_visible:
+		# CPU tile visible — offer anti-system (CRASH_CPU) programs to crash the
+		# datafort's CPU. id range 5000+i (checked before the 1000+i program
+		# range in _on_menu_action_selected).
+		for i in range(available_programs.size()):
+			var prog = available_programs[i] as NetProgram
+			if prog and prog.effect_type == NetProgram.EffectType.CRASH_CPU:
+				var menu_label = "Krash CPU: %s (STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
+				var prog_id = 5000 + i
+				_dynamic_menu.add_item(menu_label, prog_id)
+				options_added = true
+
 	elif target_coord == netrunner_pos and tile_data.is_visible:
 		# Right-click on the Netrunner's own tile — offer protection (SHIELD) programs
 		for i in range(available_programs.size()):
@@ -200,6 +212,13 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 		if idx >= 0 and idx < available_programs.size():
 			var prog = available_programs[idx] as NetProgram
 			action_triggered.emit("attack_npc", target_coord, prog)
+		return
+	# CPU crash (Krash anti-system) — id range 5000+i.
+	if id >= 5000 and id < 6000:
+		var idx = id - 5000
+		if idx >= 0 and idx < available_programs.size():
+			var prog = available_programs[idx] as NetProgram
+			action_triggered.emit("crash_cpu", target_coord, prog)
 		return
 	if id >= 1000:
 		var idx = id - 1000

@@ -8,6 +8,12 @@ extends Resource
 @export var int_rating: int = 15
 @export var datawall_strength: int = 5
 
+# Layout-level resident programs the datafort's CPUs can run against an
+# intruding netrunner (anti-system / anti-personnel). Assigned in the
+# datafort designer. Must be duplicated at spawn time so cached .tres
+# resources are never mutated across runs.
+@export var resident_programs: Array[NetProgram] = []
+
 # Enum for CP2020 tile types
 enum TileType {
 	EMPTY,

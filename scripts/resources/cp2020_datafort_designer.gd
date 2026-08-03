@@ -55,6 +55,18 @@ var npc_deck_edit: LineEdit
 var npc_disposition_option: OptionButton
 var selected_npc_coord: Vector2i = Vector2i(-1, -1)
 
+# CPU editor panel (built in code; shown when a CONTROL_NODE tile is selected).
+var cpu_panel: VBoxContainer
+var cpu_panel_bg: PanelContainer
+var cpu_int_spinbox: SpinBox
+var selected_cpu_coord: Vector2i = Vector2i(-1, -1)
+
+# Layout-level resident programs editor (programs the datafort's CPUs run).
+var programs_panel: VBoxContainer
+var programs_panel_bg: PanelContainer
+var programs_list: ItemList
+var programs_add_dialog: FileDialog
+
 func _ready() -> void:
 	setup_new_map()
 	setup_file_dialogs_if_missing()
@@ -63,6 +75,8 @@ func _ready() -> void:
 	build_ldl_panel()
 	build_ice_panel()
 	build_npc_panel()
+	build_cpu_panel()
+	build_programs_panel()
 	queue_redraw()
 
 func setup_new_map() -> void:
@@ -284,9 +298,12 @@ func _gui_input(event: InputEvent) -> void:
 						_open_ice_editor(coord)
 					elif painted and (painted.tile_type == CP2020DatafortLayout.TileType.NETWATCH or painted.tile_type == CP2020DatafortLayout.TileType.NETRUNNER):
 						_open_npc_editor(coord)
+					elif painted and painted.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+						_open_cpu_editor(coord)
 					else:
 						_hide_ice_panel()
 						_hide_npc_panel()
+						_hide_cpu_panel()
 
 # Update paint_tile to flag LDL options if needed
 func paint_tile(coord: Vector2i) -> void:
@@ -316,6 +333,10 @@ func paint_tile(coord: Vector2i) -> void:
 				tile_data.is_ldl_link = false
 		CP2020DatafortLayout.TileType.EMPTY:
 			tile_data.tile_name = "Empty Path"
+		CP2020DatafortLayout.TileType.CONTROL_NODE:
+			tile_data.tile_name = "CPU"
+			tile_data.cpu_int = 0
+			tile_data.cpu_crashed_turns = 0
 		CP2020DatafortLayout.TileType.BLACK_ICE:
 			tile_data.tile_name = "Black ICE"
 			tile_data.ice_has_override = false
@@ -922,3 +943,207 @@ func _clear_npc_override() -> void:
 	npc_deck_edit.text = ""
 	npc_disposition_option.select(0)
 	_write_npc_field()
+
+
+# ---------------------------------------------------------------------------
+# CPU editor side panel (CONTROL_NODE tiles)
+# ---------------------------------------------------------------------------
+
+func build_cpu_panel() -> void:
+	var panel_bg = PanelContainer.new()
+	panel_bg.name = "CpuEditorPanel"
+	panel_bg.anchor_left = 1.0
+	panel_bg.anchor_right = 1.0
+	panel_bg.anchor_top = 0.0
+	panel_bg.anchor_bottom = 1.0
+	panel_bg.offset_left = -300
+	panel_bg.offset_right = -10
+	panel_bg.offset_top = 90
+	panel_bg.offset_bottom = -10
+	panel_bg.visible = false
+	add_child(panel_bg)
+	cpu_panel_bg = panel_bg
+
+	cpu_panel = VBoxContainer.new()
+	cpu_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cpu_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel_bg.add_child(cpu_panel)
+
+	var title = Label.new()
+	title.text = "CPU Editor"
+	cpu_panel.add_child(title)
+
+	var hint = Label.new()
+	hint.text = "Each CPU contributes its INT to the datafort. Set 0 to use the layout default (layout.cpu). A Krash anti-system program crashes a CPU for 1D6+1 turns."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cpu_panel.add_child(hint)
+
+	var int_lbl = Label.new()
+	int_lbl.text = "CPU INT (0 = layout default):"
+	cpu_panel.add_child(int_lbl)
+	cpu_int_spinbox = SpinBox.new()
+	cpu_int_spinbox.min_value = 0
+	cpu_int_spinbox.max_value = 20
+	cpu_int_spinbox.value_changed.connect(_on_cpu_field_changed)
+	cpu_panel.add_child(cpu_int_spinbox)
+
+	var clear_btn = Button.new()
+	clear_btn.text = "Reset to default (0)"
+	clear_btn.pressed.connect(_clear_cpu_override)
+	cpu_panel.add_child(clear_btn)
+
+
+func _open_cpu_editor(coord: Vector2i) -> void:
+	if not current_layout:
+		return
+	var tile = current_layout.get_tile(coord)
+	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.CONTROL_NODE:
+		return
+	selected_cpu_coord = coord
+	cpu_int_spinbox.set_block_signals(true)
+	cpu_int_spinbox.value = tile.cpu_int
+	cpu_int_spinbox.set_block_signals(false)
+	cpu_panel_bg.visible = true
+
+
+func _hide_cpu_panel() -> void:
+	if cpu_panel_bg:
+		cpu_panel_bg.visible = false
+	selected_cpu_coord = Vector2i(-1, -1)
+
+
+func _write_cpu_field() -> void:
+	if not current_layout or selected_cpu_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_cpu_coord)
+	if tile == null:
+		return
+	tile.cpu_int = int(cpu_int_spinbox.value)
+	queue_redraw()
+
+
+func _on_cpu_field_changed(_value: Variant = null) -> void:
+	_write_cpu_field()
+
+
+func _clear_cpu_override() -> void:
+	cpu_int_spinbox.value = 0
+	_write_cpu_field()
+
+
+# ---------------------------------------------------------------------------
+# Layout-level resident programs editor (programs the datafort CPUs run)
+# ---------------------------------------------------------------------------
+
+func build_programs_panel() -> void:
+	var panel_bg = PanelContainer.new()
+	panel_bg.name = "ProgramsEditorPanel"
+	panel_bg.anchor_left = 1.0
+	panel_bg.anchor_right = 1.0
+	panel_bg.anchor_top = 1.0
+	panel_bg.anchor_bottom = 1.0
+	panel_bg.offset_left = -300
+	panel_bg.offset_right = -10
+	panel_bg.offset_top = -260
+	panel_bg.offset_bottom = -10
+	panel_bg.visible = false
+	add_child(panel_bg)
+	programs_panel_bg = panel_bg
+
+	programs_panel = VBoxContainer.new()
+	programs_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	programs_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel_bg.add_child(programs_panel)
+
+	var title = Label.new()
+	title.text = "Datafort Resident Programs"
+	programs_panel.add_child(title)
+
+	var hint = Label.new()
+	hint.text = "Programs the datafort's CPUs run against intruding netrunners each turn. Add anti-personnel programs for the CPU adversary to attack the runner."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	programs_panel.add_child(hint)
+
+	programs_list = ItemList.new()
+	programs_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	programs_list.custom_minimum_size = Vector2(0, 120)
+	programs_panel.add_child(programs_list)
+
+	var add_btn = Button.new()
+	add_btn.text = "Add program (.tres)..."
+	add_btn.pressed.connect(_open_programs_add_dialog)
+	programs_panel.add_child(add_btn)
+
+	var remove_btn = Button.new()
+	remove_btn.text = "Remove selected"
+	remove_btn.pressed.connect(_remove_selected_program)
+	programs_panel.add_child(remove_btn)
+
+	var toggle_btn = Button.new()
+	toggle_btn.text = "Show / Hide programs editor"
+	toggle_btn.pressed.connect(_toggle_programs_panel)
+	# Anchor a small toggle button to the bottom-right so the editor is on demand.
+	toggle_btn.anchor_left = 1.0
+	toggle_btn.anchor_right = 1.0
+	toggle_btn.anchor_top = 1.0
+	toggle_btn.anchor_bottom = 1.0
+	toggle_btn.offset_left = -200
+	toggle_btn.offset_right = -10
+	toggle_btn.offset_top = -32
+	toggle_btn.offset_bottom = -10
+	add_child(toggle_btn)
+
+	# File dialog for picking program .tres files.
+	programs_add_dialog = FileDialog.new()
+	programs_add_dialog.access = FileDialog.ACCESS_RESOURCES
+	programs_add_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	programs_add_dialog.filters = PackedStringArray(["*.tres ; Program resource"])
+	programs_add_dialog.file_selected.connect(_on_program_added)
+	add_child(programs_add_dialog)
+
+
+func _toggle_programs_panel() -> void:
+	if programs_panel_bg:
+		programs_panel_bg.visible = not programs_panel_bg.visible
+		if programs_panel_bg.visible:
+			_refresh_programs_list()
+
+
+func _refresh_programs_list() -> void:
+	if not programs_list or not current_layout:
+		return
+	programs_list.clear()
+	for p in current_layout.resident_programs:
+		if p is NetProgram:
+			programs_list.add_item("%s (STR %d, %d MU)" % [p.program_name, p.strength, p.memory_cost])
+
+
+func _open_programs_add_dialog() -> void:
+	if programs_add_dialog:
+		programs_add_dialog.popup_centered(Vector2i(600, 400))
+
+
+func _on_program_added(path: String) -> void:
+	if not current_layout:
+		return
+	if ResourceLoader.exists(path):
+		var prog = ResourceLoader.load(path) as NetProgram
+		if prog:
+			current_layout.resident_programs.append(prog)
+			_refresh_programs_list()
+			queue_redraw()
+
+
+func _remove_selected_program() -> void:
+	if not current_layout or not programs_list:
+		return
+	var idxs = programs_list.get_selected_items()
+	if idxs.is_empty():
+		return
+	# Remove highest index first to keep indices valid.
+	idxs.reverse()
+	for i in idxs:
+		if i >= 0 and i < current_layout.resident_programs.size():
+			current_layout.resident_programs.remove_at(i)
+	_refresh_programs_list()
+	queue_redraw()

@@ -98,53 +98,31 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 			canvas.draw_line(chip_rect.position + Vector2(24, 12), chip_rect.position + Vector2(28, 12), pin_color, 2.0)
 
 		CP2020DatafortLayout.TileType.CONTROL_NODE:
-			canvas.draw_rect(cell_rect, Color(0.5, 0.0, 0.5, 0.25 * alpha_mult), true)
-			canvas.draw_rect(cell_rect, Color(Color.PURPLE, 0.8 * alpha_mult), false, 2.0)
-			
-			var inner_rect = Rect2(cell_rect.position + Vector2(4, 4), Vector2(cell_rect.size.x - 8, cell_rect.size.y - 8))
-			canvas.draw_rect(inner_rect, Color(Color.PURPLE, 0.6 * alpha_mult), false, 1.5)
-			
-			var center = cell_rect.get_center()
-			var diamond = PackedVector2Array([
-				center + Vector2(0, -10),
-				center + Vector2(10, 0),
-				center + Vector2(0, 10),
-				center + Vector2(-10, 0)
-			])
-			canvas.draw_polygon(diamond, PackedColorArray([Color(0.6, 0.2, 0.8, 0.7 * alpha_mult)]))
+			# A datafort CPU. Crashed CPUs (Krash) render dimmed red with an "X"
+			# so the player can see which CPUs are down; active CPUs keep the
+			# normal purple diamond.
+			var crashed: bool = tile_data.cpu_crashed_turns > 0
+			if crashed:
+				canvas.draw_rect(cell_rect, Color(0.3, 0.05, 0.05, 0.5 * alpha_mult), true)
+				canvas.draw_rect(cell_rect, Color(Color.RED, 1.0 * alpha_mult), false, 2.0)
+				var center = cell_rect.get_center()
+				canvas.draw_line(center + Vector2(-9, -9), center + Vector2(9, 9), Color(Color.RED, 1.0 * alpha_mult), 2.5)
+				canvas.draw_line(center + Vector2(9, -9), center + Vector2(-9, 9), Color(Color.RED, 1.0 * alpha_mult), 2.5)
+			else:
+				canvas.draw_rect(cell_rect, Color(0.5, 0.0, 0.5, 0.25 * alpha_mult), true)
+				canvas.draw_rect(cell_rect, Color(Color.PURPLE, 0.8 * alpha_mult), false, 2.0)
+				var inner_rect = Rect2(cell_rect.position + Vector2(4, 4), Vector2(cell_rect.size.x - 8, cell_rect.size.y - 8))
+				canvas.draw_rect(inner_rect, Color(Color.PURPLE, 0.6 * alpha_mult), false, 1.5)
+				var center = cell_rect.get_center()
+				var diamond = PackedVector2Array([
+					center + Vector2(0, -10),
+					center + Vector2(10, 0),
+					center + Vector2(0, 10),
+					center + Vector2(-10, 0)
+				])
+				canvas.draw_polygon(diamond, PackedColorArray([Color(0.6, 0.2, 0.8, 0.7 * alpha_mult)]))
 
-		CP2020DatafortLayout.TileType.NETWATCH:
-			# NetWatch spawn marker: red shield/badge glyph on a dark red floor.
-			canvas.draw_rect(cell_rect, Color(0.5, 0.05, 0.05, 0.3 * alpha_mult), true)
-			canvas.draw_rect(cell_rect, Color(Color.RED, 0.9 * alpha_mult), false, 2.0)
-			var nw_center = cell_rect.get_center()
-			# Shield outline
-			var shield = PackedVector2Array([
-				nw_center + Vector2(-8, -9),
-				nw_center + Vector2(8, -9),
-				nw_center + Vector2(8, 2),
-				nw_center + Vector2(0, 10),
-				nw_center + Vector2(-8, 2)
-			])
-			canvas.draw_polygon(shield, PackedColorArray([Color(0.8, 0.1, 0.1, 0.55 * alpha_mult)]))
-			# Badge crossbar
-			canvas.draw_line(
-				nw_center + Vector2(-5, -2),
-				nw_center + Vector2(5, -2),
-				Color(Color.WHITE, 0.9 * alpha_mult), 2.0)
-
-		CP2020DatafortLayout.TileType.NETRUNNER:
-			# Random netrunner spawn marker: yellow person glyph on a dark floor.
-			canvas.draw_rect(cell_rect, Color(0.4, 0.35, 0.05, 0.3 * alpha_mult), true)
-			canvas.draw_rect(cell_rect, Color(Color.YELLOW, 0.9 * alpha_mult), false, 2.0)
-			var nr_center = cell_rect.get_center()
-			# Head
-			canvas.draw_circle(nr_center + Vector2(0, -5), 3.0, Color(0.9, 0.8, 0.1, 0.8 * alpha_mult))
-			# Body
-			var body = PackedVector2Array([
-				nr_center + Vector2(-5, 3),
-				nr_center + Vector2(5, 3),
-				nr_center + Vector2(4, 10),
-				nr_center + Vector2(-4, 10)
-			])
-			canvas.draw_polygon(body, PackedColorArray([Color(0.9, 0.8, 0.1, 0.7 * alpha_mult)]))
+		# NETWATCH / NETRUNNER tiles have no board renderer case — like
+		# BLACK_ICE, they are spawn markers only. The spawned NPC nodes
+		# (cp2020_npc_netrunner.tscn) render their own glyphs at runtime.
+		# Tile glyphs for these types are drawn exclusively in the designer.

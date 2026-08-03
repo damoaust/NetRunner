@@ -12,6 +12,7 @@ extends Control
 @onready var health_label: Label = $UI/PanelContainer/VBoxContainer/HealthLabel
 @onready var health_bar: ProgressBar = $UI/PanelContainer/VBoxContainer/HealthBar
 @onready var trace_label: Label = $UI/PanelContainer/VBoxContainer/TraceLabel
+@onready var datafort_label: Label = $UI/PanelContainer/VBoxContainer/DatafortLabel
 @onready var program_list_container: VBoxContainer = $UI/PanelContainer/VBoxContainer/ProgramListContainer
 @onready var netrunner: CP2020Netrunner = $CP2020Netrunner
 @onready var turn_manager: CP2020TurnManager = $TurnManager
@@ -21,6 +22,7 @@ const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
 const NpcNetrunnerScene := preload("res://scenes/ui/cp2020_npc_netrunner.tscn")
 var ice_nodes: Array[BlackIce] = []
 var npc_nodes: Array[CP2020NpcNetrunner] = []
+var datafort: CP2020Datafort = null
 
 var current_layout: CP2020DatafortLayout
 # Resolved tier for the current datafort (set at dive time by the City Grid).
@@ -140,6 +142,9 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 			if t:
 				t.is_explored = false
 				t.is_visible = false
+				# Reset any Krash-crashed CPUs from a prior visit so a fresh
+				# dive starts with all CPUs active.
+				t.cpu_crashed_turns = 0
 
 		# Let the Netrunner handle its own spawning!
 		if netrunner:
@@ -147,6 +152,7 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		_current_security_tier = _resolve_security_tier(path)
 		spawn_black_ice()
 		spawn_npcs()
+		spawn_datafort()
 		recalculate_fog_of_war(netrunner.current_position)
 		_update_camera_limits()
 		_center_camera_on_runner()
@@ -267,6 +273,18 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				_check_actions_exhausted()
 		"talk_npc":
 			_talk_to_npc(target_coord)
+		"crash_cpu":
+			if program is NetProgram and current_layout:
+				if turn_manager and not turn_manager.has_actions():
+					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
+					return
+				if is_instance_valid(datafort):
+					datafort.crash_cpu(program, target_coord)
+				if board_renderer:
+					board_renderer.queue_redraw()
+				if turn_manager:
+					turn_manager.consume_action()
+				_check_actions_exhausted()
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
@@ -551,6 +569,45 @@ func _on_npc_destroyed(npc: CP2020NpcNetrunner) -> void:
 	npc_nodes.erase(npc)
 
 
+# Spawn the datafort adversary node (the CPUs themselves). The datafort runs
+# its own resident programs against the runner and tracks Krash-crashed CPUs.
+func spawn_datafort() -> void:
+	if is_instance_valid(datafort):
+		datafort.queue_free()
+	datafort = null
+
+	if not current_layout:
+		return
+
+	datafort = CP2020Datafort.new()
+	add_child(datafort)
+	datafort.message_logged.connect(log_to_terminal)
+	datafort.attacked_netrunner.connect(_on_ice_attacked)
+	datafort.cpu_crashed.connect(_on_cpu_state_changed)
+	datafort.cpu_rebooted.connect(_on_cpu_state_changed)
+	datafort.state_changed.connect(update_datafort_info)
+	datafort.initialize(current_layout)
+	update_datafort_info()
+
+
+func _on_cpu_state_changed(_coord: Vector2i) -> void:
+	if board_renderer:
+		board_renderer.queue_redraw()
+	update_datafort_info()
+
+
+func update_datafort_info(_unused: Variant = null) -> void:
+	if not datafort_label or not datafort:
+		return
+	datafort_label.text = "Datafort: %s | CPUs %d/%d | INT %d | %d act/turn" % [
+		datafort.fort_name,
+		datafort.active_cpu_count(),
+		datafort.cpus.size(),
+		datafort.total_int(),
+		datafort.actions_per_turn(),
+	]
+
+
 # Resolve the security tier for the current datafort. Set at dive time by the
 # City Grid (RunState.selected_security_tier) based on the datafort icon's
 # tier. Falls back to LEVEL_1 if unset (e.g. legacy direct entry).
@@ -582,11 +639,14 @@ func _check_actions_exhausted() -> void:
 		log_to_terminal("Out of actions. Adversaries activating...\n")
 		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout)
 
-# Combined adversaries (Black ICE + NPC netrunners) for the turn manager. The
-# turn manager only requires each entry to have a take_turn(target, layout)
-# method, which both share.
+# Combined adversaries (Datafort + Black ICE + NPC netrunners) for the turn
+# manager. The datafort is prepended so it acts first each round. The turn
+# manager only requires each entry to have a take_turn(target, layout)
+# method, which all three share.
 func _all_adversaries() -> Array:
 	var out: Array = []
+	if is_instance_valid(datafort):
+		out.append(datafort)
 	out.append_array(ice_nodes)
 	out.append_array(npc_nodes)
 	return out

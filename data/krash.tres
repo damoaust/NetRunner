@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://clt5eev8djng2"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_krash"]
+
+[resource]
+script = ExtResource("1_krash")
+program_name = "Krash"
+type = 5
+effect_type = 7
+memory_cost = 4
+strength = 5
+price = 1200
+description = "Anti-system program. Crashes the closest datafort CPU for 1D6+1 turns, dropping the datafort's INT and extra actions until it reboots."
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

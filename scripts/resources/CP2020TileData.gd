@@ -46,3 +46,10 @@ extends Resource
 # Optional hand-authored program loadout (empty = use the tier template loadout).
 # Must be duplicated at spawn time to avoid mutating cached .tres resources.
 @export var npc_programs: Array[NetProgram] = []
+
+# --- Per-CPU fields (CONTROL_NODE tiles). cpu_int = 0 means "use the layout
+# default" (layout.cpu). cpu_crashed_turns > 0 means the CPU is currently
+# crashed by a Krash anti-system program and contributes no INT / extra
+# actions until it reboots. Reset to 0 on every load_subnet (fog reset loop).---
+@export var cpu_int: int = 0
+@export var cpu_crashed_turns: int = 0
