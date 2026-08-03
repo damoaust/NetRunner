@@ -875,7 +875,7 @@ func _on_jack_out_pressed() -> void:
 			"datafort": RunState.selected_subnet_path,
 			"security_tier": RunState.selected_security_tier,
 			}
-			MetaState.record_run(summary)
+		MetaState.record_run(summary)
 		RunState.last_death_cause = "Busted"
 		RunState.last_run_summary = summary
 		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
