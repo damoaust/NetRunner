@@ -154,8 +154,9 @@ Represents state and attributes of a single cell in the datafort layout grid.
     - `target_subnet_path: String` — `.tres` resource path to the linked remote datafort (empty = world-map-return-only)
     - `target_entry_coord: Vector2i` — arrival coordinate in the remote subnet (`(-1,-1)` = unset; falls back to first ENTRY)
   - **Per-tile ICE overrides** (BLACK_ICE tiles; authored in the datafort designer's ICE editor; zero/empty = use the hub security-tier template):
-    - `ice_program_name: String`, `ice_strength: int`, `ice_max_ap: int`, `ice_max_integrity: int`, `ice_traces: bool`
-    - `ice_has_override: bool` — set true when any field is non-zero/non-empty; the runtime prefers tile stats over the tier template when this is set
+    - `ice_program: NetProgram` — optional assigned `program.tres` supplying the ICE's `program_name` / `strength` / `effect_type` (drives behavior: `DAMAGE_RUNNER` = health attack; `DEREZ_ICE` = anti-program attack on installed programs); `duplicate()`d at spawn
+    - `ice_program_name: String`, `ice_strength: int`, `ice_max_ap: int`, `ice_max_integrity: int`, `ice_traces: bool` — scalar overrides (`max_ap`/`max_integrity`/`traces` apply even with a program assigned)
+    - `ice_has_override: bool` — set true when any field is non-zero/non-empty **or a program .tres is assigned**; the runtime prefers tile stats over the tier template when this is set
 
 ### 4.3 `CP2020WorldMapLayout` ([CP2020WorldMapLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020WorldMapLayout.gd))
 Serializable world map authored by the world map designer and loaded at runtime by `cp_2020_world_net_map.gd`.
@@ -265,15 +266,16 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Checks boundaries against layout bounds (`0..columns-1`, `0..rows-1`).
 - Validates movement obstacles: blocks movement into `DATAWALL` tiles or locked `CODE_GATE` tiles. Empty cells (no tile) are walkable.
 - `initialize(layout, entry_coord)`: spawns at `entry_coord` if supplied, in-bounds, and a tile exists there (used by mid-run LDL travel); otherwise falls back to the first `ENTRY` tile.
+- **Program-HP model** (`program_integrity` Dictionary): a program's `strength` is also its max health. Anti-program (`DEREZ_ICE`) ICE attacks call `damage_program(amount, attacker)` which damages a random installed program and uninstalls (destroys) it at 0 integrity; the raised shield does **not** block anti-program attacks.
 - Emits `position_changed`, `message_logged`, `deck_updated`, `shield_raised`, `shield_consumed`, `health_changed`, and `flatlined` (when `current_health <= 0`).
 
 ### 5.4 Hostile Black ICE AI ([cp2020_blackice.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd))
 - **Pathfinding**: Instantiates an `AStarGrid2D` instance over the layout matrix region.
 - Dynamic obstacle update ([_update_obstacles](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd#L99)): dynamic solid points applied to `DATAWALL` tiles and locked `CODE_GATE` tiles.
-- **States**: `IDLE` -> `PURSUE`. Activates upon turn execution, taking up to `max_ap` (3) steps per turn toward the Netrunner's position. On reaching the runner, emits `attacked_netrunner(strength)`.
+- **States**: `IDLE` -> `PURSUE`. Activates upon turn execution, taking up to `max_ap` (3) steps per turn toward the Netrunner's position. On reaching the runner, branches on `effect_type`: `DAMAGE_RUNNER` emits `attacked_netrunner(strength)` (anti-personnel health attack); `DEREZ_ICE` emits `attacked_program(strength)` (anti-program attack on installed programs — see §5.3 program-HP model).
 - **Tracing ICE** (`traces: bool`): on first activation, rolls `1D10 + strength` vs `RunState.accumulated_trace`; if the roll is **less than** the trace difficulty the ICE fails to locate the signal and stays idle. Higher accumulated trace makes tracing ICE easier to spot you.
 - **Fog of War Visibility**: Dynamically updates the `skull_label` icon visibility based on the tile fog state.
-- **Stat sourcing** (see `cp2020_game_session.spawn_black_ice`): ICE stats are set on the node **before** `initialize()` (which copies `max_integrity` into `current_integrity`). Per-tile override fields (`ice_*` on `CP2020TileData`) take precedence; otherwise the hub's `security_tier` selects a default template from `TIER_ICE_TEMPLATES` (Grey→Watchdog, L1→Killer 1.0, L2→Killer 2.0, L3→Hellhound, Black→Flatline).
+- **Stat sourcing** (see `cp2020_game_session.spawn_black_ice`): ICE stats are set on the node **before** `initialize()` (which copies `max_integrity` into `current_integrity`). Sourcing precedence: (1) `tile.ice_program` (assigned `program.tres`) supplies name/strength/`effect_type` (program is `duplicate()`d); (2) `tile.ice_has_override` scalar overrides (`effect_type` defaults `DAMAGE_RUNNER`); (3) otherwise the hub's `security_tier` selects a default template from `TIER_ICE_TEMPLATES` (Grey→Watchdog, L1→Killer 1.0, L2→Killer 2.0, L3→Hellhound, Black→Flatline). `max_ap`/`max_integrity`/`traces` always fall back to the scalar override or tier template (`NetProgram` has no equivalents).
 
 ### 5.5 Contextual Right-Click Input Handler ([cp2020_interaction_handler.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_interaction_handler.gd))
 - Captures right-click mouse events over grid cells.
@@ -292,7 +294,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Runs in editor (`@tool` annotation).
 - Visual editor interface for painting tiles. The toolbar has distinct **Entry** (plain datafort arrival point, `is_ldl_link=false`) and **LDL Link** (travel node, `is_ldl_link=true` with no hardcoded target) buttons, plus Datawall, Code Gate, Memory Unit, Control Node, Black ICE, and Eraser.
 - **LDL-Link Editor panel** (built in code as a `PanelContainer`+`VBox` anchored to the right edge so it stays on-screen): target subnet `LineEdit` + Browse `FileDialog` (scoped to `scenes/forts/*.tres`), target entry coord X/Y `SpinBox`es, and a "Clear target" button. In LDL mode, clicking an existing LDL link selects it for editing (does not overwrite); clicking empty space paints a new link and opens the editor. Field edits write back to the tile live and persist on save. Empty target = world-map-return-only. LDL links draw with a distinct blue frame + "L" glyph.
-- **ICE Editor panel** (built in code; shown when a BLACK_ICE tile is painted/selected): program name `LineEdit`, strength/AP/integrity `SpinBox`es, traces `CheckBox`, and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field to override the template for that tile. Edits write back to the tile's `ice_*` fields live and persist on save.
+- **ICE Editor panel** (built in code; shown when a BLACK_ICE tile is painted/selected): program name `LineEdit`, strength/AP/integrity `SpinBox`es, traces `CheckBox`, a "Program .tres..." browse button + "Clear assigned program" button (assigns an optional `NetProgram` `.tres` whose `program_name`/`strength`/`effect_type` derive the ICE's name/strength/behavior — when assigned, the name + strength fields are disabled and the effect_type is shown as readable text), and a "Reset to template" button. Leave fields at 0/empty to use the hub's tier template; set any field or assign a program to override the template for that tile. Edits write back to the tile's `ice_*` fields live and persist on save.
 - Dynamic layout resizing (`SpinBox` input for columns/rows).
 - Native file open/save dialog integration (`FileDialog`) for loading and exporting `.tres` layout files.
 

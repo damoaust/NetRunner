@@ -4,6 +4,9 @@ extends Node2D
 signal message_logged(msg: String)
 signal moved_to(new_pos: Vector2i)
 signal attacked_netrunner(strength: int)
+# Emitted by anti-program (DEREZ_ICE) ICE when it reaches the netrunner. The
+# runner handles it by damaging an installed program (STR = max integrity).
+signal attacked_program(strength: int)
 signal destroyed
 
 enum State { IDLE, PURSUE }
@@ -15,6 +18,13 @@ enum State { IDLE, PURSUE }
 # Tracing-type ICE: on activation it must trace the netrunner's signal before it
 # can hunt. Rolls 1D10 + strength vs RunState.accumulated_trace once per run.
 @export var traces: bool = false
+
+# The ICE's attack behavior, sourced from an assigned NetProgram .tres
+# (effect_type) in the datafort designer. DAMAGE_RUNNER (anti-personnel) hits
+# the netrunner's health; DEREZ_ICE (anti-program) targets an installed
+# program instead. Defaults to DAMAGE_RUNNER for backward compatibility with
+# existing scalar-only ICE tiles.
+@export var effect_type: int = NetProgram.EffectType.DAMAGE_RUNNER
 
 # Program sight radius (separate from the runner's sight_range so future
 # modifiers can affect one side without the other). Defaults to 10, matching
@@ -106,8 +116,13 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 			var next_step = path[1]
 			
 			if next_step == target_pos:
-				message_logged.emit("CRITICAL: %s attacks Netrunner with STR %d!" % [program_name, strength])
-				attacked_netrunner.emit(strength)
+				match effect_type:
+					NetProgram.EffectType.DEREZ_ICE:
+						message_logged.emit("CRITICAL: %s executes DEREZ_ICE attack with STR %d!" % [program_name, strength])
+						attacked_program.emit(strength)
+					_:
+						message_logged.emit("CRITICAL: %s attacks Netrunner with STR %d!" % [program_name, strength])
+						attacked_netrunner.emit(strength)
 				break
 				
 			current_position = next_step

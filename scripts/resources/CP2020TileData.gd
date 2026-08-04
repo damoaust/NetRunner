@@ -20,6 +20,12 @@ extends Resource
 # --- Per-tile ICE overrides (BLACK_ICE tiles). Zero/empty = use the hub
 # security-tier template from cp2020_game_session. Non-zero values here take
 # precedence and let designers hand-tune individual ICE. ---
+# Optional assigned program .tres. When set, the program supplies the ICE's
+# program_name / strength / effect_type (driving take_turn behavior via
+# BlackIce.effect_type). The scalar ice_max_ap / ice_max_integrity / ice_traces
+# fields still apply (NetProgram has no equivalents). The program is
+# duplicate()d at spawn time so the cached .tres is never mutated.
+@export var ice_program: NetProgram = null
 @export var ice_program_name: String = ""
 @export var ice_strength: int = 0
 @export var ice_max_ap: int = 0

@@ -29,6 +29,14 @@ var current_health: int = 20
 var raised_shield: NetProgram = null
 var interface_rank: int = 6  # Netrunner's INT for initiative (set from cyberdeck)
 
+# Program integrity (HP) model. A program's `strength` is also its max health,
+# so anti-program (DEREZ_ICE) ICE can damage and destroy installed programs.
+# NetProgram is a shared cached Resource, so we can't mutate `strength` on it
+# directly; this Dictionary maps each installed program instance -> its
+# current integrity. Seeded on install, erased on uninstall. Destroyed
+# programs (integrity reaches 0) are uninstalled, freeing their MU.
+var program_integrity: Dictionary = {}
+
 var current_position: Vector2i = Vector2i.ZERO
 var current_layout: CP2020DatafortLayout
 
@@ -93,6 +101,8 @@ func install_program(prog: NetProgram) -> bool:
 		return false
 	if get_used_memory() + prog.memory_cost <= max_memory_units:
 		installed_programs.append(prog)
+		# Seed program HP from its strength (a program's STR is its max health).
+		program_integrity[prog] = prog.strength
 		message_logged.emit("Installed program: %s (%d MU)" % [prog.program_name, prog.memory_cost])
 		deck_updated.emit()
 		return true
@@ -103,8 +113,39 @@ func install_program(prog: NetProgram) -> bool:
 func uninstall_program(prog: NetProgram) -> void:
 	if prog in installed_programs:
 		installed_programs.erase(prog)
+		program_integrity.erase(prog)
 		message_logged.emit("Uninstalled program: %s" % prog.program_name)
 		deck_updated.emit()
+
+# Read a program's current integrity for the HUD (returns 0 if not tracked).
+func program_integrity_for(prog: NetProgram) -> int:
+	if program_integrity.has(prog):
+		return int(program_integrity[prog])
+	return 0
+
+# Anti-program (DEREZ_ICE) attack. The raised shield does NOT block
+# anti-program attacks (shields protect the runner's persona/health, not
+# programs), so this bypasses the shield entirely. Picks a random installed
+# program with integrity > 0, reduces it by `amount`, and destroys
+# (uninstalls) it at 0 integrity. Logs a "no programs to target" message and
+# does nothing if the runner has no installed programs (no fallback to health
+# damage).
+func damage_program(amount: int, attacker_name: String) -> void:
+	var candidates: Array[NetProgram] = []
+	for prog in installed_programs:
+		if prog and program_integrity.get(prog, 0) > 0:
+			candidates.append(prog)
+	if candidates.is_empty():
+		message_logged.emit("%s's DEREZ_ICE finds no programs to target." % attacker_name)
+		return
+	var target: NetProgram = candidates[randi_range(0, candidates.size() - 1)]
+	var cur: int = int(program_integrity[target])
+	var new_int: int = max(0, cur - amount)
+	program_integrity[target] = new_int
+	message_logged.emit("%s's DEREZ_ICE hits %s for %d (Integrity %d/%d)." % [attacker_name, target.program_name, amount, new_int, target.strength])
+	if new_int <= 0:
+		message_logged.emit("%s DEREZED! Program destroyed." % target.program_name)
+		uninstall_program(target)
 
 func move(direction: Vector2i) -> bool:
 	if not current_layout:

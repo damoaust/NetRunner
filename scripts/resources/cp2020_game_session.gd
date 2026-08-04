@@ -516,9 +516,24 @@ func spawn_black_ice() -> void:
 			var ice: BlackIce = BlackIceScene.instantiate()
 			add_child(ice)
 			# Apply ICE stats BEFORE initialize (initialize copies max_integrity
-			# into current_integrity). Per-tile override wins; otherwise use the
-			# hub security-tier template.
-			if tile.ice_has_override:
+			# into current_integrity). Sourcing precedence:
+			#   1. tile.ice_program (assigned .tres) -> name/strength/effect_type
+			#      (program is duplicate()d to protect the cached .tres).
+			#   2. tile.ice_has_override scalar overrides -> name/strength/
+			#      max_ap/max_integrity/traces (effect_type defaults DAMAGE_RUNNER).
+			#   3. else the hub security-tier template.
+			# max_ap / max_integrity / traces always fall back to the scalar
+			# override or tier template (NetProgram has no equivalents).
+			ice.effect_type = NetProgram.EffectType.DAMAGE_RUNNER
+			if tile.ice_program != null:
+				var prog: NetProgram = tile.ice_program.duplicate()
+				ice.program_name = prog.program_name
+				ice.strength = prog.strength
+				ice.effect_type = prog.effect_type
+				ice.max_ap = tile.ice_max_ap if tile.ice_max_ap > 0 else int(template.get("max_ap", 2))
+				ice.max_integrity = tile.ice_max_integrity if tile.ice_max_integrity > 0 else int(template.get("max_integrity", 4))
+				ice.traces = tile.ice_traces
+			elif tile.ice_has_override:
 				if tile.ice_program_name != "":
 					ice.program_name = tile.ice_program_name
 				if tile.ice_strength > 0:
@@ -538,6 +553,12 @@ func spawn_black_ice() -> void:
 			ice.message_logged.connect(log_to_terminal)
 			ice.moved_to.connect(_on_ice_moved)
 			ice.attacked_netrunner.connect(_on_ice_attacked)
+			# Anti-program (DEREZ_ICE) ICE attacks an installed program. The
+			# attacker name is captured via a lambda so the runner's log shows
+			# which ICE struck (the shared _on_ice_attacked path can't pass it).
+			var attacker_name := ice.program_name
+			ice.attacked_program.connect(func(strength: int) -> void:
+				_on_ice_attacked_program(strength, attacker_name))
 			ice_nodes.append(ice)
 			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program_name, coord])
 
@@ -843,6 +864,13 @@ func _on_ice_attacked(strength: int) -> void:
 	log_to_terminal("WARNING: Adversary attacks for %d!\n" % strength)
 	if netrunner:
 		netrunner.apply_damage(strength, "Adversary")
+
+# Anti-program (DEREZ_ICE) Black ICE reached the netrunner: damage an
+# installed program instead of health. Shield does NOT block this.
+func _on_ice_attacked_program(strength: int, attacker_name: String) -> void:
+	log_to_terminal("WARNING: %s executes DEREZ_ICE for %d!\n" % [attacker_name, strength])
+	if netrunner:
+		netrunner.damage_program(strength, attacker_name)
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")

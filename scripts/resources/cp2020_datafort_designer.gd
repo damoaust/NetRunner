@@ -59,6 +59,8 @@ var ice_str_spinbox: SpinBox
 var ice_ap_spinbox: SpinBox
 var ice_int_spinbox: SpinBox
 var ice_traces_check: CheckBox
+var ice_program_label: Label
+var ice_program_dialog: FileDialog
 var selected_ice_coord: Vector2i = Vector2i(-1, -1)
 
 # NPC editor panel (built in code; shown when a NETWATCH/NETRUNNER tile is selected).
@@ -898,6 +900,32 @@ func build_ice_panel() -> void:
 	ice_traces_check.toggled.connect(_on_ice_traces_toggled)
 	ice_panel.add_child(ice_traces_check)
 
+	# Assigned program .tres picker. When set, the program supplies the ICE's
+	# name / strength / effect_type (driving in-game behavior); the name and
+	# strength fields above are disabled because they're derived from it.
+	var prog_lbl = Label.new()
+	prog_lbl.text = "Program .tres (optional):"
+	ice_panel.add_child(prog_lbl)
+	ice_program_label = Label.new()
+	ice_program_label.text = "(none)"
+	ice_program_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ice_panel.add_child(ice_program_label)
+	var prog_browse_btn = Button.new()
+	prog_browse_btn.text = "Assign program .tres..."
+	prog_browse_btn.pressed.connect(_open_ice_program_dialog)
+	ice_panel.add_child(prog_browse_btn)
+	var prog_clear_btn = Button.new()
+	prog_clear_btn.text = "Clear assigned program"
+	prog_clear_btn.pressed.connect(_clear_ice_program)
+	ice_panel.add_child(prog_clear_btn)
+
+	ice_program_dialog = FileDialog.new()
+	ice_program_dialog.access = FileDialog.ACCESS_RESOURCES
+	ice_program_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	ice_program_dialog.filters = PackedStringArray(["*.tres ; Program resource"])
+	ice_program_dialog.file_selected.connect(_on_ice_program_picked)
+	add_child(ice_program_dialog)
+
 	var clear_btn = Button.new()
 	clear_btn.text = "Reset to template (clear override)"
 	clear_btn.pressed.connect(_clear_ice_override)
@@ -926,7 +954,63 @@ func _open_ice_editor(coord: Vector2i) -> void:
 	ice_ap_spinbox.set_block_signals(false)
 	ice_int_spinbox.set_block_signals(false)
 	ice_traces_check.set_block_signals(false)
+	_refresh_ice_program_label(tile)
 	ice_panel_bg.visible = true
+
+
+func _refresh_ice_program_label(tile: CP2020TileData) -> void:
+	# When a program .tres is assigned it derives the ICE name/strength/
+	# effect_type, so disable those hand fields to make that clear.
+	var has_program: bool = tile.ice_program != null
+	ice_name_edit.editable = not has_program
+	ice_str_spinbox.editable = not has_program
+	if has_program:
+		var prog: NetProgram = tile.ice_program
+		ice_program_label.text = "%s (STR %d, %s)" % [prog.program_name, prog.strength, _ice_effect_label(prog.effect_type)]
+	else:
+		ice_program_label.text = "(none)"
+
+
+func _ice_effect_label(effect_type: int) -> String:
+	match effect_type:
+		NetProgram.EffectType.DAMAGE_RUNNER:
+			return "DAMAGE_RUNNER (anti-personnel)"
+		NetProgram.EffectType.DEREZ_ICE:
+			return "DEREZ_ICE (anti-program)"
+		_:
+			return "Effect %d" % effect_type
+
+
+func _open_ice_program_dialog() -> void:
+	if ice_program_dialog:
+		ice_program_dialog.popup_centered(Vector2i(600, 400))
+
+
+func _on_ice_program_picked(path: String) -> void:
+	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ice_coord)
+	if tile == null:
+		return
+	var prog = ResourceLoader.load(path)
+	if prog is NetProgram:
+		tile.ice_program = prog
+		tile.ice_has_override = true
+		_refresh_ice_program_label(tile)
+		queue_redraw()
+
+
+func _clear_ice_program() -> void:
+	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ice_coord)
+	if tile == null:
+		return
+	tile.ice_program = null
+	_refresh_ice_program_label(tile)
+	# Re-evaluate override: keep if any scalar field is still set, else clear.
+	tile.ice_has_override = tile.ice_program_name != "" or tile.ice_strength > 0 or tile.ice_max_ap > 0 or tile.ice_max_integrity > 0
+	queue_redraw()
 
 
 func _hide_ice_panel() -> void:
@@ -946,9 +1030,10 @@ func _write_ice_field() -> void:
 	tile.ice_max_ap = int(ice_ap_spinbox.value)
 	tile.ice_max_integrity = int(ice_int_spinbox.value)
 	tile.ice_traces = ice_traces_check.button_pressed
-	# Any non-zero/non-empty field marks this tile as having an override so
-	# the runtime knows to use the tile stats instead of the tier template.
-	tile.ice_has_override = tile.ice_program_name != "" or tile.ice_strength > 0 or tile.ice_max_ap > 0 or tile.ice_max_integrity > 0
+	# Any non-zero/non-empty field — OR an assigned program .tres — marks this
+	# tile as having an override so the runtime knows to use the tile stats
+	# instead of the tier template.
+	tile.ice_has_override = tile.ice_program != null or tile.ice_program_name != "" or tile.ice_strength > 0 or tile.ice_max_ap > 0 or tile.ice_max_integrity > 0
 	queue_redraw()
 
 
@@ -966,6 +1051,11 @@ func _clear_ice_override() -> void:
 	ice_ap_spinbox.value = 0
 	ice_int_spinbox.value = 0
 	ice_traces_check.button_pressed = false
+	if current_layout and selected_ice_coord != Vector2i(-1, -1):
+		var tile = current_layout.get_tile(selected_ice_coord)
+		if tile:
+			tile.ice_program = null
+			_refresh_ice_program_label(tile)
 	_write_ice_field()
 
 
