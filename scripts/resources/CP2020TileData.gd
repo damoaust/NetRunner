@@ -96,3 +96,12 @@ extends Resource
 # ResourceLoader returns a cached instance; cp2020_game_session performs that
 # reset.
 @export var copied_file_paths: PackedStringArray = []
+
+# --- Worm program (runtime, DATAWALL / locked CODE_GATE tiles) ---
+# Set to 2 by execute_worm when a Worm program is deployed on this tile.
+# Ticked down at the start of each netrunner turn in _on_turn_ended; when it
+# reaches 0 the tile opens (DATAWALL -> EMPTY, CODE_GATE -> is_unlocked = true).
+# Always 0 in authored .tres layouts — only set during gameplay. Reset to 0 on
+# every load_subnet (same fog-reset pattern as cpu_crashed_turns / is_looted /
+# copied_file_paths) because ResourceLoader returns a cached instance.
+@export var worm_turns_remaining: int = 0

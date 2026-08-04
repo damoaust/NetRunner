@@ -161,6 +161,10 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 				# Reset per-file copied tracking so a revisited datafort's files can
 				# be copied again on a fresh dive (cached ResourceLoader instance).
 				t.copied_file_paths = PackedStringArray()
+				# Reset any in-progress Worm programs from a prior visit so a
+				# fresh dive starts with no worm-active tiles (cached
+				# ResourceLoader instance retains the runtime counter).
+				t.worm_turns_remaining = 0
 
 		# Let the Netrunner handle its own spawning!
 		if netrunner:
@@ -247,6 +251,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					execute_ice_attack(program, target_coord)
 				elif program.effect_type == NetProgram.EffectType.SHIELD:
 					execute_shield(program)
+				elif program.effect_type == NetProgram.EffectType.WORM:
+					execute_worm(program, target_coord)
 				else:
 					log_to_terminal("Program effect not implemented yet.\n")
 					return
@@ -387,6 +393,29 @@ func execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 		log_to_terminal("Datawall breached! Path cleared.\n")
 		if board_renderer:
 			board_renderer.queue_redraw()
+
+func execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
+	# Worm is a stealth opener: it slips behind a DATAWALL or locked CODE_GATE
+	# and opens it from the inside over 2 turns with no alert (no trace
+	# increase, no ICE activation). The tile gets worm_turns_remaining = 2;
+	# the turn-start tick in _on_turn_ended decrements and opens at 0.
+	var tile: CP2020TileData = current_layout.get_tile(target_coord)
+	if tile == null:
+		log_to_terminal("No tile at %s for Worm.\n" % target_coord)
+		return
+	var is_wall: bool = tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL
+	var is_gate: bool = tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked
+	if not is_wall and not is_gate:
+		log_to_terminal("Worm can only target Data Walls or locked Code Gates.\n")
+		return
+	if tile.worm_turns_remaining > 0:
+		log_to_terminal("A Worm is already working on this tile (%d turns remaining).\n" % tile.worm_turns_remaining)
+		return
+	tile.worm_turns_remaining = 2
+	var label := "data wall" if is_wall else "code gate"
+	log_to_terminal("Worm '%s' deployed behind the %s at %s — opening from the inside in 2 turns. No alert triggered.\n" % [program.program_name, label, target_coord])
+	if board_renderer:
+		board_renderer.queue_redraw()
 
 func execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 	var target_ice: BlackIce = null
@@ -825,6 +854,11 @@ func _end_player_turn() -> void:
 func _on_turn_ended(is_netrunner_turn: bool) -> void:
 	if is_netrunner_turn:
 		log_to_terminal("--- Netrunner turn begins. ---\n")
+		# Worm program tick: decrement the countdown on every worm-active
+		# tile and open it when the counter reaches 0. This runs BEFORE the
+		# deck-crash tick so a worm completing this turn opens the tile
+		# regardless of deck state (the worm is autonomous once deployed).
+		_tick_worm_programs()
 		# Anti-system deck-crash tick: decrement the crash timer at the start
 		# of each netrunner turn, then drop the action economy to 0 while the
 		# deck is still crashed (movement remains available so the runner can
@@ -836,6 +870,44 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 			turn_manager.actions_remaining = 0
 			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
 			log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
+
+# Tick all worm-active tiles: decrement worm_turns_remaining and open the tile
+# when the counter reaches 0 (DATAWALL -> EMPTY, CODE_GATE -> is_unlocked).
+# Called at the start of each netrunner turn by _on_turn_ended.
+func _tick_worm_programs() -> void:
+	if current_layout == null:
+		return
+	var opened := false
+	for raw_key in current_layout.grid_tiles.keys():
+		var c: Vector2i
+		if raw_key is String:
+			var p = raw_key.split(",")
+			c = Vector2i(p[0].to_int(), p[1].to_int())
+		else:
+			c = raw_key
+		var t: CP2020TileData = current_layout.get_tile(c)
+		if t == null or t.worm_turns_remaining <= 0:
+			continue
+		t.worm_turns_remaining -= 1
+		if t.worm_turns_remaining > 0:
+			log_to_terminal("Worm working on %s — %d turn(s) remaining.\n" % [c, t.worm_turns_remaining])
+			continue
+		# Counter reached 0 — open the tile from the inside.
+		var is_wall: bool = t.tile_type == CP2020DatafortLayout.TileType.DATAWALL
+		var label := "data wall" if is_wall else "code gate"
+		if is_wall:
+			t.tile_type = CP2020DatafortLayout.TileType.EMPTY
+			t.is_visible = true
+		else:
+			t.is_unlocked = true
+		log_to_terminal("Worm has opened the %s at %s from the inside!\n" % [label, c])
+		opened = true
+	if opened:
+		# Newly opened tiles may reveal previously-occluded grid — recalc fog.
+		if is_instance_valid(netrunner):
+			recalculate_fog_of_war(netrunner.current_position)
+		if board_renderer:
+			board_renderer.queue_redraw()
 
 func _on_actions_changed(remaining: int, max_actions: int) -> void:
 	if actions_label:

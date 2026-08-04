@@ -131,7 +131,22 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 				])
 				canvas.draw_polygon(diamond, PackedColorArray([Color(0.6, 0.2, 0.8, 0.7 * alpha_mult)]))
 
-		# NETWATCH / NETRUNNER tiles have no board renderer case — like
-		# BLACK_ICE, they are spawn markers only. The spawned NPC nodes
-		# (cp2020_npc_netrunner.tscn) render their own glyphs at runtime.
-		# Tile glyphs for these types are drawn exclusively in the designer.
+	# NETWATCH / NETRUNNER tiles have no board renderer case — like
+	# BLACK_ICE, they are spawn markers only. The spawned NPC nodes
+	# (cp2020_npc_netrunner.tscn) render their own glyphs at runtime.
+	# Tile glyphs for these types are drawn exclusively in the designer.
+
+	# Worm-in-progress overlay: when a Worm program is working on a DATAWALL
+	# or locked CODE_GATE (worm_turns_remaining > 0), draw a small purple "W"
+	# glyph in the tile center so the player can see the worm at work.
+	if tile_data.worm_turns_remaining > 0:
+		var center = cell_rect.get_center()
+		var worm_color = Color(0.7, 0.3, 0.9, 1.0 * alpha_mult)
+		# Pulsing background circle to draw attention.
+		var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
+		canvas.draw_circle(center, pulse_radius, Color(0.5, 0.2, 0.7, 0.35 * alpha_mult))
+		# "W" glyph drawn as three diagonal strokes.
+		var s: float = 7.0
+		canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), worm_color, 2.0)
+		canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), worm_color, 2.0)
+		canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), worm_color, 2.0)

@@ -190,6 +190,11 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var prog_id = 1000 + i # Positive ID offset for program actions
 				_dynamic_menu.add_item(menu_label, prog_id)
 				options_added = true
+			elif prog and prog.effect_type == NetProgram.EffectType.WORM:
+				var worm_label = "%s (Stealth, 2 turns, %d MU)" % [prog.program_name, prog.memory_cost]
+				var worm_id = 1000 + i
+				_dynamic_menu.add_item(worm_label, worm_id)
+				options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.DATAWALL:
 		for i in range(available_programs.size()):
@@ -200,6 +205,11 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var menu_label = "%s (%d MU)" % [prog.program_name, prog.memory_cost]
 				var prog_id = 1000 + i
 				_dynamic_menu.add_item(menu_label, prog_id)
+				options_added = true
+			elif prog and prog.effect_type == NetProgram.EffectType.WORM:
+				var worm_label = "%s (Stealth, 2 turns, %d MU)" % [prog.program_name, prog.memory_cost]
+				var worm_id = 1000 + i
+				_dynamic_menu.add_item(worm_label, worm_id)
 				options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:

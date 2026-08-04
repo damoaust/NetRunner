@@ -223,6 +223,7 @@ Represents an executable program software tool loaded into a cyberdeck.
   - `SHIELD`: Defense program (raised on the runner's own tile) — one-shot opposed-roll blocker
   - `CRASH_CPU`: Anti-system program (Krash) — crashes a datafort CPU for 1D6+1 turns; also crashes the runner's cyberdeck when used by datafort resident programs
   - `ARMOR`: Defense program (raised on the runner's own tile) — persistent point-for-point damage absorber (absorbs `min(damage, armor.strength)` before Shield roll; NOT consumed on hit)
+  - `WORM`: Stealth opener — slips behind a DATAWALL or locked CODE_GATE and opens it from the inside over 2 turns. No alert (no trace increase, no ICE activation)
 - **Properties**: `program_name`, `type`, `effect_type`, `memory_cost` (MU), `strength`, `price`, `icon`, `description` (one-line summary shown in the workbench detail card), `damage_dice` (optional: `0` = flat `strength` per Black ICE hit, default for all existing programs; `>0` = roll `1D{damage_dice}` per hit, e.g. **Sword** = 6). Backward-compatible.
 
 ---
@@ -253,6 +254,9 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
   - Initiated when player selects a decryption program (`BYPASS_GATE`) via right-click contextual menu on a Code Gate.
   - Roll: `(randi() % 10) + 1 + program.strength` (Cyberpunk 2020 1d10 + Program STR rule).
   - Check: If `total_roll >= tile.strength_str`, `tile.is_unlocked = true`, immediately clearing the movement obstacle, changing tile color from orange to green, and recalculating Line of Sight. Otherwise, the attempt fails and logs the roll details to the terminal.
+- **Worm Mechanics** (`execute_worm` / `_tick_worm_programs`):
+  - `execute_worm(program, target_coord)` — called from `_on_action_triggered` when a `WORM`-effect program is used on a `DATAWALL` or locked `CODE_GATE`. Sets `tile.worm_turns_remaining = 2`, logs, redraws. Tile is **not** opened immediately. **No trace increase, no ICE activation** (stealth opener).
+  - `_tick_worm_programs()` — called at the start of each netrunner turn (by `_on_turn_ended`). Iterates all grid tiles, decrements `worm_turns_remaining`; at 0, opens the tile (DATAWALL → EMPTY, CODE_GATE → `is_unlocked = true`), logs, recalculates fog of war, redraws.
 
 ### 5.2 Board Renderer ([cp2020_board_renderer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_board_renderer.gd))
 Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile visibility states:
@@ -262,6 +266,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
    - `ENTRY`: Green/Cyan outlined box with directional polygon glyph
    - `DATAWALL`: Solid red barrier box
    - `CODE_GATE`: Orange barrier (locked) or Green barrier (unlocked) with dividing horizontal beam
+   - **Worm-in-progress indicator**: DATAWALL and CODE_GATE tiles with `worm_turns_remaining > 0` render a pulsing purple circle with a "W" glyph (three diagonal strokes), signalling an active stealth open.
 
 ### 5.3 Player Netrunner Controller ([cp2020_netrunner.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_netrunner.gd))
 - Handles keyboard movement (`WASD` or Arrow keys via `ui_up`, `ui_down`, `ui_left`, `ui_right`).
@@ -288,8 +293,8 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
   - **LDL-link tiles** (`is_ldl_link`): always add "Travel to \<datafort\>" (id `3000`) + "Return to City Grid" (id `3001`), even with no matching program. Travel uses `_ldl_tile` (the stored tile data); empty target → the session aborts the travel with "no target subnet set", so an empty-target LDL link effectively offers city-grid-return only.
   - **Visible Black ICE on the tile**: offer `DEREZ_ICE` programs (ids `1000+i`).
   - **Runner's own tile** (visible): offer `SHIELD` (ids `1000+i`) and `ARMOR` (ids `7000+i`) defense programs. Armor is a persistent passive absorber; raising it does not consume a turn action.
-  - **Locked Code Gate**: offer `BYPASS_GATE` programs.
-  - **Datawall**: offer `BREACH_WALL` programs.
+  - **Locked Code Gate**: offer `BYPASS_GATE` programs and `WORM`-effect programs (stealth opener, 2-turn open, no alert). Menu label: `"Worm (Stealth, 2 turns, X MU)"`.
+  - **Datawall**: offer `BREACH_WALL` programs and `WORM`-effect programs (stealth opener, 2-turn open, no alert). Menu label: `"Worm (Stealth, 2 turns, X MU)"`.
 - `_on_menu_action_selected` checks ids in order: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → memory files (`6000+i`/`6999`) → Armor-raise (`7000+i`) → loot (`loot_tile`) → program use (`1000+i`). **Do not reorder.**
 - Dynamically creates and opens a `PopupMenu` near mouse location (`popup_on_parent`).
 
@@ -369,7 +374,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **Grid Offset**: The top 90 pixels of the viewport are reserved for UI elements. Always convert world mouse clicks or tile positions using `grid_offset_y = 90` and `cell_size = 40`.
 - **Vector2i Coordinates**: Grid positions are integer vectors (`Vector2i`), used as keys in `current_layout.grid_tiles`.
 - **`.tres` string keys**: `grid_tiles` dictionaries store keys as `"x,y"` strings when serialised. Always read tiles via `layout.get_tile(coord)` (which handles both `Vector2i` and string keys); never `grid_tiles.get(Vector2i)`.
-- **Fog reset on load**: `load_subnet` resets `is_explored`/`is_visible` on every tile because `ResourceLoader` returns a cached instance. Without this, a datafort revisited via LDL travel would show as already-revealed.
+- **Fog reset on load**: `load_subnet` resets `is_explored`/`is_visible` on every tile because `ResourceLoader` returns a cached instance. Without this, a datafort revisited via LDL travel would show as already-revealed. The same reset zeroes `cpu_crashed_turns`, clears `MEMORY_UNIT` `copied_file_paths`, and zeroes `worm_turns_remaining` (same cached-instance fog-reset pattern).
 - **Floor tiles via designer only**: Hand-authored `.tres` `Empty Path` floor tiles have failed to render in-game, but the same tiles resaved through the datafort designer render correctly. Author floor tiles through the designer; hand-edit `.tres` only for tile properties (e.g. LDL link target fields).
 - **LDL link is an ENTRY tile**: There is no separate "return" tile type. Any `ENTRY` tile with `is_ldl_link=true` auto-offers Travel (id `3000`) + Return to City Grid (id `3001`) via the interaction handler. An LDL link with an empty `target_subnet_path` is effectively city-grid-return-only.
 - **Trace lifecycle**: `accumulated_trace` resets on flatline / jack-out / return-to-world-map (City Grid return-to-world-map), but is **preserved** across in-datafort LDL travel (`travel_ldl` keeps it) AND across the datafort→City Grid return (`return_world_map` now goes to the City Grid and keeps trace).
