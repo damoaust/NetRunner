@@ -22,6 +22,13 @@ var dragging: bool = false
 var drag_source_coord: Vector2i = Vector2i(-1, -1)
 var drag_tile: CP2020TileData = null
 var drag_ghost_pos: Vector2 = Vector2.ZERO
+# Pixel position where the drag was initiated. Used by the release handler to
+# distinguish a real drag from a jittery click: if the cursor travelled less
+# than DRAG_THRESHOLD pixels we treat the release as a select-click on the
+# source tile instead of a move (avoids accidental 1-cell moves when a click
+# near a cell edge drifts across the boundary during press→release).
+var drag_press_pos: Vector2 = Vector2.ZERO
+const DRAG_THRESHOLD := 6.0
 # When true, painting an ENTRY tile marks it as an LDL link (a tile the
 # runner can travel through to reach another datafort / the world map).
 var ldl_link_mode: bool = false
@@ -394,8 +401,12 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var local_pos = event.position
 	var adjusted_y = local_pos.y - grid_offset_y
-	var grid_x = int(local_pos.x / cell_size)
-	var grid_y = int(adjusted_y / cell_size)
+	# Use floori (floor-toward-negative-infinity) instead of int() (which
+	# truncates toward zero): a release above the grid (adjusted_y < 0) must
+	# map to a negative row so it's correctly treated as out-of-bounds, not
+	# silently dropped onto row 0.
+	var grid_x = floori(local_pos.x / cell_size)
+	var grid_y = floori(adjusted_y / cell_size)
 	var in_bounds = grid_x >= 0 and grid_x < grid_columns and grid_y >= 0 and grid_y < grid_rows
 	var coord := Vector2i(grid_x, grid_y)
 	if event.pressed:
@@ -410,6 +421,7 @@ func _gui_input(event: InputEvent) -> void:
 				drag_source_coord = coord
 				drag_tile = existing
 				drag_ghost_pos = local_pos
+				drag_press_pos = local_pos
 			else:
 				_open_editor_for_tile(coord, existing)
 			queue_redraw()
@@ -451,9 +463,19 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		var source := drag_source_coord
 		var tile := drag_tile
-		# Reset drag state before dispatch so panels/redsraw are clean.
+		# Reset drag state before dispatch so panels/redraw are clean.
 		dragging = false
 		drag_tile = null
+		# Drag threshold: if the cursor barely moved (a jittery click rather
+		# than a real drag), treat the release as a select-click on the source
+		# tile regardless of which cell the cursor ended in. This prevents an
+		# accidental 1-cell move when a click near a cell edge drifts across
+		# the boundary during press→release.
+		var travel: float = local_pos.distance_to(drag_press_pos)
+		if travel < DRAG_THRESHOLD:
+			_open_editor_for_tile(source, tile)
+			queue_redraw()
+			return
 		# Out of bounds or same cell = cancel (treat as a select-click on source).
 		if not in_bounds or coord == source:
 			_open_editor_for_tile(source, tile)
