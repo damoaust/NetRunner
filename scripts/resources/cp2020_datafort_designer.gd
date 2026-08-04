@@ -15,6 +15,13 @@ var selected_tile_type: CP2020DatafortLayout.TileType = CP2020DatafortLayout.Til
 var select_mode: bool = false
 # Coord of the tile currently selected in select mode (for the draw highlight).
 var selected_coord: Vector2i = Vector2i(-1, -1)
+# Drag-to-move state (Select mode only). On left-press over a non-empty tile
+# the tile is picked up; dragging shows a ghost under the cursor; releasing
+# over an empty cell moves the tile there (preserving its configured fields).
+var dragging: bool = false
+var drag_source_coord: Vector2i = Vector2i(-1, -1)
+var drag_tile: CP2020TileData = null
+var drag_ghost_pos: Vector2 = Vector2.ZERO
 # When true, painting an ENTRY tile marks it as an LDL link (a tile the
 # runner can travel through to reach another datafort / the world map).
 var ldl_link_mode: bool = false
@@ -202,6 +209,8 @@ func add_select_tool_button(label_text: String) -> void:
 		select_mode = true
 		ldl_link_mode = false
 		selected_coord = Vector2i(-1, -1)
+		dragging = false
+		drag_tile = null
 		_hide_ldl_panel()
 		_hide_ice_panel()
 		_hide_npc_panel()
@@ -220,6 +229,8 @@ func add_tool_button(label_text: String, tile_type: CP2020DatafortLayout.TileTyp
 		select_mode = false
 		ldl_link_mode = false
 		selected_coord = Vector2i(-1, -1)
+		dragging = false
+		drag_tile = null
 		_hide_ldl_panel()
 		_hide_ice_panel()
 		_hide_npc_panel()
@@ -238,6 +249,8 @@ func add_entry_tool_button(label_text: String) -> void:
 		select_mode = false
 		ldl_link_mode = false
 		selected_coord = Vector2i(-1, -1)
+		dragging = false
+		drag_tile = null
 		_hide_ldl_panel()
 		_hide_ice_panel()
 		_hide_npc_panel()
@@ -256,6 +269,8 @@ func add_ldl_tool_button(label_text: String) -> void:
 		select_mode = false
 		ldl_link_mode = true
 		selected_coord = Vector2i(-1, -1)
+		dragging = false
+		drag_tile = null
 		_hide_ice_panel()
 		_hide_npc_panel()
 		_hide_loot_panel()
@@ -333,85 +348,134 @@ func _on_file_loaded(path: String) -> void:
 	else:
 		print("Failed to load layout or invalid file type.")
 
+# Open the appropriate side panel for an existing tile at coord (select mode
+# + drag-drop share this). Hides every panel for tiles with no editor.
+func _open_editor_for_tile(coord: Vector2i, tile: CP2020TileData) -> void:
+	selected_coord = coord
+	if tile == null or tile.tile_type == CP2020DatafortLayout.TileType.EMPTY:
+		_hide_ldl_panel()
+		_hide_ice_panel()
+		_hide_npc_panel()
+		_hide_cpu_panel()
+		_hide_loot_panel()
+		_hide_files_panel()
+	elif tile.tile_type == CP2020DatafortLayout.TileType.ENTRY and tile.is_ldl_link:
+		_open_ldl_editor(coord)
+	elif tile.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
+		_hide_ldl_panel()
+		_open_ice_editor(coord)
+	elif tile.tile_type == CP2020DatafortLayout.TileType.NETWATCH or tile.tile_type == CP2020DatafortLayout.TileType.NETRUNNER:
+		_hide_ldl_panel()
+		_open_npc_editor(coord)
+	elif tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+		_hide_ldl_panel()
+		_hide_cpu_panel()
+		_hide_files_panel()
+		_open_loot_editor(coord)
+	elif tile.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
+		_hide_ldl_panel()
+		_hide_loot_panel()
+		_open_files_editor(coord)
+	else:
+		_hide_ldl_panel()
+		_hide_ice_panel()
+		_hide_npc_panel()
+		_hide_cpu_panel()
+		_hide_loot_panel()
+		_hide_files_panel()
+
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			var local_pos = event.position
-			var adjusted_y = local_pos.y - grid_offset_y 
-			
-			var grid_x = int(local_pos.x / cell_size)
-			var grid_y = int(adjusted_y / cell_size)
-			
-			if grid_x >= 0 and grid_x < grid_columns and grid_y >= 0 and grid_y < grid_rows:
-				var coord := Vector2i(grid_x, grid_y)
-				# Select mode: open the existing tile's editor without
-				# overwriting it. Clicking an empty cell clears the selection.
-				if select_mode:
-					var existing = current_layout.get_tile(coord) if current_layout else null
-					selected_coord = coord
-					if existing == null or existing.tile_type == CP2020DatafortLayout.TileType.EMPTY:
-						_hide_ldl_panel()
-						_hide_ice_panel()
-						_hide_npc_panel()
-						_hide_cpu_panel()
-						_hide_loot_panel()
-						_hide_files_panel()
-					elif existing.tile_type == CP2020DatafortLayout.TileType.ENTRY and existing.is_ldl_link:
-						_open_ldl_editor(coord)
-					elif existing.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
-						_hide_ldl_panel()
-						_open_ice_editor(coord)
-					elif existing.tile_type == CP2020DatafortLayout.TileType.NETWATCH or existing.tile_type == CP2020DatafortLayout.TileType.NETRUNNER:
-						_hide_ldl_panel()
-						_open_npc_editor(coord)
-					elif existing.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
-						_hide_ldl_panel()
-						_hide_cpu_panel()
-						_hide_files_panel()
-						_open_loot_editor(coord)
-					elif existing.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
-						_hide_ldl_panel()
-						_hide_loot_panel()
-						_open_files_editor(coord)
-					else:
-						_hide_ldl_panel()
-						_hide_ice_panel()
-						_hide_npc_panel()
-						_hide_cpu_panel()
-						_hide_loot_panel()
-						_hide_files_panel()
-					queue_redraw()
-				# In LDL Link mode: clicking an existing LDL link selects it for
-				# editing rather than overwriting it. Clicking anything else
-				# paints a fresh LDL link and opens the editor on it.
-				elif ldl_link_mode:
-					var existing = current_layout.get_tile(coord) if current_layout else null
-					if existing and existing.tile_type == CP2020DatafortLayout.TileType.ENTRY and existing.is_ldl_link:
-						_open_ldl_editor(coord)
-					else:
-						paint_tile(coord)
-						_open_ldl_editor(coord)
-				else:
-					paint_tile(coord)
-					_hide_ldl_panel()
-					var painted = current_layout.get_tile(coord) if current_layout else null
-					if painted and painted.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
-						_open_ice_editor(coord)
-					elif painted and (painted.tile_type == CP2020DatafortLayout.TileType.NETWATCH or painted.tile_type == CP2020DatafortLayout.TileType.NETRUNNER):
-						_open_npc_editor(coord)
-					elif painted and painted.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
-						_hide_cpu_panel()
-						_hide_files_panel()
-						_open_loot_editor(coord)
-					elif painted and painted.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
-						_hide_loot_panel()
-						_open_files_editor(coord)
-					else:
-						_hide_ice_panel()
-						_hide_npc_panel()
-						_hide_cpu_panel()
-						_hide_loot_panel()
-						_hide_files_panel()
+	# Drag ghost follows the cursor while a tile is picked up.
+	if event is InputEventMouseMotion and dragging:
+		drag_ghost_pos = event.position
+		queue_redraw()
+		return
+	if not (event is InputEventMouseButton) or event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var local_pos = event.position
+	var adjusted_y = local_pos.y - grid_offset_y
+	var grid_x = int(local_pos.x / cell_size)
+	var grid_y = int(adjusted_y / cell_size)
+	var in_bounds = grid_x >= 0 and grid_x < grid_columns and grid_y >= 0 and grid_y < grid_rows
+	var coord := Vector2i(grid_x, grid_y)
+	if event.pressed:
+		if not in_bounds:
+			return
+		# Select mode: pick up a non-empty tile to drag (editor opens on
+		# release); clicking an empty cell clears the selection.
+		if select_mode:
+			var existing = current_layout.get_tile(coord) if current_layout else null
+			if existing != null and existing.tile_type != CP2020DatafortLayout.TileType.EMPTY:
+				dragging = true
+				drag_source_coord = coord
+				drag_tile = existing
+				drag_ghost_pos = local_pos
+			else:
+				_open_editor_for_tile(coord, existing)
+			queue_redraw()
+			return
+		# In LDL Link mode: clicking an existing LDL link selects it for
+		# editing rather than overwriting it. Clicking anything else
+		# paints a fresh LDL link and opens the editor on it.
+		if ldl_link_mode:
+			var existing = current_layout.get_tile(coord) if current_layout else null
+			if existing and existing.tile_type == CP2020DatafortLayout.TileType.ENTRY and existing.is_ldl_link:
+				_open_ldl_editor(coord)
+			else:
+				paint_tile(coord)
+				_open_ldl_editor(coord)
+			return
+		paint_tile(coord)
+		_hide_ldl_panel()
+		var painted = current_layout.get_tile(coord) if current_layout else null
+		if painted and painted.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
+			_open_ice_editor(coord)
+		elif painted and (painted.tile_type == CP2020DatafortLayout.TileType.NETWATCH or painted.tile_type == CP2020DatafortLayout.TileType.NETRUNNER):
+			_open_npc_editor(coord)
+		elif painted and painted.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+			_hide_cpu_panel()
+			_hide_files_panel()
+			_open_loot_editor(coord)
+		elif painted and painted.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
+			_hide_loot_panel()
+			_open_files_editor(coord)
+		else:
+			_hide_ice_panel()
+			_hide_npc_panel()
+			_hide_cpu_panel()
+			_hide_loot_panel()
+			_hide_files_panel()
+	else:
+		# Release: finish a drag-to-move (Select mode only).
+		if not dragging or drag_tile == null:
+			return
+		var source := drag_source_coord
+		var tile := drag_tile
+		# Reset drag state before dispatch so panels/redsraw are clean.
+		dragging = false
+		drag_tile = null
+		# Out of bounds or same cell = cancel (treat as a select-click on source).
+		if not in_bounds or coord == source:
+			_open_editor_for_tile(source, tile)
+			queue_redraw()
+			return
+		var target_tile = current_layout.get_tile(coord) if current_layout else null
+		if target_tile != null and target_tile.tile_type != CP2020DatafortLayout.TileType.EMPTY:
+			# Occupied: reject the drop, keep the tile at its source.
+			print("Drag rejected — target %s is occupied." % coord)
+			_open_editor_for_tile(source, tile)
+			queue_redraw()
+			return
+		# Move the tile: erase source, place at target, fill source with a
+		# fresh EMPTY so the grid stays a walkable floor.
+		current_layout.erase_tile(source)
+		current_layout.set_tile(coord, tile)
+		var empty := CP2020TileData.new()
+		empty.tile_type = CP2020DatafortLayout.TileType.EMPTY
+		empty.tile_name = "Empty Path"
+		current_layout.set_tile(source, empty)
+		_open_editor_for_tile(coord, tile)
+		queue_redraw()
 
 # Update paint_tile to flag LDL options if needed
 func paint_tile(coord: Vector2i) -> void:
@@ -455,7 +519,7 @@ func paint_tile(coord: Vector2i) -> void:
 			tile_data.tile_name = "Netrunner"
 			tile_data.npc_has_override = false
 			
-	current_layout.grid_tiles[coord] = tile_data
+	current_layout.set_tile(coord, tile_data)
 	queue_redraw()
 	
 
@@ -582,9 +646,16 @@ func _draw() -> void:
 
 	# Highlight the selected tile (select mode) so the designer can see which
 	# tile the open side panel is editing.
-	if select_mode and selected_coord != Vector2i(-1, -1):
+	if select_mode and selected_coord != Vector2i(-1, -1) and not dragging:
 		var sel_rect = Rect2(selected_coord.x * cell_size, grid_offset_y + (selected_coord.y * cell_size), cell_size, cell_size)
 		draw_rect(sel_rect, Color(1.0, 0.85, 0.2), false, 2)
+	# Drag-to-move: dim the source cell and draw a ghost under the cursor.
+	if dragging and drag_tile != null:
+		var src_rect = Rect2(drag_source_coord.x * cell_size, grid_offset_y + (drag_source_coord.y * cell_size), cell_size, cell_size)
+		draw_rect(src_rect, Color(0.0, 0.0, 0.0, 0.55), true)
+		var ghost_rect = Rect2(drag_ghost_pos.x - cell_size * 0.5, drag_ghost_pos.y - cell_size * 0.5, cell_size, cell_size)
+		draw_rect(ghost_rect, Color(1.0, 0.85, 0.2, 0.35), true)
+		draw_rect(ghost_rect, Color(1.0, 0.85, 0.2, 0.9), false, 2)
 
 # ---------------------------------------------------------------------------
 # LDL link editor side panel

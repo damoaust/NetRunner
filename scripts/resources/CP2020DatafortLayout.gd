@@ -62,4 +62,20 @@ func get_tile(coord: Vector2i) -> CP2020TileData:
 		return tile_obj
 		
 	return null
+
+# Writes a tile at coord using a Vector2i key, first erasing any existing
+# entry under either the Vector2i or "x,y" string key form. Serialised .tres
+# files can store keys as strings; runtime paint/drag uses Vector2i. Without
+# this, repainting a string-keyed tile left a dangling string entry alongside
+# the new Vector2i one (duplicate keys). Use this instead of writing
+# grid_tiles[coord] directly.
+func set_tile(coord: Vector2i, tile: CP2020TileData) -> void:
+	erase_tile(coord)
+	grid_tiles[coord] = tile
+
+# Removes the tile at coord, clearing both possible key forms (Vector2i and
+# "x,y" string). Safe to call even if no tile exists at the coord.
+func erase_tile(coord: Vector2i) -> void:
+	grid_tiles.erase(coord)
+	grid_tiles.erase("%d,%d" % [coord.x, coord.y])
 	
