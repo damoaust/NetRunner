@@ -334,6 +334,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				RunState.copy_file(file)
 				tile.copied_file_paths.append(str(idx))
 				log_to_terminal("Copied %s to deck memory (%d MU).\n" % [file.file_name, file.mu_size])
+				update_deck_info()
 				if board_renderer:
 					board_renderer.queue_redraw()
 		"copy_all_files":
@@ -364,6 +365,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 							log_to_terminal("Skipped %s — not enough free deck memory.\n" % f.file_name)
 				if board_renderer:
 					board_renderer.queue_redraw()
+				update_deck_info()
 				log_to_terminal("Batch copy complete.\n")
 
 func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
