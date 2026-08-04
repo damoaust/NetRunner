@@ -266,24 +266,16 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				if turn_manager and not turn_manager.has_actions():
 					log_to_terminal("No actions remaining. End turn (Space) to let ICE move.\n")
 					return
-				if program.effect_type == NetProgram.EffectType.BYPASS_GATE:
-					execute_decryption(program, target_coord)
-				elif program.effect_type == NetProgram.EffectType.BREACH_WALL:
-					execute_wall_breach(program, target_coord)
-				elif program.effect_type == NetProgram.EffectType.DEREZ_ICE:
-					execute_ice_attack(program, target_coord)
-				elif program.effect_type == NetProgram.EffectType.SHIELD:
-					execute_shield(program)
-				elif program.effect_type == NetProgram.EffectType.WORM:
-					execute_worm(program, target_coord)
-				elif program.effect_type == NetProgram.EffectType.DETECTION:
-					execute_detection(program, target_coord)
-				else:
-					log_to_terminal("Program effect not implemented yet.\n")
-					return
-				if turn_manager:
-					turn_manager.consume_action()
-				_check_actions_exhausted()
+				# Delegate to the program's virtual execute_runner_action. The
+				# base NetProgram dispatches by effect_type to the private
+				# _execute_* helpers; subclasses (Worm, Watchdog) override it
+				# entirely. Returns false if the use failed validation — in
+				# that case do NOT consume an action.
+				var ok: bool = program.execute_runner_action(self, target_coord)
+				if ok:
+					if turn_manager:
+						turn_manager.consume_action()
+					_check_actions_exhausted()
 		"travel_ldl":
 			# program carries the CP2020TileData of the LDL link tile.
 			if program is CP2020TileData:
@@ -401,7 +393,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				update_deck_info()
 				log_to_terminal("Batch copy complete.\n")
 
-func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
+func _execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
 	if tile:
 		log_to_terminal("Executing Bypass Program '%s' on Code Gate at %s...\n" % [program.program_name, target_coord])
@@ -409,7 +401,7 @@ func execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 		if board_renderer:
 			board_renderer.queue_redraw()
 
-func execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
+func _execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord)
 	if tile:
 		log_to_terminal("Executing Wall Breach '%s' on Datawall at %s...\n" % [program.program_name, target_coord])
@@ -419,7 +411,7 @@ func execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 		if board_renderer:
 			board_renderer.queue_redraw()
 
-func execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
+func _execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
 	# Worm is a stealth opener: it slips behind a DATAWALL or locked CODE_GATE
 	# and opens it from the inside over 2 turns with no alert (no trace
 	# increase, no ICE activation). The tile gets worm_turns_remaining = 2;
@@ -442,7 +434,7 @@ func execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
 	if board_renderer:
 		board_renderer.queue_redraw()
 
-func execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
+func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 	var target_ice: BlackIce = null
 	for ice in ice_nodes:
 		if is_instance_valid(ice) and ice.current_position == target_coord:
@@ -453,25 +445,25 @@ func execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 		log_to_terminal("No Black ICE detected at %s.\n" % target_coord)
 		return
 
-	log_to_terminal("Executing Anti-ICE Program '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_ice.program_name, target_coord])
+	log_to_terminal("Executing Anti-ICE Program '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_ice.program.program_name, target_coord])
 
 	# Opposed roll: 1d10 + STR for both attacker and defender (CP2020 anti-program combat)
 	var prog_roll = (randi() % 10) + 1 + program.strength
-	var ice_roll = (randi() % 10) + 1 + target_ice.strength
-	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d)\n" % [prog_roll, program.strength, target_ice.program_name, ice_roll, target_ice.strength])
+	var ice_roll = (randi() % 10) + 1 + target_ice.program.strength
+	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d)\n" % [prog_roll, program.strength, target_ice.program.program_name, ice_roll, target_ice.program.strength])
 
 	if prog_roll > ice_roll:
 		var damage = prog_roll - ice_roll
-		log_to_terminal("Hit! %s takes %d damage.\n" % [target_ice.program_name, damage])
+		log_to_terminal("Hit! %s takes %d damage.\n" % [target_ice.program.program_name, damage])
 		if target_ice.take_damage(damage):
 			ice_nodes.erase(target_ice)
 	else:
-		log_to_terminal("%s repelled the attack.\n" % target_ice.program_name)
+		log_to_terminal("%s repelled the attack.\n" % target_ice.program.program_name)
 
 	if board_renderer:
 		board_renderer.queue_redraw()
 
-func execute_shield(program: NetProgram) -> void:
+func _execute_shield(program: NetProgram) -> void:
 	if not netrunner:
 		return
 	log_to_terminal("Activating Protection Program '%s'...\n" % program.program_name)
@@ -480,8 +472,10 @@ func execute_shield(program: NetProgram) -> void:
 # Deploy a Watchdog beacon at the netrunner's current position. The beacon
 # monitors a 20-space LoS radius each turn and alerts when enemies approach.
 # The deployed program is marked as "running" (added to _deployed_programs)
-# and cannot be deployed again — one file, one instance.
-func execute_detection(program: NetProgram, target_coord: Vector2i) -> void:
+# and cannot be deployed again — one file, one instance. This is the single
+# source of beacon-deploy truth: the base NetProgram DETECTION dispatch (via
+# _execute_detection) and the WatchdogProgram subclass both call it.
+func deploy_watchdog_beacon(program: NetProgram, target_coord: Vector2i) -> void:
 	if _watchdog_beacons.has(target_coord):
 		log_to_terminal("A Watchdog beacon is already deployed at %s.\n" % target_coord)
 		return
@@ -493,13 +487,16 @@ func execute_detection(program: NetProgram, target_coord: Vector2i) -> void:
 	if board_renderer:
 		board_renderer.queue_redraw()
 
+func _execute_detection(program: NetProgram, target_coord: Vector2i) -> void:
+	deploy_watchdog_beacon(program, target_coord)
+
 # Called when a DETECTION ICE (Watchdog) gains LoS to the netrunner and
 # trips the alarm. Activates all other attack ICE in the datafort by
 # calling activate_alarm() on each non-DETECTION ICE node.
 func _on_ice_alarm_triggered() -> void:
 	log_to_terminal("ALARM! Watchdog has detected an intruder — all attack ICE activated!\n")
 	for ice in ice_nodes:
-		if is_instance_valid(ice) and ice.effect_type != NetProgram.EffectType.DETECTION:
+		if is_instance_valid(ice) and ice.program.effect_type != NetProgram.EffectType.DETECTION:
 			ice.activate_alarm()
 	if board_renderer:
 		board_renderer.queue_redraw()
@@ -584,6 +581,15 @@ func update_deck_info(_program: Variant = null) -> void:
 				label.add_theme_color_override("font_color", Color.GREEN)
 			program_list_container.add_child(label)
 
+# Build a base NetProgram from a tier template dict. Template programs get
+# the default hunt-attack ICE behavior (base NetProgram script).
+func _build_template_program(template: Dictionary) -> NetProgram:
+	var prog := NetProgram.new()
+	prog.program_name = String(template.get("name", "Black ICE"))
+	prog.strength = int(template.get("strength", 4))
+	prog.effect_type = NetProgram.EffectType.DAMAGE_RUNNER
+	return prog
+
 func spawn_black_ice() -> void:
 	# Clear any previously spawned ICE nodes (e.g. on subnet reload)
 	for ice in ice_nodes:
@@ -609,37 +615,34 @@ func spawn_black_ice() -> void:
 			var ice: BlackIce = BlackIceScene.instantiate()
 			add_child(ice)
 			# Apply ICE stats BEFORE initialize (initialize copies max_integrity
-			# into current_integrity). Sourcing precedence:
-			#   1. tile.ice_program (assigned .tres) -> name/strength/effect_type
-			#      (program is duplicate()d to protect the cached .tres).
-			#   2. tile.ice_has_override scalar overrides -> name/strength/
-			#      max_ap/max_integrity/traces (effect_type defaults DAMAGE_RUNNER).
-			#   3. else the hub security-tier template.
-			# max_ap / max_integrity / traces always fall back to the scalar
-			# override or tier template (NetProgram has no equivalents).
-			ice.effect_type = NetProgram.EffectType.DAMAGE_RUNNER
+			# into current_integrity). BlackICE always gets a `program` member
+			# that defines its behavior (effect_type, strength, damage_dice,
+			# program_name). Sourcing precedence:
+			#   1. tile.ice_program (assigned .tres) -> ice.program = duplicate
+			#      (its script — base or subclass — rides along and defines
+			#      behavior via take_ice_turn).
+			#   2. tile.ice_has_override scalar overrides -> build a base
+			#      NetProgram with DAMAGE_RUNNER behavior.
+			#   3. else the hub security-tier template -> _build_template_program.
+			# max_ap / max_integrity / traces always come from the tile override
+			# or tier template (NetProgram has no equivalents).
 			if tile.ice_program != null:
-				var prog: NetProgram = tile.ice_program.duplicate()
-				ice.program_name = prog.program_name
-				ice.strength = prog.strength
-				ice.effect_type = prog.effect_type
-				ice.damage_dice = prog.damage_dice
+				ice.program = tile.ice_program.duplicate()
 				ice.max_ap = tile.ice_max_ap if tile.ice_max_ap > 0 else int(template.get("max_ap", 2))
 				ice.max_integrity = tile.ice_max_integrity if tile.ice_max_integrity > 0 else int(template.get("max_integrity", 4))
 				ice.traces = tile.ice_traces
 			elif tile.ice_has_override:
+				var prog := NetProgram.new()
 				if tile.ice_program_name != "":
-					ice.program_name = tile.ice_program_name
-				if tile.ice_strength > 0:
-					ice.strength = tile.ice_strength
-				if tile.ice_max_ap > 0:
-					ice.max_ap = tile.ice_max_ap
-				if tile.ice_max_integrity > 0:
-					ice.max_integrity = tile.ice_max_integrity
+					prog.program_name = tile.ice_program_name
+				prog.strength = tile.ice_strength if tile.ice_strength > 0 else int(template.get("strength", 4))
+				prog.effect_type = NetProgram.EffectType.DAMAGE_RUNNER
+				ice.program = prog
+				ice.max_ap = tile.ice_max_ap if tile.ice_max_ap > 0 else int(template.get("max_ap", 2))
+				ice.max_integrity = tile.ice_max_integrity if tile.ice_max_integrity > 0 else int(template.get("max_integrity", 4))
 				ice.traces = tile.ice_traces
 			else:
-				ice.program_name = String(template.get("name", "Black ICE"))
-				ice.strength = int(template.get("strength", 4))
+				ice.program = _build_template_program(template)
 				ice.max_ap = int(template.get("max_ap", 2))
 				ice.max_integrity = int(template.get("max_integrity", 4))
 				ice.traces = bool(template.get("traces", false))
@@ -650,14 +653,14 @@ func spawn_black_ice() -> void:
 			# Anti-program (DEREZ_ICE) ICE attacks an installed program. The
 			# attacker name is captured via a lambda so the runner's log shows
 			# which ICE struck (the shared _on_ice_attacked path can't pass it).
-			var attacker_name := ice.program_name
+			var attacker_name := ice.program.program_name
 			ice.attacked_program.connect(func(strength: int) -> void:
 				_on_ice_attacked_program(strength, attacker_name))
 			# DETECTION ICE (Watchdog) emits alarm_triggered when it detects
 			# the netrunner. The game session activates all other attack ICE.
 			ice.alarm_triggered.connect(_on_ice_alarm_triggered)
 			ice_nodes.append(ice)
-			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program_name, coord])
+			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program.program_name, coord])
 
 
 func spawn_npcs() -> void:
@@ -985,7 +988,7 @@ func _tick_watchdog_beacons() -> void:
 			if not is_instance_valid(ice):
 				continue
 			if current_layout.line_of_sight(beacon, ice.current_position, 20):
-				log_to_terminal("WATCHDOG ALERT: %s detected at %s!\n" % [ice.program_name, ice.current_position])
+				log_to_terminal("WATCHDOG ALERT: %s detected at %s!\n" % [ice.program.program_name, ice.current_position])
 				_watchdog_alerted[key] = true
 				any_alert = true
 				break

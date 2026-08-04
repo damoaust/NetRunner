@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://b8bjpni7mu108"]
 
-[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_m76mi"]
+[ext_resource type="Script" path="res://scripts/programs/worm_program.gd" id="1_m76mi"]
 
 [resource]
 script = ExtResource("1_m76mi")
@@ -11,4 +11,3 @@ memory_cost = 3
 strength = 5
 price = 660
 description = "Slips behind data walls and code gates, opening them from the inside over 2 turns. No alert triggered."
-metadata/_custom_type_script = "uid://bpf1htwhbqhr1"
