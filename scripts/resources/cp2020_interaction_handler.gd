@@ -179,6 +179,11 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var armor_id = 7000 + i
 				_dynamic_menu.add_item(armor_label, armor_id)
 				options_added = true
+			elif prog and prog.effect_type == NetProgram.EffectType.DETECTION:
+				var detect_label = "%s (Deploy STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
+				var detect_id = 1000 + i
+				_dynamic_menu.add_item(detect_label, detect_id)
+				options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile_data.is_unlocked:
 		for i in range(available_programs.size()):

@@ -22,7 +22,8 @@ enum EffectType {
 	SHIELD,          # Protection program: recharges netrunner shield/armor (reduces ICE damage)
 	CRASH_CPU,       # Anti-system: crashes a datafort CPU for 1D6+1 turns (Krash)[cite: 16]
 	ARMOR,           # Defense program: absorbs damage point-for-point (Armor STR subtracts from incoming rolled damage; remainder hits HP).
-	WORM             # Stealth opener: slips behind data walls/code gates, opens from the inside over 2 turns. No alert.
+	WORM,            # Stealth opener: slips behind data walls/code gates, opens from the inside over 2 turns. No alert.
+	DETECTION        # Detection/alarm: Watchdog detects intruders via LoS and trips an alarm activating all attack ICE. As a netrunner utility, deploys a tripwire beacon that alerts when enemies approach.
 }
 
 @export var program_name: String = "Hammer"

@@ -33,6 +33,17 @@ var current_layout: CP2020DatafortLayout
 # Resolved tier for the current datafort (set at dive time by the City Grid).
 var _current_security_tier: int = CP2020SecurityTier.Tier.LEVEL_1
 
+# Programs the netrunner has deployed as Watchdog beacons. Once deployed, a
+# program file goes from "dormant" to "running" and cannot be re-deployed
+# (one file, one instance). Filtered out of the available programs list
+# before passing to the interaction handler.
+var _deployed_programs: Array[NetProgram] = []
+# Grid positions of active Watchdog beacons deployed by the netrunner.
+var _watchdog_beacons: Array[Vector2i] = []
+# Tracks which beacons have already fired an alert (key = "x,y", value = true)
+# so each beacon only logs once per enemy detection.
+var _watchdog_alerted: Dictionary = {}
+
 # Tier -> default ICE template. Used when a BLACK_ICE tile has no per-tile
 # override (ice_has_override == false). Stats follow CP2020 progression:
 # Grey = alarm/detection only (weak Watchdog), L1/L2 = anti-IC Killers,
@@ -166,6 +177,14 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 				# ResourceLoader instance retains the runtime counter).
 				t.worm_turns_remaining = 0
 
+		# Clear netrunner-deployed Watchdog beacons and deployed-program
+		# tracking for a fresh dive (beacons don't persist across dataforts).
+		_watchdog_beacons.clear()
+		_watchdog_alerted.clear()
+		_deployed_programs.clear()
+		if board_renderer:
+			board_renderer.watchdog_beacons = _watchdog_beacons
+
 		# Let the Netrunner handle its own spawning!
 		if netrunner:
 			netrunner.initialize(current_layout, entry_coord)
@@ -204,7 +223,11 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		accept_event() # Prevent GUI system from re-processing this
 		var mouse_pos: Vector2 = board_renderer.get_global_mouse_position() if board_renderer else get_viewport().get_mouse_position()
-		var programs: Array[NetProgram] = netrunner.installed_programs if netrunner else []
+		var programs: Array[NetProgram] = []
+		if netrunner:
+			for prog in netrunner.installed_programs:
+				if prog and prog not in _deployed_programs:
+					programs.append(prog)
 		print("DEBUG [session] right-click at ", mouse_pos, " programs=", programs.size())
 		if interaction_handler and current_layout:
 			var cs: float = board_renderer.cell_size if board_renderer else 40.0
@@ -253,6 +276,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					execute_shield(program)
 				elif program.effect_type == NetProgram.EffectType.WORM:
 					execute_worm(program, target_coord)
+				elif program.effect_type == NetProgram.EffectType.DETECTION:
+					execute_detection(program, target_coord)
 				else:
 					log_to_terminal("Program effect not implemented yet.\n")
 					return
@@ -452,6 +477,33 @@ func execute_shield(program: NetProgram) -> void:
 	log_to_terminal("Activating Protection Program '%s'...\n" % program.program_name)
 	netrunner.raise_shield(program)
 
+# Deploy a Watchdog beacon at the netrunner's current position. The beacon
+# monitors a 20-space LoS radius each turn and alerts when enemies approach.
+# The deployed program is marked as "running" (added to _deployed_programs)
+# and cannot be deployed again — one file, one instance.
+func execute_detection(program: NetProgram, target_coord: Vector2i) -> void:
+	if _watchdog_beacons.has(target_coord):
+		log_to_terminal("A Watchdog beacon is already deployed at %s.\n" % target_coord)
+		return
+	_watchdog_beacons.append(target_coord)
+	_deployed_programs.append(program)
+	if board_renderer:
+		board_renderer.watchdog_beacons = _watchdog_beacons
+	log_to_terminal("Watchdog beacon '%s' deployed at %s — monitoring 20-space radius.\n" % [program.program_name, target_coord])
+	if board_renderer:
+		board_renderer.queue_redraw()
+
+# Called when a DETECTION ICE (Watchdog) gains LoS to the netrunner and
+# trips the alarm. Activates all other attack ICE in the datafort by
+# calling activate_alarm() on each non-DETECTION ICE node.
+func _on_ice_alarm_triggered() -> void:
+	log_to_terminal("ALARM! Watchdog has detected an intruder — all attack ICE activated!\n")
+	for ice in ice_nodes:
+		if is_instance_valid(ice) and ice.effect_type != NetProgram.EffectType.DETECTION:
+			ice.activate_alarm()
+	if board_renderer:
+		board_renderer.queue_redraw()
+
 # Attack an NPC netrunner occupying `target_coord` with `program`. Opposed
 # 1d10+STR roll vs the NPC's strength (same convention as anti-ICE combat).
 # The NPC's raised shield (if any) is resolved inside take_damage.
@@ -601,6 +653,9 @@ func spawn_black_ice() -> void:
 			var attacker_name := ice.program_name
 			ice.attacked_program.connect(func(strength: int) -> void:
 				_on_ice_attacked_program(strength, attacker_name))
+			# DETECTION ICE (Watchdog) emits alarm_triggered when it detects
+			# the netrunner. The game session activates all other attack ICE.
+			ice.alarm_triggered.connect(_on_ice_alarm_triggered)
 			ice_nodes.append(ice)
 			log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program_name, coord])
 
@@ -859,6 +914,11 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 		# deck-crash tick so a worm completing this turn opens the tile
 		# regardless of deck state (the worm is autonomous once deployed).
 		_tick_worm_programs()
+		# Watchdog beacon tick: scan each deployed beacon for enemies (ICE or
+		# NPC netrunners) within 20-space LoS and log an alert on first
+		# detection. This gives the netrunner advance warning of flanking
+		# enemies.
+		_tick_watchdog_beacons()
 		# Anti-system deck-crash tick: decrement the crash timer at the start
 		# of each netrunner turn, then drop the action economy to 0 while the
 		# deck is still crashed (movement remains available so the runner can
@@ -908,6 +968,40 @@ func _tick_worm_programs() -> void:
 			recalculate_fog_of_war(netrunner.current_position)
 		if board_renderer:
 			board_renderer.queue_redraw()
+
+# Tick all deployed Watchdog beacons: for each beacon, check LoS to all
+# ICE nodes and NPC netrunners within 20 spaces. On first detection per
+# beacon, log a WATCHDOG ALERT. Called at the start of each netrunner turn.
+func _tick_watchdog_beacons() -> void:
+	if current_layout == null or _watchdog_beacons.is_empty():
+		return
+	var any_alert := false
+	for beacon in _watchdog_beacons:
+		var key := "%d,%d" % [beacon.x, beacon.y]
+		if _watchdog_alerted.get(key, false):
+			continue
+		# Check all ICE nodes within 20-space LoS of the beacon.
+		for ice in ice_nodes:
+			if not is_instance_valid(ice):
+				continue
+			if current_layout.line_of_sight(beacon, ice.current_position, 20):
+				log_to_terminal("WATCHDOG ALERT: %s detected at %s!\n" % [ice.program_name, ice.current_position])
+				_watchdog_alerted[key] = true
+				any_alert = true
+				break
+		if _watchdog_alerted.get(key, false):
+			continue
+		# Check all NPC netrunner nodes within 20-space LoS of the beacon.
+		for npc in npc_nodes:
+			if not is_instance_valid(npc):
+				continue
+			if current_layout.line_of_sight(beacon, npc.current_position, 20):
+				log_to_terminal("WATCHDOG ALERT: %s detected at %s!\n" % [npc.npc_name, npc.current_position])
+				_watchdog_alerted[key] = true
+				any_alert = true
+				break
+	if any_alert and board_renderer:
+		board_renderer.queue_redraw()
 
 func _on_actions_changed(remaining: int, max_actions: int) -> void:
 	if actions_label:

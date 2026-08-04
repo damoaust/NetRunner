@@ -7,6 +7,7 @@ signal attacked_netrunner(strength: int)
 # Emitted by anti-program (DEREZ_ICE) ICE when it reaches the netrunner. The
 # runner handles it by damaging an installed program (STR = max integrity).
 signal attacked_program(strength: int)
+signal alarm_triggered
 signal destroyed
 
 enum State { IDLE, PURSUE }
@@ -95,6 +96,7 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 		message_logged.emit("%s reacquires the netrunner!" % program_name)
 	_had_los = true
 
+	var was_activated := _activated
 	if not _activated:
 		_activated = true
 		if traces:
@@ -105,6 +107,16 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 				message_logged.emit("%s failed to trace your signal (1D10+STR %d vs trace %d) — idle." % [program_name, trace_roll, RunState.accumulated_trace])
 				return
 			message_logged.emit("%s traced your signal (1D10+STR %d vs trace %d)." % [program_name, trace_roll, RunState.accumulated_trace])
+
+	# DETECTION ICE (Watchdog): on first activation, trip the alarm and
+	# stay stationary. It never pursues or attacks — its job is to alert
+	# other ICE, not fight.
+	if effect_type == NetProgram.EffectType.DETECTION:
+		if not was_activated:
+			message_logged.emit("ALARM: %s detects intruder! Sounding alarm!" % program_name)
+			alarm_triggered.emit()
+		return
+
 	if current_state == State.IDLE:
 		current_state = State.PURSUE
 		message_logged.emit("WARNING: %s activated and is hunting!" % program_name)
@@ -162,6 +174,16 @@ func _update_obstacles(layout: CP2020DatafortLayout) -> void:
 		if tile:
 			if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL or (tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked):
 				astar_grid.set_point_solid(coord, true)
+
+# Called by the game session when a Watchdog trips the alarm. Wakes this
+# dormant ICE and sets it to PURSUE, even if it hasn't seen the netrunner
+# yet. Used to activate all attack ICE in the datafort at once.
+func activate_alarm() -> void:
+	if not _activated:
+		_activated = true
+	if current_state == State.IDLE:
+		current_state = State.PURSUE
+		message_logged.emit("ALARM: %s woken and hunting!" % program_name)
 
 func update_visibility(is_explored: bool, is_visible: bool) -> void:
 	if not skull_label:

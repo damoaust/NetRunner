@@ -7,6 +7,10 @@ extends Node2D
 # Reference to the current layout being displayed
 var current_layout: CP2020DatafortLayout
 
+# Watchdog beacon positions deployed by the netrunner. Set by the game
+# session; the renderer draws a pulsing amber "W" glyph at each beacon.
+var watchdog_beacons: Array[Vector2i] = []
+
 func _draw() -> void:
 	if current_layout:
 		draw_grid(self, current_layout)
@@ -49,6 +53,20 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 			canvas.draw_rect(cell_rect, Color(0.04, 0.04, 0.05, 1.0), true)
 			_draw_tile_graphics(canvas, tile_data, cell_rect, false)
 			canvas.draw_rect(cell_rect, Color(0.15, 0.15, 0.2, 0.6), false, 1.0)
+
+	# Watchdog beacon overlay: draw a pulsing amber "W" glyph at each
+	# beacon position deployed by the netrunner. Drawn after all tiles so
+	# the beacon is visible on top of any tile graphics.
+	for beacon in watchdog_beacons:
+		var beacon_rect = Rect2(beacon.x * cell_size, grid_offset_y + (beacon.y * cell_size), cell_size, cell_size)
+		var center = beacon_rect.get_center()
+		var beacon_color = Color(0.9, 0.6, 0.1, 1.0)
+		var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
+		canvas.draw_circle(center, pulse_radius, Color(0.7, 0.4, 0.05, 0.35))
+		var s: float = 7.0
+		canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), beacon_color, 2.0)
+		canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), beacon_color, 2.0)
+		canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), beacon_color, 2.0)
 
 func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool) -> void:
 	var alpha_mult: float = 1.0 if is_visible else 0.3
