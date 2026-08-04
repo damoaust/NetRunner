@@ -19,6 +19,12 @@ signal flatlined
 
 @export var max_health: int = 20
 
+# The netrunner's own vision radius (fog-of-war sight). Owned by the runner so
+# future deck/gear modifiers can adjust it independently of program sight
+# ranges (programs have their own per-entity `sight_range`). Defaults to 10,
+# matching the original fog radius.
+@export var sight_range: int = 10
+
 var current_health: int = 20
 var raised_shield: NetProgram = null
 var interface_rank: int = 6  # Netrunner's INT for initiative (set from cyberdeck)

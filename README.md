@@ -242,9 +242,10 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
 - **Camera Follow**: a `Camera2D` ("RunnerCamera") is parented under the board renderer; `_update_camera_limits` clamps it to the datafort rect and `_center_camera_on_runner` snaps it to the netrunner. `netrunner.position_changed` re-centres the camera.
 - **Trace HUD**: `_update_trace()` writes `RunState.accumulated_trace` to the `TraceLabel`.
 - **Line of Sight / Fog of War**:
-  - Uses a grid-based Bresenham raycasting line-of-sight algorithm ([_has_line_of_sight](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_game_session.gd#L163)) up to `vision_radius = 10`.
-  - Blocked by `DATAWALL` tiles and locked `CODE_GATE` tiles (`is_unlocked == false`).
-  - Sets `tile.is_visible = true` and `tile.is_explored = true`.
+  - The shared line-of-sight helper is `CP2020DatafortLayout.line_of_sight(from, to, max_range)` — a Euclidean distance check combined with the Bresenham raycast that blocks on `DATAWALL` tiles and locked `CODE_GATE` tiles (`is_unlocked == false`). The target tile itself is never a blocker.
+  - `max_range` is **required** (no shared default): the runner and each program keep **separate** per-entity `@export var sight_range: int = 10` values (`CP2020Netrunner`, `BlackIce`, `CP2020NpcNetrunner`, `CP2020Datafort`) so future modifiers can affect one side without touching the other.
+  - Fog of war (`recalculate_fog_of_war`) uses `netrunner.sight_range` and the shared helper; sets `tile.is_visible = true` and `tile.is_explored = true`. `cp2020_game_session._has_line_of_sight` is now a thin wrapper over the helper.
+  - **Sight-gated adversaries**: Black ICE, hostile NPC netrunners, and the datafort's resident programs only act when they have line of sight to the netrunner within their own `sight_range`. Without LoS they go **dormant** (hold position, no activation/attack this turn). NEUTRAL NPCs keep wandering regardless of LoS; CPU reboot timers continue regardless of sight. Last-known-position hunting is intentionally **not** implemented (future stealth/triggers pass).
 - **Decryption Mechanics**:
   - Initiated when player selects a decryption program (`BYPASS_GATE`) via right-click contextual menu on a Code Gate.
   - Roll: `(randi() % 10) + 1 + program.strength` (Cyberpunk 2020 1d10 + Program STR rule).

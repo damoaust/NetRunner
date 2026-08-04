@@ -37,6 +37,15 @@ var cpus: Array = []
 var resident_programs: Array[NetProgram] = []
 var current_layout: CP2020DatafortLayout
 
+# Program sight radius (separate from the runner's sight_range). Resident
+# programs only fire when at least one active CPU has line of sight to the
+# netrunner within this range. Defaults to 10.
+@export var sight_range: int = 10
+
+# Tracks the previous turn's LoS state so transition messages log only on
+# the seen<->lost change.
+var _had_los: bool = false
+
 
 func initialize(layout: CP2020DatafortLayout) -> void:
 	current_layout = layout
@@ -128,11 +137,12 @@ func crash_cpu(program: NetProgram, target_coord: Vector2i) -> bool:
 		return false
 
 
-# Turn-manager entry point. Decrements reboot timers, then runs resident
-# anti-runner programs up to actions_per_turn(). Programs follow their own
-# programming — the datafort only triggers them.
-func take_turn(_target_pos: Vector2i, _layout: CP2020DatafortLayout) -> void:
-	# 1. Reboot crashed CPUs whose timer has elapsed.
+# Turn-manager entry point. Decrements reboot timers (unconditional — CPUs
+# reboot whether or not the fort sees the runner), then runs resident
+# anti-runner programs up to actions_per_turn() — but only when at least one
+# active CPU has line of sight to the netrunner within `sight_range`.
+func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
+	# 1. Reboot crashed CPUs whose timer has elapsed (unconditional).
 	for cpu in cpus:
 		if is_instance_valid(cpu.tile) and cpu.tile.cpu_crashed_turns > 0:
 			cpu.tile.cpu_crashed_turns -= 1
@@ -141,7 +151,24 @@ func take_turn(_target_pos: Vector2i, _layout: CP2020DatafortLayout) -> void:
 				cpu_rebooted.emit(cpu.coord)
 				state_changed.emit()
 
-	# 2. Run resident programs against the runner (up to actions_per_turn).
+	# 2. Sight gating: resident programs only fire when at least one active
+	# CPU has line of sight to the netrunner within `sight_range`.
+	var can_see := false
+	for cpu in cpus:
+		if is_instance_valid(cpu.tile) and cpu.tile.cpu_crashed_turns <= 0 \
+				and layout.line_of_sight(cpu.coord, target_pos, sight_range):
+			can_see = true
+			break
+	if not can_see:
+		if _had_los:
+			message_logged.emit("Datafort '%s' loses sight of the netrunner — resident programs idle.\n" % fort_name)
+		_had_los = false
+		return
+	if not _had_los:
+		message_logged.emit("Datafort '%s' reacquires the netrunner — engaging!\n" % fort_name)
+	_had_los = true
+
+	# 3. Run resident programs against the runner (up to actions_per_turn).
 	var actions := actions_per_turn()
 	if actions <= 0 or resident_programs.is_empty() or active_cpu_count() == 0:
 		message_logged.emit("Datafort '%s' idle (no active CPUs / programs).\n" % fort_name)

@@ -16,11 +16,19 @@ enum State { IDLE, PURSUE }
 # can hunt. Rolls 1D10 + strength vs RunState.accumulated_trace once per run.
 @export var traces: bool = false
 
+# Program sight radius (separate from the runner's sight_range so future
+# modifiers can affect one side without the other). Defaults to 10, matching
+# the runner's fog-of-war vision. Used to gate take_turn on line of sight.
+@export var sight_range: int = 10
+
 var current_position: Vector2i = Vector2i.ZERO
 var current_state: State = State.IDLE
 var astar_grid: AStarGrid2D
 var current_integrity: int = 4
 var _activated: bool = false
+# Tracks the previous turn's LoS state so transition (seen<->lost) messages
+# log only on the change, not every turn.
+var _had_los: bool = false
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -56,6 +64,21 @@ func update_visual_position() -> void:
 	position = Vector2(center_x, center_y)
 
 func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
+	# Sight gating: a program can only act against the netrunner when it has
+	# line of sight to them, within `sight_range` spaces and blocked by
+	# Datawalls/locked Code Gates. Without LoS the ICE goes dormant (holds
+	# position, no activation/pursue this turn). The one-time `traces` check
+	# therefore fires the first turn the ICE gains LoS.
+	var los := layout.line_of_sight(current_position, target_pos, sight_range)
+	if not los:
+		if _had_los:
+			message_logged.emit("%s loses sight of the netrunner — holding position." % program_name)
+		_had_los = false
+		return
+	if not _had_los and _activated:
+		message_logged.emit("%s reacquires the netrunner!" % program_name)
+	_had_los = true
+
 	if not _activated:
 		_activated = true
 		if traces:

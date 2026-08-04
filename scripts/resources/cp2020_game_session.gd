@@ -969,25 +969,25 @@ func recalculate_fog_of_war(player_pos: Vector2i) -> void:
 		if tile:
 			tile.is_visible = false
 			
-	# 2. Vision radius defined in architecture reference
-	var vision_radius = 10
-	
+	# 2. Vision radius comes from the netrunner's own sight_range (separate
+	# from program sight ranges so future modifiers affect only one side).
+	var vision_radius := netrunner.sight_range
+
 	# 3. Scan square area around player and check line of sight
 	for x in range(-vision_radius, vision_radius + 1):
 		for y in range(-vision_radius, vision_radius + 1):
 			var target_pos = player_pos + Vector2i(x, y)
-			
+
 			# Ensure target is within datafort bounds
 			if target_pos.x < 0 or target_pos.x >= current_layout.columns or target_pos.y < 0 or target_pos.y >= current_layout.rows:
 				continue
-				
-			# Check if within circular distance and has line of sight
-			if player_pos.distance_to(Vector2(target_pos)) <= vision_radius:
-				if _has_line_of_sight(player_pos, target_pos):
-					var tile = current_layout.get_tile(target_pos)
-					if tile:
-						tile.is_visible = true
-						tile.is_explored = true
+
+			# Shared helper does both the distance check and wall/gate blocking.
+			if current_layout.line_of_sight(player_pos, target_pos, vision_radius):
+				var tile = current_layout.get_tile(target_pos)
+				if tile:
+					tile.is_visible = true
+					tile.is_explored = true
 
 	# Sync Black ICE skull visibility with the freshly computed fog state
 	for ice in ice_nodes:
@@ -1004,46 +1004,10 @@ func recalculate_fog_of_war(player_pos: Vector2i) -> void:
 				npc.update_visibility(npc_tile.is_explored, npc_tile.is_visible)
 
 
+# Thin wrapper around the shared CP2020DatafortLayout.line_of_sight helper,
+# kept so existing README/ARCHITECTURE references and call sites stay valid.
+# Uses the netrunner's own sight_range as the max range.
 func _has_line_of_sight(from: Vector2i, to: Vector2i) -> bool:
-	if from == to:
-		return true
-		
-	var dx = abs(to.x - from.x)
-	var dy = abs(to.y - from.y)
-	var x = from.x
-	var y = from.y
-	var n = 1 + dx + dy
-	var x_inc = 1 if (to.x > from.x) else -1
-	var y_inc = 1 if (to.y > from.y) else -1
-	var error = dx - dy
-	
-	dx *= 2
-	dy *= 2
-	
-	while n > 1:
-		if x == to.x and y == to.y:
-			break
-			
-		if error > 0:
-			x += x_inc
-			error -= dy
-		else:
-			y += y_inc
-			error += dx
-			
-		n -= 1
-		
-		# If we reached the target destination, line of sight is clear
-		if x == to.x and y == to.y:
-			return true
-			
-		# Check intermediate tiles for obstacles (Datawalls or locked Code Gates)
-		var intermediate_coord = Vector2i(x, y)
-		var tile = current_layout.get_tile(intermediate_coord)
-		if tile:
-			if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL:
-				return false
-			if tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked:
-				return false
-				
-	return true
+	if not current_layout:
+		return false
+	return current_layout.line_of_sight(from, to, netrunner.sight_range)

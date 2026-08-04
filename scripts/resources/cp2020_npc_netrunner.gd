@@ -31,6 +31,11 @@ enum Disposition { HOSTILE, NEUTRAL }
 @export var max_memory_units: int = 10
 @export var installed_programs: Array[NetProgram] = []
 
+# Program sight radius (separate from the runner's sight_range). HOSTILE NPCs
+# gate pursue/attack on line of sight within this range; NEUTRAL NPCs wander
+# regardless of LoS. Defaults to 10.
+@export var sight_range: int = 10
+
 # Original .tres resource paths of the programs this NPC was spawned with,
 # captured at spawn time (see CP2020GameSession.spawn_npcs). The live
 # installed_programs entries are duplicate()d at spawn and lose their
@@ -47,6 +52,9 @@ var current_integrity: int = 4
 var current_health: int = 10
 var astar_grid: AStarGrid2D
 var _activated: bool = false
+# Tracks the previous turn's LoS state so transition messages log only on
+# the seen<->lost change.
+var _had_los: bool = false
 # Raised shield program (consumed on the next inbound hit), mirroring the
 # player netrunner's raised_shield mechanic.
 var raised_shield: NetProgram = null
@@ -110,6 +118,19 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 	if disposition == Disposition.NEUTRAL:
 		_wander(layout)
 		return
+
+	# HOSTILE: sight gating. A hostile NPC can only pursue/attack when it has
+	# line of sight to the netrunner within `sight_range` (walls/locked gates
+	# block). Without LoS it holds position this turn.
+	var los := layout.line_of_sight(current_position, target_pos, sight_range)
+	if not los:
+		if _had_los:
+			message_logged.emit("%s loses sight of the netrunner — holding position." % npc_name)
+		_had_los = false
+		return
+	if not _had_los and _activated:
+		message_logged.emit("%s reacquires the netrunner!" % npc_name)
+	_had_los = true
 
 	# HOSTILE: pursue + use programs.
 	_update_obstacles(layout)

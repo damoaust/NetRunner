@@ -78,4 +78,63 @@ func set_tile(coord: Vector2i, tile: CP2020TileData) -> void:
 func erase_tile(coord: Vector2i) -> void:
 	grid_tiles.erase(coord)
 	grid_tiles.erase("%d,%d" % [coord.x, coord.y])
+
+
+# Shared line-of-sight helper used by both the netrunner's fog-of-war vision
+# and the adversaries' sight gating. Combines a Euclidean distance check
+# (matching the existing fog radius) with the Bresenham raycast that blocks on
+# DATAWALLs and locked CODE_GATEs.
+#
+# `max_range` is REQUIRED (no shared default): the runner and each program
+# keep separate sight-range values (see @export sight_range on each entity)
+# so future modifiers (deck/gear/program upgrades) can affect one side without
+# touching the other. Each caller passes its own entity's sight range.
+#
+# The target tile itself is never treated as a blocker (the netrunner's tile
+# is the target), even if the target sits on a wall/gate.
+func line_of_sight(from: Vector2i, to: Vector2i, max_range: int) -> bool:
+	if from == to:
+		return true
+	if from.distance_to(Vector2(to)) > max_range:
+		return false
+
+	var dx := absi(to.x - from.x)
+	var dy := absi(to.y - from.y)
+	var x := from.x
+	var y := from.y
+	var n := 1 + dx + dy
+	var x_inc := 1 if (to.x > from.x) else -1
+	var y_inc := 1 if (to.y > from.y) else -1
+	var error := dx - dy
+
+	dx *= 2
+	dy *= 2
+
+	while n > 1:
+		if x == to.x and y == to.y:
+			break
+
+		if error > 0:
+			x += x_inc
+			error -= dy
+		else:
+			y += y_inc
+			error += dx
+
+		n -= 1
+
+		# Reaching the target tile means the ray is clear.
+		if x == to.x and y == to.y:
+			return true
+
+		# Intermediate tiles block sight on Datawalls or locked Code Gates.
+		var intermediate_coord := Vector2i(x, y)
+		var tile = get_tile(intermediate_coord)
+		if tile:
+			if tile.tile_type == TileType.DATAWALL:
+				return false
+			if tile.tile_type == TileType.CODE_GATE and not tile.is_unlocked:
+				return false
+
+	return true
 	
