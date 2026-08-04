@@ -106,7 +106,7 @@ graph TD
     InteractionHandler -->|action_triggered(name, coord, prog)| GameSession
     GameSession -->|execute_decryption / shield / ice_attack| Netrunner
     TurnManager -->|turn_ended| GameSession
-    BlackIce -->|attacked_netrunner(strength)| GameSession
+    BlackIce -->|attacked_netrunner(damage)| GameSession
     GameSession -->|travel_ldl: load_subnet (preserve trace)| GameSession
     GameSession -->|return_world_map: change_scene to City Grid (preserve trace)| CityGrid
     GameSession -->|jack_out / flatline: reset trace + clear context + change_scene| WorldMap
@@ -221,7 +221,7 @@ Represents an executable program software tool loaded into a cyberdeck.
   - `REVEAL_NODES`: Scans hidden layout nodes
   - `MODIFY_MU`: Modifies deck speed or memory capacity
   - `SHIELD`: Defense program (raised on the runner's own tile)
-- **Properties**: `program_name`, `type`, `effect_type`, `memory_cost` (MU), `strength`, `price`, `icon`, `description` (one-line summary shown in the workbench detail card)
+- **Properties**: `program_name`, `type`, `effect_type`, `memory_cost` (MU), `strength`, `price`, `icon`, `description` (one-line summary shown in the workbench detail card), `damage_dice` (optional: `0` = flat `strength` per Black ICE hit, default for all existing programs; `>0` = roll `1D{damage_dice}` per hit, e.g. **Sword** = 6). Backward-compatible.
 
 ---
 
@@ -272,7 +272,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 ### 5.4 Hostile Black ICE AI ([cp2020_blackice.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd))
 - **Pathfinding**: Instantiates an `AStarGrid2D` instance over the layout matrix region.
 - Dynamic obstacle update ([_update_obstacles](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd#L99)): dynamic solid points applied to `DATAWALL` tiles and locked `CODE_GATE` tiles.
-- **States**: `IDLE` -> `PURSUE`. Activates upon turn execution, taking up to `max_ap` (3) steps per turn toward the Netrunner's position. On reaching the runner, branches on `effect_type`: `DAMAGE_RUNNER` emits `attacked_netrunner(strength)` (anti-personnel health attack); `DEREZ_ICE` emits `attacked_program(strength)` (anti-program attack on installed programs — see §5.3 program-HP model).
+- **States**: `IDLE` -> `PURSUE`. Activates upon turn execution, taking up to `max_ap` (3) steps per turn toward the Netrunner's position. On reaching the runner, branches on `effect_type`: `DAMAGE_RUNNER` emits `attacked_netrunner(damage)` (anti-personnel health attack); `DEREZ_ICE` emits `attacked_program(damage)` (anti-program attack on installed programs — see §5.3 program-HP model). `damage` is computed by `_roll_damage()`: `strength` when `damage_dice <= 0` (flat-strength, legacy default), otherwise `randi_range(1, damage_dice)` — a per-hit dice roll sourced from the assigned program (e.g. **Sword** rolls 1D6 per hit). The program, not a global rule, defines how damage is dealt.
 - **Tracing ICE** (`traces: bool`): on first activation, rolls `1D10 + strength` vs `RunState.accumulated_trace`; if the roll is **less than** the trace difficulty the ICE fails to locate the signal and stays idle. Higher accumulated trace makes tracing ICE easier to spot you.
 - **Fog of War Visibility**: Dynamically updates the `skull_label` icon visibility based on the tile fog state.
 - **Stat sourcing** (see `cp2020_game_session.spawn_black_ice`): ICE stats are set on the node **before** `initialize()` (which copies `max_integrity` into `current_integrity`). Sourcing precedence: (1) `tile.ice_program` (assigned `program.tres`) supplies name/strength/`effect_type` (program is `duplicate()`d); (2) `tile.ice_has_override` scalar overrides (`effect_type` defaults `DAMAGE_RUNNER`); (3) otherwise the hub's `security_tier` selects a default template from `TIER_ICE_TEMPLATES` (Grey→Watchdog, L1→Killer 1.0, L2→Killer 2.0, L3→Hellhound, Black→Flatline). `max_ap`/`max_integrity`/`traces` always fall back to the scalar override or tier template (`NetProgram` has no equivalents).
@@ -352,8 +352,9 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 ### 6.1 How to Add a New Program
 1. Create a new `.tres` resource file in [data/](file:///c:/Users/mecca/Documents/netrunner-v-0.006/data/).
 2. Set `script = ExtResource("res://scripts/resources/cp2020_programs.gd")`.
-3. Configure properties (`program_name`, `type`, `effect_type`, `memory_cost`, `strength`, `price`).
-4. To add a program to the player starting loadout, add it to the `installed_programs` array on [cp2020_netrunner.tscn](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scenes/ui/cp2020_netrunner.tscn) or within [cp2020_gameplay.tscn](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scenes/cp2020_gameplay.tscn).
+3. Configure properties (`program_name`, `type`, `effect_type`, `memory_cost`, `strength`, `price`, optionally `damage_dice` — `0` = flat `strength` per Black ICE hit; `>0` = roll `1D{damage_dice}` per hit, e.g. Sword = 6).
+4. The hub shop auto-discovers any `NetProgram` `.tres` in `data/` via `cyberdeck_workbench._scan_data_catalogue()` — no catalogue registration needed.
+5. To add a program to the player starting loadout, add it to the `installed_programs` array on [cp2020_netrunner.tscn](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scenes/ui/cp2020_netrunner.tscn) or within [cp2020_gameplay.tscn](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scenes/cp2020_gameplay.tscn).
 
 ### 6.2 How to Add a New Tile Type
 1. Add the enum value to `TileType` in [CP2020DatafortLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020DatafortLayout.gd).

@@ -26,6 +26,12 @@ enum State { IDLE, PURSUE }
 # existing scalar-only ICE tiles.
 @export var effect_type: int = NetProgram.EffectType.DAMAGE_RUNNER
 
+# Per-hit damage dice, sourced from an assigned NetProgram .tres with
+# `damage_dice > 0`. 0 = emit flat `strength` as damage (existing behaviour);
+# >0 = roll 1D{damage_dice} per attack hit instead (e.g. Sword rolls 1D6).
+# Set by CP2020GameSession.spawn_black_ice from the assigned program.
+@export var damage_dice: int = 0
+
 # Program sight radius (separate from the runner's sight_range so future
 # modifiers can affect one side without the other). Defaults to 10, matching
 # the runner's fog-of-war vision. Used to gate take_turn on line of sight.
@@ -116,13 +122,14 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 			var next_step = path[1]
 			
 			if next_step == target_pos:
+				var dmg := _roll_damage()
 				match effect_type:
 					NetProgram.EffectType.DEREZ_ICE:
-						message_logged.emit("CRITICAL: %s executes DEREZ_ICE attack with STR %d!" % [program_name, strength])
-						attacked_program.emit(strength)
+						message_logged.emit("CRITICAL: %s executes DEREZ_ICE attack for %d damage!" % [program_name, dmg])
+						attacked_program.emit(dmg)
 					_:
-						message_logged.emit("CRITICAL: %s attacks Netrunner with STR %d!" % [program_name, strength])
-						attacked_netrunner.emit(strength)
+						message_logged.emit("CRITICAL: %s attacks Netrunner for %d damage!" % [program_name, dmg])
+						attacked_netrunner.emit(dmg)
 				break
 				
 			current_position = next_step
@@ -133,6 +140,13 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 			moved_to.emit(current_position)
 		else:
 			break
+
+# Returns the damage dealt per attack hit. When `damage_dice > 0` rolls
+# 1D{damage_dice} (per the assigned program's profile, e.g. Sword's 1D6);
+# otherwise uses flat `strength` (existing behaviour for all legacy programs
+# and scalar/tier-template ICE without an assigned program).
+func _roll_damage() -> int:
+	return strength if damage_dice <= 0 else randi_range(1, damage_dice)
 
 func _update_obstacles(layout: CP2020DatafortLayout) -> void:
 	astar_grid.fill_solid_region(astar_grid.region, false)

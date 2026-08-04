@@ -31,3 +31,7 @@ enum EffectType {
 @export var price: int = 600    # Cost in Eurodollars
 @export var icon: Texture2D     # UI Icon[cite: 16]
 @export var description: String = "" # One-line summary shown in the workbench detail card
+# Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
+# as damage (existing behaviour for all current programs). >0 = roll
+# 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.
+@export var damage_dice: int = 0

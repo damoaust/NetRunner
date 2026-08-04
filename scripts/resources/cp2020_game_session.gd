@@ -530,6 +530,7 @@ func spawn_black_ice() -> void:
 				ice.program_name = prog.program_name
 				ice.strength = prog.strength
 				ice.effect_type = prog.effect_type
+				ice.damage_dice = prog.damage_dice
 				ice.max_ap = tile.ice_max_ap if tile.ice_max_ap > 0 else int(template.get("max_ap", 2))
 				ice.max_integrity = tile.ice_max_integrity if tile.ice_max_integrity > 0 else int(template.get("max_integrity", 4))
 				ice.traces = tile.ice_traces

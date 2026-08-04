@@ -966,7 +966,11 @@ func _refresh_ice_program_label(tile: CP2020TileData) -> void:
 	ice_str_spinbox.editable = not has_program
 	if has_program:
 		var prog: NetProgram = tile.ice_program
-		ice_program_label.text = "%s (STR %d, %s)" % [prog.program_name, prog.strength, _ice_effect_label(prog.effect_type)]
+		var label := "%s (STR %d, %s" % [prog.program_name, prog.strength, _ice_effect_label(prog.effect_type)]
+		if prog.damage_dice > 0:
+			label += ", 1D%d dmg" % prog.damage_dice
+		label += ")"
+		ice_program_label.text = label
 	else:
 		ice_program_label.text = "(none)"
 

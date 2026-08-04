@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://cv8k1x4w2g7qw"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_sword"]
+
+[resource]
+script = ExtResource("1_sword")
+program_name = "Sword"
+type = 4
+effect_type = 3
+strength = 3
+memory_cost = 4
+price = 6250
+damage_dice = 6
+description = "A variant of Hellbolt, Sword causes 1D6 in physical damage per hit."
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"
