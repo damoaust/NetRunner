@@ -86,6 +86,8 @@ func _ready() -> void:
 			turn_manager.ice_movement_stepped.connect(_on_ice_stepped)
 		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
 			turn_manager.actions_changed.connect(_on_actions_changed)
+		if not turn_manager.movement_changed.is_connected(_on_movement_changed):
+			turn_manager.movement_changed.connect(_on_movement_changed)
 		if not turn_manager.initiative_rolled.is_connected(_on_initiative_rolled):
 			turn_manager.initiative_rolled.connect(_on_initiative_rolled)
 		turn_manager.start_netrunner_turn()
@@ -219,13 +221,13 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode in [KEY_D, KEY_RIGHT]: dir = Vector2i(1, 0)
 		
 		if dir != Vector2i.ZERO and netrunner:
-			if turn_manager and not turn_manager.has_actions():
-				log_to_terminal("No actions remaining. End turn (Space) to let ICE move.\n")
+			if turn_manager and not turn_manager.has_movement():
+				log_to_terminal("No movement remaining. End turn (Space) to let ICE move.\n")
 				return
 			var moved_successfully = netrunner.move(dir)
 			if moved_successfully:
 				if turn_manager:
-					turn_manager.consume_action()
+					turn_manager.consume_movement()
 				recalculate_fog_of_war(netrunner.current_position)
 				board_renderer.queue_redraw()
 				_check_actions_exhausted()
@@ -437,10 +439,20 @@ func execute_npc_attack(program: NetProgram, target_coord: Vector2i) -> void:
 	log_to_terminal("Executing '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_npc.npc_name, target_coord])
 	var prog_roll = (randi() % 10) + 1 + program.strength
 	var npc_roll = (randi() % 10) + 1 + target_npc.strength
-	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d)\n" % [prog_roll, program.strength, target_npc.npc_name, npc_roll, target_npc.strength])
-	if prog_roll > npc_roll:
-		var damage = prog_roll - npc_roll
-		log_to_terminal("Hit! %s takes %d damage.\n" % [target_npc.npc_name, damage])
+	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d). Ties go to the attacker.\n" % [prog_roll, program.strength, target_npc.npc_name, npc_roll, target_npc.strength])
+	# CP2020: ties go to the ATTACKER — hit on prog_roll >= npc_roll.
+	if prog_roll >= npc_roll:
+		# Damage amount: anti-personnel programs with damage_dice > 0 roll
+		# flat 1D{damage_dice} per hit (e.g. Sword = 1D6); other programs use
+		# the opposed-roll margin. Hit/miss is always decided by the opposed
+		# roll above — only the damage amount differs here.
+		var damage: int = 0
+		if program.damage_dice > 0:
+			damage = randi_range(1, program.damage_dice)
+			log_to_terminal("Hit! %s takes %d damage (1D%d).\n" % [target_npc.npc_name, damage, program.damage_dice])
+		else:
+			damage = prog_roll - npc_roll
+			log_to_terminal("Hit! %s takes %d damage.\n" % [target_npc.npc_name, damage])
 		# take_damage handles destruction (emits destroyed -> _on_npc_destroyed).
 		target_npc.take_damage(damage)
 	else:
@@ -762,6 +774,8 @@ func spawn_datafort() -> void:
 	add_child(datafort)
 	datafort.message_logged.connect(log_to_terminal)
 	datafort.attacked_netrunner.connect(_on_ice_attacked)
+	if not datafort.attacked_runner_deck.is_connected(_on_runner_deck_attacked):
+		datafort.attacked_runner_deck.connect(_on_runner_deck_attacked)
 	datafort.cpu_crashed.connect(_on_cpu_state_changed)
 	datafort.cpu_rebooted.connect(_on_cpu_state_changed)
 	datafort.state_changed.connect(update_datafort_info)
@@ -805,28 +819,52 @@ func _end_player_turn() -> void:
 		return
 	log_to_terminal("--- Netrunner turn ended. Adversaries activating... ---\n")
 	var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
-	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, netrunner.interface_rank, sys_int)
+	var nr_init := netrunner.reflex + (RunState.selected_deck.speed_bonus if RunState.selected_deck != null else 0)
+	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
 
 func _on_turn_ended(is_netrunner_turn: bool) -> void:
 	if is_netrunner_turn:
 		log_to_terminal("--- Netrunner turn begins. ---\n")
+		# Anti-system deck-crash tick: decrement the crash timer at the start
+		# of each netrunner turn, then drop the action economy to 0 while the
+		# deck is still crashed (movement remains available so the runner can
+		# flee). tick_deck_crash is called first so a timer expiring this turn
+		# frees the action budget immediately.
+		if is_instance_valid(netrunner) and netrunner.deck_crashed_turns > 0:
+			netrunner.tick_deck_crash()
+		if is_instance_valid(netrunner) and netrunner.deck_crashed_turns > 0 and turn_manager:
+			turn_manager.actions_remaining = 0
+			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
+			log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
 
 func _on_actions_changed(remaining: int, max_actions: int) -> void:
 	if actions_label:
-		actions_label.text = "Actions: %d / %d" % [remaining, max_actions]
+		actions_label.text = "Actions: %d / %d | Move: %d / %d" % [remaining, max_actions, turn_manager.movement_remaining if turn_manager else 0, turn_manager.max_movement if turn_manager else 0]
 	log_to_terminal("Actions: %d / %d\n" % [remaining, max_actions])
 
-func _on_initiative_rolled(netrunner_roll: int, system_roll: int, netrunner_first: bool) -> void:
-	if netrunner_first:
+func _on_movement_changed(remaining: int, max_movement: int) -> void:
+	if actions_label and turn_manager:
+		actions_label.text = "Actions: %d / %d | Move: %d / %d" % [turn_manager.actions_remaining, turn_manager.max_actions, remaining, max_movement]
+	log_to_terminal("Move: %d / %d\n" % [remaining, max_movement])
+
+func _on_initiative_rolled(netrunner_roll: int, system_roll: int, netrunner_first: bool, is_tie: bool = false) -> void:
+	if is_tie:
+		log_to_terminal("Initiative: Netrunner %d vs System %d — TIE! Actions occur simultaneously.\n" % [netrunner_roll, system_roll])
+	elif netrunner_first:
 		log_to_terminal("Initiative: Netrunner %d vs System %d — Netrunner acts first!\n" % [netrunner_roll, system_roll])
 	else:
 		log_to_terminal("Initiative: Netrunner %d vs System %d — System acts first!\n" % [netrunner_roll, system_roll])
 
 func _check_actions_exhausted() -> void:
-	if turn_manager and turn_manager.actions_remaining <= 0:
-		log_to_terminal("Out of actions. Adversaries activating...\n")
+	# The netrunner's turn ends only when both the action budget AND the
+	# movement budget are exhausted (or they explicitly end the turn). This
+	# lets a runner move freely after using their single program/Net action,
+	# and vice versa, matching the CP2020 action economy.
+	if turn_manager and turn_manager.actions_remaining <= 0 and turn_manager.movement_remaining <= 0:
+		log_to_terminal("Out of actions and movement. Adversaries activating...\n")
 		var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
-		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, netrunner.interface_rank, sys_int)
+		var nr_init := netrunner.reflex + (RunState.selected_deck.speed_bonus if RunState.selected_deck != null else 0)
+		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
 
 # Combined adversaries (Datafort + Black ICE + NPC netrunners) for the turn
 # manager. The datafort is prepended so it acts first each round. The turn
@@ -864,7 +902,7 @@ func _on_ice_attacked(strength: int) -> void:
 	# Shared by Black ICE and NPC netrunners — both emit attacked_netrunner.
 	log_to_terminal("WARNING: Adversary attacks for %d!\n" % strength)
 	if netrunner:
-		netrunner.apply_damage(strength, "Adversary")
+		netrunner.apply_damage(strength, "Adversary", true)
 
 # Anti-program (DEREZ_ICE) Black ICE reached the netrunner: damage an
 # installed program instead of health. Shield does NOT block this.
@@ -872,6 +910,17 @@ func _on_ice_attacked_program(strength: int, attacker_name: String) -> void:
 	log_to_terminal("WARNING: %s executes DEREZ_ICE for %d!\n" % [attacker_name, strength])
 	if netrunner:
 		netrunner.damage_program(strength, attacker_name)
+
+# Anti-system (CRASH_CPU / Krash) resident program from the datafort hit the
+# runner's cyberdeck: crash it for 1D6+1 turns (mirroring crash_cpu's CPU
+# crash duration), dropping the runner's action economy to 0 until reboot.
+# `strength` is the program's STR — reserved for a future opposed-roll check;
+# for now the deck crash lands when the datafort has LoS to fire the program.
+func _on_runner_deck_attacked(strength: int) -> void:
+	var attacker_name := datafort.fort_name if is_instance_valid(datafort) else "Datafort"
+	log_to_terminal("WARNING: %s executes anti-system attack (STR %d) — cyberdeck targeted!\n" % [attacker_name, strength])
+	if is_instance_valid(netrunner):
+		netrunner.crash_deck(randi_range(1, 6) + 1, attacker_name)
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")

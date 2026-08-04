@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://carm0r4rm0r1"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+program_name = "Armor"
+type = 6
+effect_type = 8
+strength = 4
+memory_cost = 3
+price = 1200
+damage_dice = 0
+description = "Defensive program. Absorbs damage point-for-point: its Strength subtracts from each incoming hit before the remainder reaches your health."
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

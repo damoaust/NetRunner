@@ -220,7 +220,9 @@ Represents an executable program software tool loaded into a cyberdeck.
   - `DAMAGE_RUNNER`: Black ICE direct attacks
   - `REVEAL_NODES`: Scans hidden layout nodes
   - `MODIFY_MU`: Modifies deck speed or memory capacity
-  - `SHIELD`: Defense program (raised on the runner's own tile)
+  - `SHIELD`: Defense program (raised on the runner's own tile) — one-shot opposed-roll blocker
+  - `CRASH_CPU`: Anti-system program (Krash) — crashes a datafort CPU for 1D6+1 turns; also crashes the runner's cyberdeck when used by datafort resident programs
+  - `ARMOR`: Defense program (raised on the runner's own tile) — persistent point-for-point damage absorber (absorbs `min(damage, armor.strength)` before Shield roll; NOT consumed on hit)
 - **Properties**: `program_name`, `type`, `effect_type`, `memory_cost` (MU), `strength`, `price`, `icon`, `description` (one-line summary shown in the workbench detail card), `damage_dice` (optional: `0` = flat `strength` per Black ICE hit, default for all existing programs; `>0` = roll `1D{damage_dice}` per hit, e.g. **Sword** = 6). Backward-compatible.
 
 ---
@@ -244,7 +246,7 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
 - **Trace HUD**: `_update_trace()` writes `RunState.accumulated_trace` to the `TraceLabel`.
 - **Line of Sight / Fog of War**:
   - The shared line-of-sight helper is `CP2020DatafortLayout.line_of_sight(from, to, max_range)` — a Euclidean distance check combined with the Bresenham raycast that blocks on `DATAWALL` tiles and locked `CODE_GATE` tiles (`is_unlocked == false`). The target tile itself is never a blocker.
-  - `max_range` is **required** (no shared default): the runner and each program keep **separate** per-entity `@export var sight_range: int = 10` values (`CP2020Netrunner`, `BlackIce`, `CP2020NpcNetrunner`, `CP2020Datafort`) so future modifiers can affect one side without touching the other.
+  - `max_range` is **required** (no shared default): the runner and each program keep **separate** per-entity `@export var sight_range` values — `CP2020Netrunner` and `BlackIce` default to **20** (CP2020 PnP max sight), `CP2020NpcNetrunner` and `CP2020Datafort` default to 10.
   - Fog of war (`recalculate_fog_of_war`) uses `netrunner.sight_range` and the shared helper; sets `tile.is_visible = true` and `tile.is_explored = true`. `cp2020_game_session._has_line_of_sight` is now a thin wrapper over the helper.
   - **Sight-gated adversaries**: Black ICE, hostile NPC netrunners, and the datafort's resident programs only act when they have line of sight to the netrunner within their own `sight_range`. Without LoS they go **dormant** (hold position, no activation/attack this turn). NEUTRAL NPCs keep wandering regardless of LoS; CPU reboot timers continue regardless of sight. Last-known-position hunting is intentionally **not** implemented (future stealth/triggers pass).
 - **Decryption Mechanics**:
@@ -267,7 +269,8 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - Validates movement obstacles: blocks movement into `DATAWALL` tiles or locked `CODE_GATE` tiles. Empty cells (no tile) are walkable.
 - `initialize(layout, entry_coord)`: spawns at `entry_coord` if supplied, in-bounds, and a tile exists there (used by mid-run LDL travel); otherwise falls back to the first `ENTRY` tile.
 - **Program-HP model** (`program_integrity` Dictionary): a program's `strength` is also its max health. Anti-program (`DEREZ_ICE`) ICE attacks call `damage_program(amount, attacker)` which damages a random installed program and uninstalls (destroys) it at 0 integrity; the raised shield does **not** block anti-program attacks.
-- Emits `position_changed`, `message_logged`, `deck_updated`, `shield_raised`, `shield_consumed`, `health_changed`, and `flatlined` (when `current_health <= 0`).
+- **Combat model** (CP2020 PnP): Initiative = `1D10 + REF + Cyberdeck Speed` (runner) vs `1D10 + System INT` (CPUs×3); ties are simultaneous. Movement is 5 spaces/turn, separate from the 1 action/turn. Sight range is 20. Combat roll ties → attacker. **Armor** absorbs point-for-point first (persistent), then **Shield** opposed roll (ties→attacker, one-shot), then HP. **Anti-personnel hits** (`apply_damage(..., is_anti_personnel=true)`) also cause INT-stat loss (1/hit) and a Mortal/Stun save (`1D10+body` vs cumulative-damage target). **Deck crash** (`crash_deck`) from `CRASH_CPU` resident programs forces actions=0 for `1D6+1` turns (movement preserved). Stats: `reflex` (initiative), `intelligence`/`body` (meat-space), `interface_rank` (legacy).
+- Emits `position_changed`, `message_logged`, `deck_updated`, `shield_raised`, `shield_consumed`, `armor_raised`, `armor_consumed`, `health_changed`, `int_changed`, `stunned`, `deck_crashed`, and `flatlined` (when `current_health <= 0`).
 
 ### 5.4 Hostile Black ICE AI ([cp2020_blackice.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd))
 - **Pathfinding**: Instantiates an `AStarGrid2D` instance over the layout matrix region.
@@ -284,10 +287,10 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - **Menu branches** (first match wins):
   - **LDL-link tiles** (`is_ldl_link`): always add "Travel to \<datafort\>" (id `3000`) + "Return to City Grid" (id `3001`), even with no matching program. Travel uses `_ldl_tile` (the stored tile data); empty target → the session aborts the travel with "no target subnet set", so an empty-target LDL link effectively offers city-grid-return only.
   - **Visible Black ICE on the tile**: offer `DEREZ_ICE` programs (ids `1000+i`).
-  - **Runner's own tile** (visible): offer `SHIELD` defense programs.
+  - **Runner's own tile** (visible): offer `SHIELD` (ids `1000+i`) and `ARMOR` (ids `7000+i`) defense programs. Armor is a persistent passive absorber; raising it does not consume a turn action.
   - **Locked Code Gate**: offer `BYPASS_GATE` programs.
   - **Datawall**: offer `BREACH_WALL` programs.
-- `_on_menu_action_selected` checks LDL travel ids (`3000`/`3001`) **before** the `1000+i` program range to avoid id collision.
+- `_on_menu_action_selected` checks ids in order: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → memory files (`6000+i`/`6999`) → Armor-raise (`7000+i`) → loot (`loot_tile`) → program use (`1000+i`). **Do not reorder.**
 - Dynamically creates and opens a `PopupMenu` near mouse location (`popup_on_parent`).
 
 ### 5.6 Datafort Designer Tool ([cp2020_datafort_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_designer.gd))

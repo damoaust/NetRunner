@@ -33,9 +33,9 @@ enum State { IDLE, PURSUE }
 @export var damage_dice: int = 0
 
 # Program sight radius (separate from the runner's sight_range so future
-# modifiers can affect one side without the other). Defaults to 10, matching
+# modifiers can affect one side without the other). Defaults to 20, matching
 # the runner's fog-of-war vision. Used to gate take_turn on line of sight.
-@export var sight_range: int = 10
+@export var sight_range: int = 20
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_state: State = State.IDLE

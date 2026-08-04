@@ -21,6 +21,12 @@ var _ldl_tile: CP2020TileData = null
 # the right node even if it moves before the menu is dismissed).
 var _npc_target: CP2020NpcNetrunner = null
 
+# The netrunner node the current popup was built for (so the Armor-raise
+# callback can call netrunner.raise_armor directly without round-tripping
+# through the game session — Armor is a persistent passive buff, not an
+# action-consuming program use).
+var _netrunner_node: CP2020Netrunner = null
+
 func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
@@ -71,6 +77,9 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	# Reset the per-file list for this popup; set when a MEMORY_UNIT branch
 	# builds its menu below.
 	_current_files.clear()
+	# Remember the netrunner node for the Armor-raise callback (set whether or
+	# not the runner-tile branch runs this click; cleared each popup).
+	_netrunner_node = netrunner_node
 	
 	print("DEBUG: handle_right_click tile=", target_coord, " type=", tile_data.tile_type, " explored=", tile_data.is_explored, " visible=", tile_data.is_visible)
 	
@@ -151,13 +160,24 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				options_added = true
 
 	elif target_coord == netrunner_pos and tile_data.is_visible:
-		# Right-click on the Netrunner's own tile — offer protection (SHIELD) programs
+		# Right-click on the Netrunner's own tile — offer protection programs.
+		# SHIELD programs use the 1000+i program-use range (dispatched via the
+		# "use_program" action to the game session, which consumes an action).
+		# ARMOR programs use the 7000+i range and call netrunner.raise_armor
+		# directly here (Armor is a persistent passive absorber, not a
+		# one-shot action-consuming defense). 7000+i is chosen because 5000+i
+		# is already taken by CRASH_CPU and 6000+i by file-copy actions.
 		for i in range(available_programs.size()):
 			var prog = available_programs[i] as NetProgram
 			if prog and prog.effect_type == NetProgram.EffectType.SHIELD:
 				var menu_label = "%s (Block STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
 				var prog_id = 1000 + i
 				_dynamic_menu.add_item(menu_label, prog_id)
+				options_added = true
+			elif prog and prog.effect_type == NetProgram.EffectType.ARMOR:
+				var armor_label = "%s (Absorb STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
+				var armor_id = 7000 + i
+				_dynamic_menu.add_item(armor_label, armor_id)
 				options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile_data.is_unlocked:
@@ -254,7 +274,8 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 	# Special-id ordering (checked BEFORE the 1000+i program range to avoid
 	# collision): LDL travel (3000/3001) → NPC talk (4000) → NPC attack
 	# (2000+i) → CPU crash (5000+i) → copy file (6000+i) / copy all (6999)
-	# → program use (1000+i). The old single 6000 loot_tile id is removed.
+	# → Armor-raise (7000+i) → program use (1000+i). The old single 6000
+	# loot_tile id is removed.
 	# LDL travel actions take priority (their ids collide with the program
 	# id range 1000+, so check them explicitly first).
 	if id == 3000:
@@ -281,6 +302,18 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 		if idx >= 0 and idx < available_programs.size():
 			var prog = available_programs[idx] as NetProgram
 			action_triggered.emit("crash_cpu", target_coord, prog)
+		return
+	# Armor-raise (defensive program) — id range 7000+i. Calls
+	# netrunner.raise_armor directly (Armor is a persistent passive absorber,
+	# not an action-consuming program use). Checked before the 1000+i program
+	# range to avoid collision.
+	if id >= 7000 and id < 8000:
+		var idx = id - 7000
+		if idx >= 0 and idx < available_programs.size():
+			var prog = available_programs[idx] as NetProgram
+			if prog and prog.effect_type == NetProgram.EffectType.ARMOR \
+					and _netrunner_node != null and is_instance_valid(_netrunner_node):
+				_netrunner_node.raise_armor(prog)
 		return
 	# Copy all files from a MEMORY_UNIT tile — single fixed id 6999 (checked
 	# before the 1000+i program range to avoid collision).

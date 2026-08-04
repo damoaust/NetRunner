@@ -13,6 +13,9 @@ extends Node
 
 signal message_logged(msg: String)
 signal attacked_netrunner(strength: int)
+# Anti-system (CRASH_CPU) resident program targeting the runner's cyberdeck
+# (not its health). Wired in cp2020_game_session.gd to netrunner.crash_deck.
+signal attacked_runner_deck(strength: int)
 signal cpu_crashed(coord: Vector2i)
 signal cpu_rebooted(coord: Vector2i)
 signal state_changed
@@ -175,17 +178,33 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 		return
 
 	var attack_programs: Array[NetProgram] = []
+	var crash_programs: Array[NetProgram] = []
 	for p in resident_programs:
-		if p and p.effect_type == NetProgram.EffectType.DAMAGE_RUNNER:
+		if not p:
+			continue
+		if p.effect_type == NetProgram.EffectType.DAMAGE_RUNNER:
 			attack_programs.append(p)
-	if attack_programs.is_empty():
+		elif p.effect_type == NetProgram.EffectType.CRASH_CPU:
+			# Anti-system resident program: crashes the runner's cyberdeck
+			# (mirrors the runner's Krash crashing a datafort CPU).
+			crash_programs.append(p)
+	if attack_programs.is_empty() and crash_programs.is_empty():
 		message_logged.emit("Datafort '%s' has no anti-runner programs loaded.\n" % fort_name)
 		return
 
 	for i in range(actions):
-		var prog: NetProgram = attack_programs[i % attack_programs.size()]
-		message_logged.emit("Datafort '%s' runs %s (STR %d) at the netrunner!\n" % [fort_name, prog.program_name, prog.strength])
-		attacked_netrunner.emit(prog.strength)
+		# Alternate between damage and anti-system attacks when both are
+		# loaded; each action runs exactly one program. Indexing by i keeps
+		# the per-action cadence stable across turns.
+		var prog: NetProgram = null
+		if not attack_programs.is_empty():
+			prog = attack_programs[i % attack_programs.size()]
+			message_logged.emit("Datafort '%s' runs %s (STR %d) at the netrunner!\n" % [fort_name, prog.program_name, prog.strength])
+			attacked_netrunner.emit(prog.strength)
+		else:
+			prog = crash_programs[i % crash_programs.size()]
+			message_logged.emit("Datafort '%s' runs %s (STR %d) — anti-system attack on your cyberdeck!\n" % [fort_name, prog.program_name, prog.strength])
+			attacked_runner_deck.emit(prog.strength)
 		state_changed.emit()
 		# Pace the turn like ICE movement so the player can follow the log.
 		if is_inside_tree():

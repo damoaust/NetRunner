@@ -20,7 +20,8 @@ enum EffectType {
 	REVEAL_NODES,    # Maps connected graph nodes[cite: 16]
 	MODIFY_MU,       # Modifies deck memory or speed[cite: 16]
 	SHIELD,          # Protection program: recharges netrunner shield/armor (reduces ICE damage)
-	CRASH_CPU        # Anti-system: crashes a datafort CPU for 1D6+1 turns (Krash)[cite: 16]
+	CRASH_CPU,       # Anti-system: crashes a datafort CPU for 1D6+1 turns (Krash)[cite: 16]
+	ARMOR            # Defense program: absorbs damage point-for-point (Armor STR subtracts from incoming rolled damage; remainder hits HP).
 }
 
 @export var program_name: String = "Hammer"

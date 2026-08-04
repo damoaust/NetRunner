@@ -8,7 +8,21 @@ signal message_logged(msg: String)
 signal health_changed(current_health: int, max_health: int)
 signal shield_raised(program: NetProgram)
 signal shield_consumed
+signal armor_raised(program: NetProgram)
+signal armor_consumed
 signal flatlined
+# Anti-system (CRASH_CPU / Krash) attack hit the runner's cyberdeck: the deck
+# crashes for `duration` turns, dropping the runner's action economy to 0
+# (movement only) until it reboots. See crash_deck / tick_deck_crash.
+signal deck_crashed(duration: int)
+# Anti-personnel (DAMAGE_RUNNER, e.g. Sword/Hellhound) attack struck the
+# runner's nervous system: INT permanently reduced. Emitted alongside
+# health_changed so the GUI can display the runner's current INT.
+signal int_changed(int_current: int, int_max: int)
+# Anti-personnel neural shock forced a failed Mortal/Stun save: the runner is
+# stunned for `duration` turns (action economy impaired). See
+# apply_damage(..., is_anti_personnel := true).
+signal stunned(duration: int)
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -21,13 +35,42 @@ signal flatlined
 
 # The netrunner's own vision radius (fog-of-war sight). Owned by the runner so
 # future deck/gear modifiers can adjust it independently of program sight
-# ranges (programs have their own per-entity `sight_range`). Defaults to 10,
-# matching the original fog radius.
-@export var sight_range: int = 10
+# ranges (programs have their own per-entity `sight_range`). Defaults to 20
+# per CP2020 (Line of Sight within 20 spaces, blocked by Data Walls / closed
+# Code Gates).
+@export var sight_range: int = 20
 
 var current_health: int = 20
 var raised_shield: NetProgram = null
+var active_armor: NetProgram = null
 var interface_rank: int = 6  # Netrunner's INT for initiative (set from cyberdeck)
+
+# Anti-system crash state. While > 0 the runner's cyberdeck is crashed: the
+# turn manager forces actions_remaining to 0 (movement still allowed) so the
+# runner can flee but cannot run programs. Decremented by tick_deck_crash at
+# the start of each netrunner turn.
+var deck_crashed_turns: int = 0
+
+# Meat-space Reflexes stat. Per the CP2020 netrunning initiative formula,
+# runner initiative = 1D10 + REF + cyberdeck speed. Kept @export so it can be
+# tuned on the runner node in the scene; CP2020 netrunners typically have a
+# high REF, hence the default of 8.
+@export var reflex: int = 8
+
+# Meat-space stats for anti-personnel (DAMAGE_RUNNER) resolution. Per CP2020,
+# anti-personnel programs bypass the virtual world and strike the runner's
+# nervous system directly: the runner loses INT and must make a Mortal/Stun
+# save in meat-space based on cumulative damage.
+#   - `intelligence`: the runner's INT stat. Anti-personnel hits reduce the
+#     *current* INT (intelligence - intelligence_lost), capped at 0.
+#   - `body`: the runner's BODY stat, used as the save bonus on the Mortal/
+#     Stun roll (1D10 + BODY vs a target that scales with cumulative damage).
+@export var intelligence: int = 8
+@export var body: int = 8
+# Cumulative INT lost to anti-personnel neural shock. current_int =
+# intelligence - intelligence_lost. Kept separate from the base stat so the
+# GUI can show both the max and current values (mirrors health model).
+var intelligence_lost: int = 0
 
 # Program integrity (HP) model. A program's `strength` is also its max health,
 # so anti-program (DEREZ_ICE) ICE can damage and destroy installed programs.
@@ -181,15 +224,40 @@ func move(direction: Vector2i) -> bool:
 			
 	return true
 
-func apply_damage(attack_strength: int, attacker_name: String) -> void:
+# Anti-personnel (DAMAGE_RUNNER) attacks bypass the virtual world and strike
+# the runner's nervous system directly. After the normal HP reduction, a hit
+# that reached HP (damage > 0) and left the runner alive triggers:
+#   1. INT-stat loss: 1 INT per anti-personnel hit (cumulative, capped at 0).
+#   2. Mortal/Stun save: 1D10 + BODY vs a target that scales with the
+#      runner's cumulative damage (max_health - current_health). On a failed
+#      save the runner is stunned (signal `stunned`); on a success they
+#      fight through the shock. Flatline is still governed by the
+#      current_health <= 0 check above — a failed save at low damage stuns,
+#      it does not kill.
+# Existing 2-arg callers get is_anti_personnel = false → no behavior change.
+func apply_damage(attack_strength: int, attacker_name: String, is_anti_personnel: bool = false) -> int:
+	# Armor absorbs damage point-for-point FIRST (before the Shield opposed
+	# roll). Armor is persistent — it is NOT consumed on a hit. Any remainder
+	# proceeds to the Shield (if raised) and then to HP.
+	if active_armor != null:
+		var absorbed: int = min(attack_strength, active_armor.strength)
+		attack_strength -= absorbed
+		message_logged.emit("Armor absorbs %d (STR %d). Remaining: %d." % [absorbed, active_armor.strength, attack_strength])
+		if attack_strength <= 0:
+			message_logged.emit("Armor fully absorbs the attack.")
+			return 0
+
 	var damage: int = attack_strength
 	if raised_shield != null:
 		var shield_roll := randi_range(1, 10) + raised_shield.strength
 		var attack_roll := randi_range(1, 10) + attack_strength
 		message_logged.emit("Shield opposes: %d vs ICE %d." % [shield_roll, attack_roll])
-		if shield_roll >= attack_roll:
+		# CP2020: ties go to the ATTACKER — shield blocks only on a strict win.
+		if shield_roll > attack_roll:
 			message_logged.emit("Shield thwarts the attack. No damage taken.")
 			damage = 0
+		elif shield_roll == attack_roll:
+			message_logged.emit("Shield ties the attack — attacker wins, full damage applies.")
 		else:
 			message_logged.emit("Shield breached! Full damage applies.")
 		raised_shield = null
@@ -204,8 +272,73 @@ func apply_damage(attack_strength: int, attacker_name: String) -> void:
 		current_health = 0
 		message_logged.emit("FLATLINED. Netrunner jacked out.")
 		flatlined.emit()
+		return damage
+
+	# --- Anti-personnel neural shock (INT loss + Mortal/Stun save) --------
+	if is_anti_personnel and damage > 0:
+		_apply_anti_personnel_effects(attacker_name)
+
+	return damage
+
+# Applies the CP2020 anti-personnel after-effects: INT-stat loss and a
+# meat-space Mortal/Stun save. Called only from apply_damage when
+# is_anti_personnel is true and the hit reached HP. Assumes the runner is
+# still alive (current_health > 0) — flatline is handled by the caller.
+func _apply_anti_personnel_effects(attacker_name: String) -> void:
+	# 1. INT-stat loss: 1 INT per anti-personnel hit, cumulative, floor at 0.
+	if intelligence - intelligence_lost > 0:
+		intelligence_lost += 1
+		var cur_int: int = intelligence - intelligence_lost
+		message_logged.emit("%s's neural shock \u2014 INT reduced by 1 (now %d)." % [attacker_name, cur_int])
+		int_changed.emit(cur_int, intelligence)
+	else:
+		message_logged.emit("%s's neural shock \u2014 INT already drained to 0." % attacker_name)
+
+	# 2. Mortal/Stun save: 1D10 + BODY vs a target scaled to cumulative damage.
+	var cumulative: int = max_health - current_health
+	var save_target: int
+	if cumulative <= 3:
+		save_target = 8
+	elif cumulative <= 7:
+		save_target = 12
+	else:
+		save_target = 15
+	var save_roll: int = randi_range(1, 10) + body
+	message_logged.emit("Mortal/Stun save: 1D10+BODY = %d vs target %d (cumulative damage %d)." % [save_roll, save_target, cumulative])
+	if save_roll >= save_target:
+		message_logged.emit("Mortal save succeeded \u2014 fighting through the shock.")
+	else:
+		message_logged.emit("STUNNED by neural shock! Actions impaired.")
+		stunned.emit(1)
 
 func raise_shield(program: NetProgram) -> void:
 	raised_shield = program
 	message_logged.emit("Shield raised (Block STR %d). Will thwart next attack on success." % program.strength)
 	shield_raised.emit(program)
+
+func raise_armor(program: NetProgram) -> void:
+	active_armor = program
+	message_logged.emit("Armor activated (absorb STR %d)." % program.strength)
+	armor_raised.emit(program)
+
+# --- Anti-system (Krash / CRASH_CPU) runner-deck crash ----------------------
+# An anti-system attack that targets the runner's cyberdeck instead of a
+# datafort CPU. The deck crashes for `duration` turns, dropping the runner's
+# action economy (programs unavailable, movement only) until it reboots.
+# Mirrors the datafort's crash_cpu duration (1D6+1).
+func crash_deck(duration: int, attacker_name: String) -> void:
+	deck_crashed_turns = max(deck_crashed_turns, duration)
+	message_logged.emit("%s crashes your cyberdeck for %d turns! Action economy reduced." % [attacker_name, duration])
+	deck_crashed.emit(duration)
+
+# Called at the start of each netrunner turn by the game session. Decrements
+# the crash timer and logs when the deck reboots (reaches 0). Returns nothing;
+# the game session reads deck_crashed_turns after this to decide whether to
+# force actions_remaining to 0.
+func tick_deck_crash() -> void:
+	if deck_crashed_turns <= 0:
+		return
+	deck_crashed_turns -= 1
+	if deck_crashed_turns <= 0:
+		deck_crashed_turns = 0
+		message_logged.emit("Cyberdeck rebooted. Programs available again.")
