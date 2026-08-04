@@ -10,6 +10,11 @@ var grid_offset_y: int = 90
 
 var current_layout: CP2020DatafortLayout
 var selected_tile_type: CP2020DatafortLayout.TileType = CP2020DatafortLayout.TileType.CODE_GATE
+# When true, clicking an existing tile selects it for editing (opens its side
+# panel on the live tile) instead of overwriting it with a fresh tile.
+var select_mode: bool = false
+# Coord of the tile currently selected in select mode (for the draw highlight).
+var selected_coord: Vector2i = Vector2i(-1, -1)
 # When true, painting an ENTRY tile marks it as an LDL link (a tile the
 # runner can travel through to reach another datafort / the world map).
 var ldl_link_mode: bool = false
@@ -165,6 +170,7 @@ func setup_toolbar_buttons() -> void:
 	for child in dynamic_button_row.get_children():
 		child.queue_free()
 		
+	add_select_tool_button("Select")
 	add_entry_tool_button("Entry")
 	add_tool_button("Datawall", CP2020DatafortLayout.TileType.DATAWALL)
 	add_tool_button("Code Gate", CP2020DatafortLayout.TileType.CODE_GATE)
@@ -189,17 +195,37 @@ func setup_toolbar_buttons() -> void:
 	load_btn.pressed.connect(_on_load_pressed)
 	dynamic_button_row.add_child(load_btn)
 	
-func add_tool_button(label_text: String, tile_type: CP2020DatafortLayout.TileType) -> void:
+func add_select_tool_button(label_text: String) -> void:
 	var btn = Button.new()
 	btn.text = label_text
 	btn.pressed.connect(func():
-		selected_tile_type = tile_type
+		select_mode = true
 		ldl_link_mode = false
+		selected_coord = Vector2i(-1, -1)
 		_hide_ldl_panel()
 		_hide_ice_panel()
 		_hide_npc_panel()
 		_hide_loot_panel()
 		_hide_files_panel()
+		queue_redraw()
+		print("Selected Tool: ", label_text, " (click a tile to edit it)")
+	)
+	dynamic_button_row.add_child(btn)
+
+func add_tool_button(label_text: String, tile_type: CP2020DatafortLayout.TileType) -> void:
+	var btn = Button.new()
+	btn.text = label_text
+	btn.pressed.connect(func():
+		selected_tile_type = tile_type
+		select_mode = false
+		ldl_link_mode = false
+		selected_coord = Vector2i(-1, -1)
+		_hide_ldl_panel()
+		_hide_ice_panel()
+		_hide_npc_panel()
+		_hide_loot_panel()
+		_hide_files_panel()
+		queue_redraw()
 		print("Selected Tool: ", label_text)
 	)
 	dynamic_button_row.add_child(btn)
@@ -209,12 +235,15 @@ func add_entry_tool_button(label_text: String) -> void:
 	btn.text = label_text
 	btn.pressed.connect(func():
 		selected_tile_type = CP2020DatafortLayout.TileType.ENTRY
+		select_mode = false
 		ldl_link_mode = false
+		selected_coord = Vector2i(-1, -1)
 		_hide_ldl_panel()
 		_hide_ice_panel()
 		_hide_npc_panel()
 		_hide_loot_panel()
 		_hide_files_panel()
+		queue_redraw()
 		print("Selected Tool: ", label_text, " (plain datafort entrance)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -224,11 +253,14 @@ func add_ldl_tool_button(label_text: String) -> void:
 	btn.text = label_text
 	btn.pressed.connect(func():
 		selected_tile_type = CP2020DatafortLayout.TileType.ENTRY
+		select_mode = false
 		ldl_link_mode = true
+		selected_coord = Vector2i(-1, -1)
 		_hide_ice_panel()
 		_hide_npc_panel()
 		_hide_loot_panel()
 		_hide_files_panel()
+		queue_redraw()
 		print("Selected Tool: ", label_text, " (paint/select an LDL link, then edit it in the side panel)")
 	)
 	dynamic_button_row.add_child(btn)
@@ -312,10 +344,47 @@ func _gui_input(event: InputEvent) -> void:
 			
 			if grid_x >= 0 and grid_x < grid_columns and grid_y >= 0 and grid_y < grid_rows:
 				var coord := Vector2i(grid_x, grid_y)
+				# Select mode: open the existing tile's editor without
+				# overwriting it. Clicking an empty cell clears the selection.
+				if select_mode:
+					var existing = current_layout.get_tile(coord) if current_layout else null
+					selected_coord = coord
+					if existing == null or existing.tile_type == CP2020DatafortLayout.TileType.EMPTY:
+						_hide_ldl_panel()
+						_hide_ice_panel()
+						_hide_npc_panel()
+						_hide_cpu_panel()
+						_hide_loot_panel()
+						_hide_files_panel()
+					elif existing.tile_type == CP2020DatafortLayout.TileType.ENTRY and existing.is_ldl_link:
+						_open_ldl_editor(coord)
+					elif existing.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
+						_hide_ldl_panel()
+						_open_ice_editor(coord)
+					elif existing.tile_type == CP2020DatafortLayout.TileType.NETWATCH or existing.tile_type == CP2020DatafortLayout.TileType.NETRUNNER:
+						_hide_ldl_panel()
+						_open_npc_editor(coord)
+					elif existing.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+						_hide_ldl_panel()
+						_hide_cpu_panel()
+						_hide_files_panel()
+						_open_loot_editor(coord)
+					elif existing.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT:
+						_hide_ldl_panel()
+						_hide_loot_panel()
+						_open_files_editor(coord)
+					else:
+						_hide_ldl_panel()
+						_hide_ice_panel()
+						_hide_npc_panel()
+						_hide_cpu_panel()
+						_hide_loot_panel()
+						_hide_files_panel()
+					queue_redraw()
 				# In LDL Link mode: clicking an existing LDL link selects it for
 				# editing rather than overwriting it. Clicking anything else
 				# paints a fresh LDL link and opens the editor on it.
-				if ldl_link_mode:
+				elif ldl_link_mode:
 					var existing = current_layout.get_tile(coord) if current_layout else null
 					if existing and existing.tile_type == CP2020DatafortLayout.TileType.ENTRY and existing.is_ldl_link:
 						_open_ldl_editor(coord)
@@ -510,6 +579,12 @@ func _draw() -> void:
 							center_nr + Vector2(-4, -1)
 						])
 						draw_polygon(body, PackedColorArray([Color.GOLD]))
+
+	# Highlight the selected tile (select mode) so the designer can see which
+	# tile the open side panel is editing.
+	if select_mode and selected_coord != Vector2i(-1, -1):
+		var sel_rect = Rect2(selected_coord.x * cell_size, grid_offset_y + (selected_coord.y * cell_size), cell_size, cell_size)
+		draw_rect(sel_rect, Color(1.0, 0.85, 0.2), false, 2)
 
 # ---------------------------------------------------------------------------
 # LDL link editor side panel
