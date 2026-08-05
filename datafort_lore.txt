@@ -1,0 +1,89 @@
+DESIGNING DATA FORTRESSES
+A Data Fortress is any type of computer
+system that is defended by programs and
+armored with data walls.
+
+Central Processing Units
+Choose how many CPU you will have in your system, paying 10,000 eb for each one. Pick a
+clear space on your graph paper and place
+each of your CPUs in a square of the grid.
+
+Computer Intelligence: For every CPU,
+the INT of the computer is raised by 3
+points. INT is important; it's what the
+computer used in lieu of REF and other
+stats when performing tasks; it's also used
+when the computer brings it's Interface skill
+into play to make attacks or defenses. The
+maximum number of CPU you may have
+on any one system is 7.
+
+Memory
+With each CPU, you will get four memories. Memory is where you will store
+Programs, Skills, Files and Virtual Realities
+(more on all of these later). Memories must
+be placed in squares adjacent to each
+other or the CPU.
+Memory Units: Programs, Skills, Files and
+Virtual Realities are all measured in avalue
+called Memory Units (MU). Each individual memory can hold 10 Memory Units.
+This means for example, that a single
+memory might hold a couple of 1 MU Files,
+a couple 2 MU Programs, and a 6MU
+Virtual Reality before it was filled up.
+
+Construct Data Walls
+The data wall encloses your system on all
+sides, top and bottom. Its strength is
+equal to the number of CPU present,
+plus 1000eb spent for every additional
+level added to the wall, up to a Strength of
+10.
+For example, with three CPU, Syntek 15 has
+a Strength 3 data wall. However, 3000eb are
+spent to upgrade this wall to a Strength 6.
+The wall can be in any shape, and cover as
+much area as desired (although putting a
+lot of empty space in a system probably is
+a waste of time.
+
+Place Code Gates
+Code gates are how information moves
+between the Net and the system. Each
+CPU comes with one code gate. Additional ones can be purchased at 2,000eb
+each.
+Code gates start with a Strength of 2.
+However, for 1,000eb, you can raise a code
+gate by one level of Strength, up to level
+10.
+
+Create Key Files
+Files are where you keep the important
+information of a computer. Secret plans,
+lists of enemies, the missing three minutes
+of the Watergate tapes, etc. Often, a file
+will contain useful information or clues to
+a problem facing your Cyberpunk team. At
+the very least, a Netrunner can sell or trade
+the contents for something useful, which is
+why they took up this dangerous oсcupation to begin with.
+At this point, you'll want to decide what
+kinds of files are in your computer system
+and where you'll store them. Files are always placed in a memory for storage. Each
+file (no matter what type), uses 1 MU.
+
+Defenses
+These are the programs that are used to
+keep the Netrunners from sneaking in and
+messing with your nice new system. You
+may select any program from the master list.
+A program can be placed anywhere in the
+system (inside a memory, CPU, a blank
+space, etc.) However, you must subtract its
+MU cost from one of your memories.
+Most programs are stationary; once you
+place them in the system, they stay there.
+However, Hellhounds, Killers and Demons
+are all mobile, and can patrol up to 1
+square outside the data walls of their resident systems.
+

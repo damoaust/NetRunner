@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Netrunner V0.006"
-run/main_scene="uid://bu22j7hdp6x0o"
+run/main_scene="uid://b7kq2w8xnf3mp"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 

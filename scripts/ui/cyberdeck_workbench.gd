@@ -67,6 +67,9 @@ var _selected_buy_program_idx: int = -1
 var _selected_sell_loot_idx: int = -1
 var _selected_sell_file_idx: int = -1
 
+# Shared monospace terminal font applied across the workbench UI.
+var _mono_font: SystemFont
+
 # Human-readable tags for each program effect type.
 const EFFECT_TAGS: Dictionary = {
 	NetProgram.EffectType.BYPASS_GATE: "Intrusion",
@@ -135,6 +138,7 @@ func _ready() -> void:
 # UI construction
 # ---------------------------------------------------------------------------
 func _build_ui() -> void:
+	_mono_font = _make_mono_font()
 	# Margin frame around everything.
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -159,24 +163,26 @@ func _build_ui() -> void:
 	title_row.add_child(credits_label)
 	root.add_child(title_row)
 
-	var main := HBoxContainer.new()
-	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main.add_theme_constant_override("separation", 14)
-	root.add_child(main)
+	# Tabbed content: LOADOUT + SHOP, so every list gets full height.
+	var tabs := TabContainer.new()
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_style_tab_container(tabs)
+	root.add_child(tabs)
 
-	# --- LEFT: deck stats card ---
-	main.add_child(_build_deck_column())
+	# LOADOUT tab: deck stats | loaded programs | library + detail.
+	var loadout := HBoxContainer.new()
+	loadout.name = "LOADOUT"
+	loadout.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	loadout.add_theme_constant_override("separation", 14)
+	loadout.add_child(_build_deck_column())
+	loadout.add_child(_build_loaded_column())
+	loadout.add_child(_build_library_column())
+	tabs.add_child(loadout)
 
-	# --- CENTER: loaded programs + controls ---
-	main.add_child(_build_loaded_column())
+	# SHOP tab: 2x2 grid of buy/sell sections.
+	tabs.add_child(_build_shop_tab())
 
-	# --- RIGHT: library + filter + detail ---
-	main.add_child(_build_library_column())
-
-	# --- FAR RIGHT: shop (buy catalogue + sell loot) ---
-	main.add_child(_build_shop_column())
-
-	# MU overflow / status message + Jack In button row.
+	# MU overflow / status message + Jack In button row (always visible).
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 16)
 	mu_message = _make_label("", COL_WARN)
@@ -186,8 +192,8 @@ func _build_ui() -> void:
 	jack_button = Button.new()
 	jack_button.text = "[ JACK IN ]"
 	jack_button.add_theme_font_size_override("font_size", 18)
-	jack_button.add_theme_color_override("font_color", Color(0.0, 0.05, 0.02))
-	jack_button.add_theme_color_override("font_hover_color", Color(0.0, 0.0, 0.0))
+	jack_button.add_theme_color_override("font_color", COL_GREEN)
+	jack_button.add_theme_color_override("font_hover_color", Color(0.6, 1.0, 0.7))
 	var jb_style := _neon_style(COL_GREEN, 2, 6)
 	jack_button.add_theme_stylebox_override("normal", jb_style)
 	jack_button.add_theme_stylebox_override("hover", _neon_style(Color(0.4, 1.0, 0.6), 2, 6))
@@ -195,6 +201,12 @@ func _build_ui() -> void:
 	jack_button.pressed.connect(_on_button_pressed)
 	footer.add_child(jack_button)
 	root.add_child(footer)
+
+	# Apply the monospace terminal font to every text control we built.
+	_apply_terminal_theme(self)
+
+	# CRT overlay on top of everything (non-interactive).
+	add_child(_build_crt_overlay())
 
 func _build_deck_column() -> Control:
 	var panel := _styled_panel()
@@ -257,10 +269,10 @@ func _build_loaded_column() -> Control:
 
 	loaded_list = ItemList.new()
 	loaded_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	loaded_list.custom_minimum_size = Vector2(0, 180)
 	loaded_list.item_selected.connect(_on_loaded_item_selected)
 	loaded_list.item_activated.connect(_on_loaded_item_activated)
-	loaded_list.add_theme_stylebox_override("panel", _transparent_style())
-	loaded_list.add_theme_color_override("font_color", COL_TEXT)
+	_style_list(loaded_list)
 	col.add_child(loaded_list)
 
 	# Controls row.
@@ -300,10 +312,10 @@ func _build_library_column() -> Control:
 
 	library_list = ItemList.new()
 	library_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	library_list.custom_minimum_size = Vector2(0, 180)
 	library_list.item_selected.connect(_on_library_item_selected)
 	library_list.item_activated.connect(_on_library_item_activated)
-	library_list.add_theme_stylebox_override("panel", _transparent_style())
-	library_list.add_theme_color_override("font_color", COL_TEXT)
+	_style_list(library_list)
 	col.add_child(library_list)
 
 	# Detail card.
@@ -563,79 +575,79 @@ func _refresh_deck_selector() -> void:
 # ---------------------------------------------------------------------------
 # Shop panel
 # ---------------------------------------------------------------------------
-func _build_shop_column() -> Control:
-	var panel := _styled_panel()
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.size_flags_stretch_ratio = 1.1
-	panel.add_child(col)
-
-	col.add_child(_make_header_label("◢ SHOP ◣"))
-	col.add_child(_make_rule())
+func _build_shop_tab() -> Control:
+	var tab := VBoxContainer.new()
+	tab.name = "SHOP"
+	tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tab.add_theme_constant_override("separation", 10)
 
 	# PURCHASE UNLOCKS (opens a separate window — permanent catalogue unlocks)
+	var unlock_row := HBoxContainer.new()
+	unlock_row.add_theme_constant_override("separation", 12)
 	unlock_button = _make_button("PURCHASE UNLOCKS", COL_HEADER)
+	unlock_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	unlock_button.pressed.connect(_open_unlock_window)
-	col.add_child(unlock_button)
+	unlock_row.add_child(unlock_button)
+	tab.add_child(unlock_row)
+	tab.add_child(_make_rule())
 
+	# 2x2 grid of shop sections, each full-height with list + action button.
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	tab.add_child(grid)
+
+	var buy_decks := _build_shop_section("BUY DECKS",
+		_on_buy_deck_selected, _on_buy_deck_pressed, "BUY DECK", COL_GREEN)
+	shop_buy_decks_list = buy_decks["list"]
+	buy_deck_button = buy_decks["button"]
+	grid.add_child(buy_decks["panel"])
+
+	var buy_progs := _build_shop_section("BUY PROGRAMS",
+		_on_buy_program_selected, _on_buy_program_pressed, "BUY PROGRAM", COL_GREEN)
+	shop_buy_programs_list = buy_progs["list"]
+	buy_program_button = buy_progs["button"]
+	grid.add_child(buy_progs["panel"])
+
+	var sell_loot := _build_shop_section("SELL LOOT",
+		_on_sell_loot_selected, _on_sell_loot_pressed, "SELL", COL_AMBER)
+	shop_sell_loot_list = sell_loot["list"]
+	sell_loot_button = sell_loot["button"]
+	grid.add_child(sell_loot["panel"])
+
+	var sell_files := _build_shop_section("SELL FILES",
+		_on_sell_file_selected, _on_sell_file_pressed, "SELL FILE", COL_AMBER)
+	shop_sell_files_list = sell_files["list"]
+	sell_file_button = sell_files["button"]
+	grid.add_child(sell_files["panel"])
+
+	return tab
+
+
+func _build_shop_section(header: String, selected_cb: Callable, pressed_cb: Callable, btn_label: String, btn_color: Color) -> Dictionary:
+	var panel := _styled_panel()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	panel.add_child(col)
+
+	col.add_child(_make_header_label(header))
 	col.add_child(_make_rule())
 
-	# BUY DECKS
-	col.add_child(_make_header_label("BUY DECKS"))
-	shop_buy_decks_list = ItemList.new()
-	shop_buy_decks_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	shop_buy_decks_list.item_selected.connect(_on_buy_deck_selected)
-	shop_buy_decks_list.add_theme_stylebox_override("panel", _transparent_style())
-	shop_buy_decks_list.add_theme_color_override("font_color", COL_TEXT)
-	col.add_child(shop_buy_decks_list)
-	buy_deck_button = _make_button("BUY DECK", COL_GREEN)
-	buy_deck_button.pressed.connect(_on_buy_deck_pressed)
-	col.add_child(buy_deck_button)
+	var list := ItemList.new()
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list.item_selected.connect(selected_cb)
+	_style_list(list)
+	col.add_child(list)
 
-	col.add_child(_make_rule())
+	var button := _make_button(btn_label, btn_color)
+	button.pressed.connect(pressed_cb)
+	col.add_child(button)
 
-	# BUY PROGRAMS
-	col.add_child(_make_header_label("BUY PROGRAMS"))
-	shop_buy_programs_list = ItemList.new()
-	shop_buy_programs_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	shop_buy_programs_list.item_selected.connect(_on_buy_program_selected)
-	shop_buy_programs_list.add_theme_stylebox_override("panel", _transparent_style())
-	shop_buy_programs_list.add_theme_color_override("font_color", COL_TEXT)
-	col.add_child(shop_buy_programs_list)
-	buy_program_button = _make_button("BUY PROGRAM", COL_GREEN)
-	buy_program_button.pressed.connect(_on_buy_program_pressed)
-	col.add_child(buy_program_button)
-
-	col.add_child(_make_rule())
-
-	# SELL LOOT
-	col.add_child(_make_header_label("SELL LOOT"))
-	shop_sell_loot_list = ItemList.new()
-	shop_sell_loot_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	shop_sell_loot_list.item_selected.connect(_on_sell_loot_selected)
-	shop_sell_loot_list.add_theme_stylebox_override("panel", _transparent_style())
-	shop_sell_loot_list.add_theme_color_override("font_color", COL_TEXT)
-	col.add_child(shop_sell_loot_list)
-	sell_loot_button = _make_button("SELL", COL_AMBER)
-	sell_loot_button.pressed.connect(_on_sell_loot_pressed)
-	col.add_child(sell_loot_button)
-
-	col.add_child(_make_rule())
-
-	# SELL FILES
-	col.add_child(_make_header_label("SELL FILES"))
-	shop_sell_files_list = ItemList.new()
-	shop_sell_files_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	shop_sell_files_list.item_selected.connect(_on_sell_file_selected)
-	shop_sell_files_list.add_theme_stylebox_override("panel", _transparent_style())
-	shop_sell_files_list.add_theme_color_override("font_color", COL_TEXT)
-	col.add_child(shop_sell_files_list)
-	sell_file_button = _make_button("SELL FILE", COL_AMBER)
-	sell_file_button.pressed.connect(_on_sell_file_pressed)
-	col.add_child(sell_file_button)
-
-	return panel
+	return {"panel": panel, "list": list, "button": button}
 
 func _refresh_credits() -> void:
 	if credits_label:
@@ -884,8 +896,8 @@ func _build_unlock_window() -> void:
 
 	unlock_list = ItemList.new()
 	unlock_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	unlock_list.add_theme_stylebox_override("panel", _transparent_style())
-	unlock_list.add_theme_color_override("font_color", COL_TEXT)
+	unlock_list.custom_minimum_size = Vector2(0, 300)
+	_style_list(unlock_list)
 	unlock_list.item_selected.connect(_on_unlock_selected)
 	col.add_child(unlock_list)
 
@@ -897,6 +909,9 @@ func _build_unlock_window() -> void:
 	var close_btn := _make_button("CLOSE", COL_DIM)
 	close_btn.pressed.connect(_close_unlock_window)
 	col.add_child(close_btn)
+
+	# Apply monospace font to everything in the window.
+	_apply_terminal_theme(unlock_window)
 
 func _close_unlock_window() -> void:
 	if unlock_window != null and is_instance_valid(unlock_window):
@@ -1009,20 +1024,24 @@ func _styled_panel(with_border: bool = true) -> PanelContainer:
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = COL_PANEL
+	sb.content_margin_left = 12
+	sb.content_margin_top = 10
+	sb.content_margin_right = 12
+	sb.content_margin_bottom = 10
+	sb.corner_radius_top_left = 4
+	sb.corner_radius_top_right = 4
+	sb.corner_radius_bottom_left = 4
+	sb.corner_radius_bottom_right = 4
 	if with_border:
 		sb.border_width_left = 1
 		sb.border_width_top = 1
 		sb.border_width_right = 1
 		sb.border_width_bottom = 1
 		sb.border_color = COL_BORDER
-		sb.content_margin_left = 12
-		sb.content_margin_top = 10
-		sb.content_margin_right = 12
-		sb.content_margin_bottom = 10
-		sb.corner_radius_top_left = 4
-		sb.corner_radius_top_right = 4
-		sb.corner_radius_bottom_left = 4
-		sb.corner_radius_bottom_right = 4
+		# Soft neon glow around bordered panels.
+		sb.shadow_color = COL_BORDER
+		sb.shadow_size = 6
+		sb.shadow_offset = Vector2.ZERO
 	panel.add_theme_stylebox_override("panel", sb)
 	return panel
 
@@ -1080,3 +1099,122 @@ func _make_button(text: String, color: Color) -> Button:
 	b.add_theme_stylebox_override("pressed", _neon_style(color, 1, 3))
 	b.add_theme_stylebox_override("disabled", _neon_style(COL_GREY, 1, 3))
 	return b
+
+# ---------------------------------------------------------------------------
+# CRT terminal theme helpers
+# ---------------------------------------------------------------------------
+func _make_mono_font() -> SystemFont:
+	var f := SystemFont.new()
+	f.font_names = PackedStringArray(["Consolas", "Courier New", "DejaVu Sans Mono", "Menlo"])
+	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+	f.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
+	f.generate_mipmaps = false
+	return f
+
+func _apply_terminal_theme(node: Node) -> void:
+	if _mono_font == null:
+		return
+	if node is Label:
+		(node as Label).add_theme_font_override("font", _mono_font)
+	elif node is Button:
+		(node as Button).add_theme_font_override("font", _mono_font)
+	elif node is OptionButton:
+		(node as OptionButton).add_theme_font_override("font", _mono_font)
+	elif node is ItemList:
+		(node as ItemList).add_theme_font_override("font", _mono_font)
+	elif node is TabContainer:
+		(node as TabContainer).add_theme_font_override("font", _mono_font)
+	for child in node.get_children():
+		_apply_terminal_theme(child)
+
+func _style_tab_container(tabs: TabContainer) -> void:
+	# Tab bar background + tab styling for a terminal look.
+	var tab_selected := _neon_style(COL_GREEN, 2, 0)
+	tab_selected.bg_color = Color(COL_GREEN.r * 0.15, COL_GREEN.g * 0.15, COL_GREEN.b * 0.15, 0.95)
+	var tab_unselected := _neon_style(COL_BORDER_DIM, 1, 0)
+	tab_unselected.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	tabs.add_theme_stylebox_override("tab_selected", tab_selected)
+	tabs.add_theme_stylebox_override("tab_unselected", tab_unselected)
+	tabs.add_theme_stylebox_override("tab_hovered", _neon_style(COL_BORDER, 1, 0))
+	tabs.add_theme_stylebox_override("panel", _transparent_style())
+	tabs.add_theme_color_override("font_selected_color", COL_GREEN)
+	tabs.add_theme_color_override("font_unselected_color", COL_DIM)
+	tabs.add_theme_color_override("font_hovered_color", COL_TEXT)
+	tabs.add_theme_font_size_override("font_size", 16)
+
+func _style_list(list: ItemList) -> void:
+	# Inset dark background panel for the list.
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.0, 0.0, 0.0, 0.45)
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = COL_BORDER_DIM
+	sb.content_margin_left = 4
+	sb.content_margin_top = 4
+	sb.content_margin_right = 4
+	sb.content_margin_bottom = 4
+	sb.corner_radius_top_left = 2
+	sb.corner_radius_top_right = 2
+	sb.corner_radius_bottom_left = 2
+	sb.corner_radius_bottom_right = 2
+	list.add_theme_stylebox_override("panel", sb)
+
+	# Selected item: neon green highlight.
+	var sel := StyleBoxFlat.new()
+	sel.bg_color = Color(COL_GREEN.r * 0.2, COL_GREEN.g * 0.2, COL_GREEN.b * 0.2, 0.8)
+	sel.border_width_left = 0
+	sel.border_width_top = 0
+	sel.border_width_right = 0
+	sel.border_width_bottom = 1
+	sel.border_color = COL_GREEN
+	list.add_theme_stylebox_override("selected", sel)
+	list.add_theme_stylebox_override("selected_focus", sel)
+
+	var hover := StyleBoxFlat.new()
+	hover.bg_color = Color(COL_BORDER.r * 0.3, COL_BORDER.g * 0.3, COL_BORDER.b * 0.3, 0.5)
+	list.add_theme_stylebox_override("hover", hover)
+
+	list.add_theme_color_override("font_color", COL_TEXT)
+	list.add_theme_color_override("font_selected_color", COL_GREEN)
+	list.add_theme_color_override("font_hover_color", Color(COL_TEXT.r * 1.2, COL_TEXT.g * 1.2, COL_TEXT.b * 1.2))
+	list.add_theme_color_override("guide_color", COL_BORDER_DIM)
+	list.add_theme_font_size_override("font_size", 14)
+	list.add_theme_constant_override("h_separation", 6)
+	list.add_theme_constant_override("v_separation", 3)
+	# Scrollbars are created when the list enters the tree, so style them on ready.
+	list.ready.connect(func() -> void: _style_scrollbars(list))
+
+func _style_scrollbars(list: ItemList) -> void:
+	var grabber := StyleBoxFlat.new()
+	grabber.bg_color = COL_GREEN
+	grabber.corner_radius_top_left = 2
+	grabber.corner_radius_top_right = 2
+	grabber.corner_radius_bottom_left = 2
+	grabber.corner_radius_bottom_right = 2
+	var grabber_hl := StyleBoxFlat.new()
+	grabber_hl.bg_color = Color(COL_GREEN.r * 1.3, COL_GREEN.g * 1.3, COL_GREEN.b * 1.3)
+	grabber_hl.corner_radius_top_left = 2
+	grabber_hl.corner_radius_top_right = 2
+	grabber_hl.corner_radius_bottom_left = 2
+	grabber_hl.corner_radius_bottom_right = 2
+	var scroll_bg := StyleBoxFlat.new()
+	scroll_bg.bg_color = Color(0.0, 0.0, 0.0, 0.3)
+	# ItemList's scrollbars are internal child ScrollBar nodes; style each one.
+	for bar in list.find_children("*", "ScrollBar", true, false):
+		bar.add_theme_stylebox_override("grabber", grabber)
+		bar.add_theme_stylebox_override("grabber_highlight", grabber_hl)
+		bar.add_theme_stylebox_override("scroll", scroll_bg)
+
+func _build_crt_overlay() -> ColorRect:
+	var overlay := ColorRect.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.color = Color(1, 1, 1, 1)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	var shader := load("res://scripts/ui/crt_overlay.gdshader")
+	if shader is Shader:
+		mat.shader = shader as Shader
+	overlay.material = mat
+	return overlay

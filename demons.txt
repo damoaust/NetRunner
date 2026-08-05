@@ -1,0 +1,37 @@
+Demon Series Programs
+
+The Demon Program is a generic program with
+the ability to incorporate several other programs as
+subroutines-in short, two, three, four or even five
+programs in one. To use the program, you must
+activate the Demon, then specify the chosen subroutine it carries. The subroutine programs look and
+act just as their originals, but are usually less
+powerful, as they must use the program strength
+of the Demon core in combat.
+
+Imp 1000eb
+Class: Demon (carries 2 programs)
+Strength: 3 MU: 3
+ICON: A small, orange sphere of light, with two
+amused looking red eyes. It continually emits a series
+of beeps, whistles and pinging noises.
+Afreet 1160eb
+Class: Demon Series (carries 3 programs)
+Strength: 3 MU: 4
+ICON: A tall, powerfully built black man, dressed in
+elegant evening clothes and wearing a fez. He carries
+a dagger in his jacket, and speaks in a formal, deep
+voice.
+Succubus 1200eb
+Class: Demon (carries 4 programs)
+Strength: 4 MU: 4
+ICON: A voluptuous, nude female form, hairless, and
+made from shiny chrome metal. She has large, batlike
+wings, and blue, pupilless eyes.
+Balron 1240eb
+Class: Demon (carries 4 programs)
+Strength: 5 MU: 5
+ICON: A huge, male figure, powerfully built. He is
+dressed in futuristic black armor, glittering with reflected highlights. In one hand, he carries a redglowing energy blade; his other arm ends in a series
+of neon-green, glowing tentacles. His eyes glow red
+behind his visor, and his voice is a sibilant hiss.
