@@ -19,11 +19,10 @@ enum State { IDLE, PURSUE }
 # NetProgram built from the tier template). Set BEFORE initialize().
 var program: NetProgram = null
 
-@export var max_ap: int = 3
+# ICE structural integrity. Set from `program.strength` at spawn time (1:1),
+# so a stronger program is also tougher to DEREZ. initialize() copies this
+# into current_integrity. No longer @export-authored per tile.
 @export var max_integrity: int = 4
-# Tracing-type ICE: on activation it must trace the netrunner's signal before it
-# can hunt. Rolls 1D10 + strength vs RunState.accumulated_trace once per run.
-@export var traces: bool = false
 
 # Program sight radius (separate from the runner's sight_range so future
 # modifiers can affect one side without the other). Defaults to 20, matching

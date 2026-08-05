@@ -2,6 +2,9 @@
 
 [ext_resource type="Script" path="res://scripts/resources/CP2020TileData.gd" id="1_t0o2x"]
 [ext_resource type="Script" path="res://scripts/resources/CP2020DatafortLayout.gd" id="2_opbl1"]
+[ext_resource type="Resource" path="res://data/killer6.tres" id="3_k6"]
+[ext_resource type="Resource" path="res://data/hellhound.tres" id="4_hh"]
+[ext_resource type="Resource" path="res://data/flatline.tres" id="5_fl"]
 
 [sub_resource type="Resource" id="Resource_t001"]
 script = ExtResource("1_t0o2x")
@@ -141,6 +144,7 @@ script = ExtResource("1_t0o2x")
 [sub_resource type="Resource" id="Resource_t039"]
 script = ExtResource("1_t0o2x")
 tile_type = 7
+ice_program = ExtResource("3_k6")
 
 [sub_resource type="Resource" id="Resource_t040"]
 script = ExtResource("1_t0o2x")
@@ -155,6 +159,7 @@ memory_units_mu = 2
 [sub_resource type="Resource" id="Resource_t042"]
 script = ExtResource("1_t0o2x")
 tile_type = 7
+ice_program = ExtResource("4_hh")
 
 [sub_resource type="Resource" id="Resource_t043"]
 script = ExtResource("1_t0o2x")
@@ -277,6 +282,7 @@ tile_type = 2
 [sub_resource type="Resource" id="Resource_t075"]
 script = ExtResource("1_t0o2x")
 tile_type = 7
+ice_program = ExtResource("5_fl")
 
 [sub_resource type="Resource" id="Resource_t076"]
 script = ExtResource("1_t0o2x")

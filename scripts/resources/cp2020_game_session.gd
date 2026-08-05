@@ -44,19 +44,6 @@ var _watchdog_beacons: Array[Vector2i] = []
 # so each beacon only logs once per enemy detection.
 var _watchdog_alerted: Dictionary = {}
 
-# Tier -> default ICE template. Used when a BLACK_ICE tile has no per-tile
-# override (ice_has_override == false). Stats follow CP2020 progression:
-# Grey = alarm/detection only (weak Watchdog), L1/L2 = anti-IC Killers,
-# L3 = non-fatal anti-personnel (Hellhound, tracing), Black = fatal
-# anti-personnel (Flatline, tracing).
-const TIER_ICE_TEMPLATES: Dictionary = {
-	CP2020SecurityTier.Tier.GREY:     {"name": "Watchdog",   "strength": 2, "max_ap": 2, "max_integrity": 3, "traces": false},
-	CP2020SecurityTier.Tier.LEVEL_1:  {"name": "Killer 1.0", "strength": 3, "max_ap": 2, "max_integrity": 4, "traces": false},
-	CP2020SecurityTier.Tier.LEVEL_2:  {"name": "Killer 2.0", "strength": 4, "max_ap": 3, "max_integrity": 5, "traces": false},
-	CP2020SecurityTier.Tier.LEVEL_3:  {"name": "Hellhound",  "strength": 5, "max_ap": 3, "max_integrity": 6, "traces": true},
-	CP2020SecurityTier.Tier.BLACK:    {"name": "Flatline",   "strength": 6, "max_ap": 4, "max_integrity": 8, "traces": true},
-}
-
 # Tier -> default NPC netrunner template, per faction. Used when a NETWATCH /
 # NETRUNNER tile has no per-tile override (npc_has_override == false). NetWatch
 # leans anti-personnel + shield (law enforcement that hunts runners); random
@@ -118,6 +105,8 @@ func _ready() -> void:
 			netrunner.health_changed.connect(_on_health_changed)
 		if netrunner.position_changed.is_connected(_center_camera_on_runner) == false:
 			netrunner.position_changed.connect(_center_camera_on_runner)
+		if not netrunner.stunned.is_connected(_on_stunned):
+			netrunner.stunned.connect(_on_stunned)
 
 	# Apply the selected cyberdeck from the workbench (if any)
 	if RunState.selected_deck:
@@ -248,6 +237,9 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode in [KEY_D, KEY_RIGHT]: dir = Vector2i(1, 0)
 		
 		if dir != Vector2i.ZERO and netrunner:
+			if netrunner.is_stunned:
+				log_to_terminal("Stunned — cannot move.\n")
+				return
 			if turn_manager and not turn_manager.has_movement():
 				log_to_terminal("No movement remaining. End turn (Space) to let ICE move.\n")
 				return
@@ -581,15 +573,6 @@ func update_deck_info(_program: Variant = null) -> void:
 				label.add_theme_color_override("font_color", Color.GREEN)
 			program_list_container.add_child(label)
 
-# Build a base NetProgram from a tier template dict. Template programs get
-# the default hunt-attack ICE behavior (base NetProgram script).
-func _build_template_program(template: Dictionary) -> NetProgram:
-	var prog := NetProgram.new()
-	prog.program_name = String(template.get("name", "Black ICE"))
-	prog.strength = int(template.get("strength", 4))
-	prog.effect_type = NetProgram.EffectType.DAMAGE_RUNNER
-	return prog
-
 func spawn_black_ice() -> void:
 	# Clear any previously spawned ICE nodes (e.g. on subnet reload)
 	for ice in ice_nodes:
@@ -601,7 +584,6 @@ func spawn_black_ice() -> void:
 		return
 
 	var layout_size := Vector2i(current_layout.columns, current_layout.rows)
-	var template: Dictionary = TIER_ICE_TEMPLATES.get(_current_security_tier, TIER_ICE_TEMPLATES[CP2020SecurityTier.Tier.LEVEL_1])
 	for raw_key in current_layout.grid_tiles.keys():
 		var coord: Vector2i
 		if raw_key is String:
@@ -612,48 +594,38 @@ func spawn_black_ice() -> void:
 
 		var tile = current_layout.get_tile(coord)
 		if tile and tile.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
+			# Every BLACK_ICE tile must have an assigned program .tres
+			# (tile.ice_program). The program defines effect_type, strength,
+			# damage_dice, and program_name, and its script (base NetProgram
+			# or a subclass like WatchdogProgram) drives behavior via
+			# take_ice_turn. max_integrity is derived 1:1 from
+			# program.strength. ICE movement is STR-based (see
+			# NetProgram.take_ice_turn). Tracing behavior is deferred to
+			# program-specific subclasses (Hellhound/Flatline — not yet
+			# implemented).
+			if tile.ice_program == null:
+				push_warning("BLACK_ICE tile at %s has no assigned ice_program — skipping spawn." % coord)
+				continue
 			var ice: BlackIce = BlackIceScene.instantiate()
 			add_child(ice)
-			# Apply ICE stats BEFORE initialize (initialize copies max_integrity
-			# into current_integrity). BlackICE always gets a `program` member
-			# that defines its behavior (effect_type, strength, damage_dice,
-			# program_name). Sourcing precedence:
-			#   1. tile.ice_program (assigned .tres) -> ice.program = duplicate
-			#      (its script — base or subclass — rides along and defines
-			#      behavior via take_ice_turn).
-			#   2. tile.ice_has_override scalar overrides -> build a base
-			#      NetProgram with DAMAGE_RUNNER behavior.
-			#   3. else the hub security-tier template -> _build_template_program.
-			# max_ap / max_integrity / traces always come from the tile override
-			# or tier template (NetProgram has no equivalents).
-			if tile.ice_program != null:
-				ice.program = tile.ice_program.duplicate()
-				ice.max_ap = tile.ice_max_ap if tile.ice_max_ap > 0 else int(template.get("max_ap", 2))
-				ice.max_integrity = tile.ice_max_integrity if tile.ice_max_integrity > 0 else int(template.get("max_integrity", 4))
-				ice.traces = tile.ice_traces
-			elif tile.ice_has_override:
-				var prog := NetProgram.new()
-				if tile.ice_program_name != "":
-					prog.program_name = tile.ice_program_name
-				prog.strength = tile.ice_strength if tile.ice_strength > 0 else int(template.get("strength", 4))
-				prog.effect_type = NetProgram.EffectType.DAMAGE_RUNNER
-				ice.program = prog
-				ice.max_ap = tile.ice_max_ap if tile.ice_max_ap > 0 else int(template.get("max_ap", 2))
-				ice.max_integrity = tile.ice_max_integrity if tile.ice_max_integrity > 0 else int(template.get("max_integrity", 4))
-				ice.traces = tile.ice_traces
-			else:
-				ice.program = _build_template_program(template)
-				ice.max_ap = int(template.get("max_ap", 2))
-				ice.max_integrity = int(template.get("max_integrity", 4))
-				ice.traces = bool(template.get("traces", false))
+			ice.program = tile.ice_program.duplicate()
+			ice.max_integrity = ice.program.strength
 			ice.initialize(coord, layout_size)
 			ice.message_logged.connect(log_to_terminal)
 			ice.moved_to.connect(_on_ice_moved)
-			ice.attacked_netrunner.connect(_on_ice_attacked)
+			# Anti-personnel (DAMAGE_RUNNER) ICE attacks the runner's meat
+			# stats (INT loss + Stun/Mortal saves). Anti-program (DEREZ_ICE)
+			# ICE attacks an installed program instead. The flag is captured
+			# via a lambda so the shared attacked_netrunner signal stays a
+			# single-int emission.
+			var is_anti_personnel := ice.program.effect_type == NetProgram.EffectType.DAMAGE_RUNNER
+			var attacker_name := ice.program.program_name
+			var prog_ref: NetProgram = ice.program
+			ice.attacked_netrunner.connect(func(strength: int) -> void:
+				_on_ice_attacked(strength, attacker_name, is_anti_personnel, prog_ref))
 			# Anti-program (DEREZ_ICE) ICE attacks an installed program. The
 			# attacker name is captured via a lambda so the runner's log shows
 			# which ICE struck (the shared _on_ice_attacked path can't pass it).
-			var attacker_name := ice.program.program_name
 			ice.attacked_program.connect(func(strength: int) -> void:
 				_on_ice_attacked_program(strength, attacker_name))
 			# DETECTION ICE (Watchdog) emits alarm_triggered when it detects
@@ -747,7 +719,8 @@ func spawn_npcs() -> void:
 		npc.initialize(coord, layout_size)
 		npc.message_logged.connect(log_to_terminal)
 		npc.moved_to.connect(_on_ice_moved)
-		npc.attacked_netrunner.connect(_on_ice_attacked)
+		npc.attacked_netrunner.connect(func(strength: int) -> void:
+			_on_ice_attacked(strength, npc.npc_name, true, null))
 		npc.destroyed.connect(_on_npc_destroyed.bind(npc))
 		npc_nodes.append(npc)
 		var faction_label = "NetWatch" if faction == CP2020NpcNetrunner.Faction.NETWATCH else "Netrunner"
@@ -860,7 +833,8 @@ func spawn_datafort() -> void:
 	datafort = CP2020Datafort.new()
 	add_child(datafort)
 	datafort.message_logged.connect(log_to_terminal)
-	datafort.attacked_netrunner.connect(_on_ice_attacked)
+	datafort.attacked_netrunner.connect(func(strength: int) -> void:
+		_on_ice_attacked(strength, datafort.fort_name, true, null))
 	if not datafort.attacked_runner_deck.is_connected(_on_runner_deck_attacked):
 		datafort.attacked_runner_deck.connect(_on_runner_deck_attacked)
 	datafort.cpu_crashed.connect(_on_cpu_state_changed)
@@ -933,6 +907,16 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 			turn_manager.actions_remaining = 0
 			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
 			log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
+		# CP2020 Death Trap: a stunned (unconscious) runner cannot act OR
+		# move. Both action and movement pools are zeroed. Black ICE will
+		# auto-hit every turn until the runner flatlines or is rescued by a
+		# meat-space ally pulling the plug (future feature).
+		if is_instance_valid(netrunner) and netrunner.is_stunned and turn_manager:
+			turn_manager.actions_remaining = 0
+			turn_manager.movement_remaining = 0
+			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
+			turn_manager.movement_changed.emit(turn_manager.movement_remaining, turn_manager.max_movement)
+			log_to_terminal("STUNNED — unconscious! Cannot act, move, or jack out. Black ICE auto-hits!\n")
 
 # Tick all worm-active tiles: decrement worm_turns_remaining and open the tile
 # when the counter reaches 0 (DATAWALL -> EMPTY, CODE_GATE -> is_unlocked).
@@ -1067,11 +1051,18 @@ func _on_ice_moved(_new_pos: Vector2i) -> void:
 	if board_renderer:
 		board_renderer.queue_redraw()
 
-func _on_ice_attacked(strength: int) -> void:
-	# Shared by Black ICE and NPC netrunners — both emit attacked_netrunner.
-	log_to_terminal("WARNING: Adversary attacks for %d!\n" % strength)
+func _on_ice_attacked(strength: int, attacker_name: String, is_anti_personnel: bool, prog: NetProgram = null) -> void:
+	# Shared by Black ICE, NPC netrunners, and datafort resident programs —
+	# all emit attacked_netrunner. `is_anti_personnel` distinguishes
+	# DAMAGE_RUNNER programs (INT loss + Stun/Mortal saves) from DEREZ_ICE
+	# programs (which route through attacked_program instead and never
+	# reach this handler). `prog` is the attacking program (used to roll
+	# the payload after the interface defense roll); null for flat-STR
+	# attacks from NPCs/dataforts.
+	var label = "Adversary" if attacker_name.is_empty() else attacker_name
+	log_to_terminal("WARNING: %s attacks for %d!\n" % [label, strength])
 	if netrunner:
-		netrunner.apply_damage(strength, "Adversary", true)
+		netrunner.apply_damage(strength, label, is_anti_personnel, prog)
 
 # Anti-program (DEREZ_ICE) Black ICE reached the netrunner: damage an
 # installed program instead of health. Shield does NOT block this.
@@ -1090,6 +1081,13 @@ func _on_runner_deck_attacked(strength: int) -> void:
 	log_to_terminal("WARNING: %s executes anti-system attack (STR %d) — cyberdeck targeted!\n" % [attacker_name, strength])
 	if is_instance_valid(netrunner):
 		netrunner.crash_deck(randi_range(1, 6) + 1, attacker_name)
+
+func _on_stunned() -> void:
+	# CP2020 Death Trap: stun takes effect immediately. The turn-start
+	# handler in _on_turn_ended zeroes the runner's action AND movement
+	# pools while is_stunned is true; jack-out and movement are blocked.
+	# Redraw the deck panel to reflect the stunned state.
+	update_deck_info()
 
 func _on_flatlined() -> void:
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
@@ -1110,6 +1108,10 @@ func _on_flatlined() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
 
 func _on_jack_out_pressed() -> void:
+	# CP2020 Death Trap: a stunned (unconscious) runner cannot jack out.
+	if is_instance_valid(netrunner) and netrunner.is_stunned:
+		log_to_terminal("Cannot jack out while stunned — unconscious in meatspace!\n")
+		return
 	# Busted check FIRST — before clearing trace (the summary needs it). If the
 	# runner's accumulated trace has hit the threshold, NetWatch arrests them
 	# on jack-out: permadeath, run ends in a BUSTED game-over.

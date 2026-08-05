@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://dgivlgn4p2aii"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_hell"]
+
+[resource]
+script = ExtResource("1_hell")
+program_name = "Hellhound"
+type = 4
+effect_type = 3
+strength = 5
+memory_cost = 6
+price = 8200
+damage_dice = 10
+damage_dice_count = 2
+description = "Tracing anti-personnel ICE. Hunts the runner across the Net, dealing 2D10 physical damage per hit."
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

@@ -37,7 +37,10 @@ enum EffectType {
 # Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
 # as damage (existing behaviour for all current programs). >0 = roll
 # 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.
+# `damage_dice_count` (default 1) multiplies the dice: Hellhound sets
+# damage_dice=10 + damage_dice_count=2 to roll 2D10 per hit.
 @export var damage_dice: int = 0
+@export var damage_dice_count: int = 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Program behavior (virtual). Subclasses override these to define program-
@@ -51,16 +54,11 @@ enum EffectType {
 # turn. Subclasses override to define specialized ICE behavior (e.g. trace-only,
 # ranged, or stationary programs). This is a coroutine (it awaits a Node method).
 func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
-	# First-activation handling.
+	# First-activation handling. Tracing-type activation (Hellhound/Flatline
+	# must accumulate a trace before attacking) is deferred to program-specific
+	# subclasses — no such subclasses exist yet, so all ICE attacks on LoS.
 	if not ice._activated:
 		ice._activated = true
-		if ice.traces:
-			var trace_roll := randi_range(1, 10) + strength
-			if trace_roll < RunState.accumulated_trace:
-				ice.emit_log("%s failed to trace your signal (1D10+STR %d vs trace %d) — idle." % [program_name, trace_roll, RunState.accumulated_trace])
-				return
-			else:
-				ice.emit_log("%s traced your signal (1D10+STR %d vs trace %d)." % [program_name, trace_roll, RunState.accumulated_trace])
 	# State transition: idle → pursue.
 	if ice.current_state == BlackIce.State.IDLE:
 		ice.current_state = BlackIce.State.PURSUE
@@ -68,26 +66,36 @@ func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLa
 	if ice.current_state != BlackIce.State.PURSUE:
 		return
 	ice.refresh_pathfinding(layout)
-	# AP loop: step toward target, attacking on the final step.
-	var ap_remaining = ice.max_ap
-	while ap_remaining > 0:
+	# ICE action economy mirrors the netrunner: up to `program.strength`
+	# movement steps per turn (CP2020: ICE moves at STR speed), plus one
+	# attack action delivered when the ICE reaches the runner's tile (the
+	# attack does not consume movement). Stationary ICE (e.g. Watchdog)
+	# override take_ice_turn and never move.
+	var movement_remaining: int = ice.program.strength
+	while movement_remaining > 0:
 		var path = ice.astar_grid.get_id_path(ice.current_position, target_pos)
 		if path.size() > 1:
 			var next_step = path[1]
 			if next_step == target_pos:
-				var dmg := _roll_damage()
 				match effect_type:
 					NetProgram.EffectType.DEREZ_ICE:
-						ice.emit_log("CRITICAL: %s executes DEREZ_ICE attack for %d damage!" % [program_name, dmg])
-						ice.emit_attack_program(dmg)
+						# Anti-program: damage = STR (rolled here, no runner
+						# defense roll — routes to attacked_program).
+						var derez_dmg := _roll_damage()
+						ice.emit_log("CRITICAL: %s executes DEREZ_ICE attack for %d damage!" % [program_name, derez_dmg])
+						ice.emit_attack_program(derez_dmg)
 					_:
-						ice.emit_log("CRITICAL: %s attacks Netrunner for %d damage!" % [program_name, dmg])
-						ice.emit_attack_netrunner(dmg)
+						# Anti-personnel: emit the program's STR for the
+						# interface defense roll. The payload damage is
+						# rolled inside apply_damage AFTER the defense roll
+						# resolves (CP2020 RAW).
+						ice.emit_log("CRITICAL: %s attacks Netrunner (STR %d)!" % [program_name, strength])
+						ice.emit_attack_netrunner(strength)
 				return
 			else:
 				ice.current_position = next_step
 				await ice.move_to_step(next_step)
-				ap_remaining -= 1
+				movement_remaining -= 1
 		else:
 			return
 
@@ -121,6 +129,12 @@ func execute_runner_action(session: CP2020GameSession, target_coord: Vector2i) -
 			return false
 
 # Roll per-hit damage for this program. Flat `strength` when `damage_dice <= 0`
-# (existing behaviour for all current programs), otherwise 1D{damage_dice}.
+# (legacy default), otherwise roll `damage_dice_count` × 1D{damage_dice}.
+# e.g. Sword (damage_dice=6, count=1) → 1D6; Hellhound (10, 2) → 2D10.
 func _roll_damage() -> int:
-	return strength if damage_dice <= 0 else randi_range(1, damage_dice)
+	if damage_dice <= 0:
+		return strength
+	var total := 0
+	for _i in range(max(1, damage_dice_count)):
+		total += randi_range(1, damage_dice)
+	return total

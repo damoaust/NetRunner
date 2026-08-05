@@ -4,6 +4,8 @@
 [ext_resource type="Script" path="res://scripts/resources/cp2020_net_file.gd" id="1_q2wfl"]
 [ext_resource type="Script" path="res://scripts/resources/CP2020TileData.gd" id="1_sk5yr"]
 [ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="2_1xbiy"]
+[ext_resource type="Resource" path="res://data/watchdog.tres" id="4_2bqhh"]
+[ext_resource type="Resource" path="res://data/killer2.tres" id="5_pnu68"]
 
 [sub_resource type="Resource" id="Resource_dmmqx"]
 script = ExtResource("1_sk5yr")
@@ -1579,6 +1581,8 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_aeguj"]
 script = ExtResource("1_sk5yr")
 tile_type = 7
+ice_program = ExtResource("4_2bqhh")
+ice_has_override = true
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_b5exb"]
@@ -2248,6 +2252,8 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_mq8jr"]
 script = ExtResource("1_sk5yr")
 tile_type = 7
+ice_program = ExtResource("5_pnu68")
+ice_has_override = true
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_wdbpd"]

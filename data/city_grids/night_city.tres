@@ -42,17 +42,15 @@ security_tier = 2
 ldl_cost = 90
 security_code = 7
 
-[sub_resource type="Resource" id="Resource_pr0n1"]
+[sub_resource type="Resource" id="Resource_vo1hh"]
 script = ExtResource("1_vo1hh")
 name = "Pr0n Palace"
-pos = Vector2i(15, 6)
+pos = Vector2i(11, 5)
 subnet_path = "res://scenes/forts/pr0n1.tres"
-security_tier = 2
-ldl_cost = 90
-security_code = 7
+security_tier = 4
 
 [resource]
 script = ExtResource("2_kjwcc")
 city_name = "Night City"
-dataforts = Array[ExtResource("1_vo1hh")]([SubResource("Resource_kj5fi"), SubResource("Resource_rljcg"), SubResource("Resource_0jgxg"), SubResource("Resource_404ch"), SubResource("Resource_6hw6t"), SubResource("Resource_pr0n1")])
+dataforts = Array[ExtResource("1_vo1hh")]([SubResource("Resource_kj5fi"), SubResource("Resource_rljcg"), SubResource("Resource_0jgxg"), SubResource("Resource_404ch"), SubResource("Resource_6hw6t"), SubResource("Resource_vo1hh")])
 ldl_entry = Vector2i(9, 5)

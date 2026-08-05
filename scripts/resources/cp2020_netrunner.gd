@@ -19,10 +19,12 @@ signal deck_crashed(duration: int)
 # runner's nervous system: INT permanently reduced. Emitted alongside
 # health_changed so the GUI can display the runner's current INT.
 signal int_changed(int_current: int, int_max: int)
-# Anti-personnel neural shock forced a failed Mortal/Stun save: the runner is
-# stunned for `duration` turns (action economy impaired). See
-# apply_damage(..., is_anti_personnel := true).
-signal stunned(duration: int)
+# Anti-personnel neural shock forced a failed Stun save: the runner is
+# stunned (unconscious). While stunned, the runner cannot act, move, or
+# jack out, and all Black ICE auto-hit every turn (CP2020 Stunned Runner
+# Death Trap). The stun persists until the runner flatlines or a meat-space
+# ally pulls the plug (future feature). See apply_damage / is_stunned.
+signal stunned
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -50,6 +52,13 @@ var interface_rank: int = 6  # Netrunner's INT for initiative (set from cyberdec
 # runner can flee but cannot run programs. Decremented by tick_deck_crash at
 # the start of each netrunner turn.
 var deck_crashed_turns: int = 0
+
+# Stunned Runner Death Trap (CP2020). When a Stun save fails, the runner is
+# unconscious: cannot act, move, or jack out. All Black ICE auto-hit every
+# turn (no defense roll — protection programs can't be raised while stunned,
+# and existing Shield/Armor are consumed). The stun persists until the runner
+# flatlines or a meat-space ally pulls the plug (future feature).
+var is_stunned: bool = false
 
 # Meat-space Reflexes stat. Per the CP2020 netrunning initiative formula,
 # runner initiative = 1D10 + REF + cyberdeck speed. Kept @export so it can be
@@ -224,92 +233,200 @@ func move(direction: Vector2i) -> bool:
 			
 	return true
 
-# Anti-personnel (DAMAGE_RUNNER) attacks bypass the virtual world and strike
-# the runner's nervous system directly. After the normal HP reduction, a hit
-# that reached HP (damage > 0) and left the runner alive triggers:
-#   1. INT-stat loss: 1 INT per anti-personnel hit (cumulative, capped at 0).
-#   2. Mortal/Stun save: 1D10 + BODY vs a target that scales with the
-#      runner's cumulative damage (max_health - current_health). On a failed
-#      save the runner is stunned (signal `stunned`); on a success they
-#      fight through the shock. Flatline is still governed by the
-#      current_health <= 0 check above — a failed save at low damage stuns,
-#      it does not kill.
-# Existing 2-arg callers get is_anti_personnel = false → no behavior change.
-func apply_damage(attack_strength: int, attacker_name: String, is_anti_personnel: bool = false) -> int:
-	# Armor absorbs damage point-for-point FIRST (before the Shield opposed
-	# roll). Armor is persistent — it is NOT consumed on a hit. Any remainder
-	# proceeds to the Shield (if raised) and then to HP.
-	if active_armor != null:
-		var absorbed: int = min(attack_strength, active_armor.strength)
-		attack_strength -= absorbed
-		message_logged.emit("Armor absorbs %d (STR %d). Remaining: %d." % [absorbed, active_armor.strength, attack_strength])
-		if attack_strength <= 0:
-			message_logged.emit("Armor fully absorbs the attack.")
-			return 0
+# CP2020 Anti-Personnel Combat Resolution (Step 1–4).
+#
+# `attack_strength` is the attacking program's STR (used for the Interface
+# Defense Roll). `prog` is the attacking NetProgram (used to roll the payload
+# damage via prog._roll_damage() after the defense roll succeeds); null for
+# NPC/datafort direct attacks → payload = attack_strength (flat).
+#
+# Step 1 — Interface Defense Roll:
+#   Attacker rolls 1D10 + attack_strength. Defender rolls 1D10 + protection
+#   program STR (Shield first, then Armor — both use the SAME opposed roll).
+#   Ties → DEFENDER (safe). If no protection program is loaded & active →
+#   AUTO-HIT (no defense roll, full payload applies).
+# Step 2 — Apply Payload:
+#   damage = prog._roll_damage() (per-program: Hellhound 2D10, Sword 1D6,
+#   Flatline flat STR). Physical body armor = zero protection.
+# Step 3 — Meat-Space Saves (anti-personnel only):
+#   Stun/Shock save: roll 1D10 UNDER BOD minus wound penalty. Mortal/Death
+#   save: if HP ≤ 0, roll 1D10 + BODY vs 15 — success = survive at 1 HP.
+# Step 4 — Stunned Runner Death Trap:
+#   Failed Stun save → unconscious (is_stunned = true). Cannot act, move,
+#   or jack out. All Black ICE auto-hit every turn until flatline.
+func apply_damage(attack_strength: int, attacker_name: String, is_anti_personnel: bool = false, prog: NetProgram = null) -> int:
+	# Step 1: Interface Defense Roll.
+	var damage: int = 0
+	var attack_roll := randi_range(1, 10) + attack_strength
+	var has_shield: bool = raised_shield != null
+	var has_armor: bool = active_armor != null
 
-	var damage: int = attack_strength
-	if raised_shield != null:
+	# CP2020 Death Trap: a stunned (unconscious) runner cannot defend —
+	# all attacks auto-hit, ignoring any loaded protection programs.
+	if is_stunned:
+		message_logged.emit("STUNNED — %s auto-hits (no defense)!" % attacker_name)
+		damage = _roll_payload(prog, attack_strength)
+		# Skip straight to payload application (Step 2 onward).
+		current_health -= damage
+		message_logged.emit("%s hits for %d damage (Health %d/%d)." % [attacker_name, damage, current_health, max_health])
+		health_changed.emit(current_health, max_health)
+		if current_health <= 0:
+			current_health = 0
+			if _roll_death_save():
+				current_health = 1
+				message_logged.emit("DEATH SAVE SUCCEEDED — clinging to life at 1 HP!")
+				health_changed.emit(current_health, max_health)
+			else:
+				message_logged.emit("DEATH SAVE FAILED — FLATLINED. Netrunner jacked out.")
+				flatlined.emit()
+				return damage
+		if is_anti_personnel and damage > 0:
+			_apply_anti_personnel_effects(attacker_name)
+		return damage
+
+	if not has_shield and not has_armor:
+		# No protection program loaded → auto-hit. Full payload applies.
+		message_logged.emit("No protection program — %s auto-hits!" % attacker_name)
+		damage = _roll_payload(prog, attack_strength)
+	elif has_shield:
+		# Shield is resolved first (one-shot, consumed regardless of outcome).
 		var shield_roll := randi_range(1, 10) + raised_shield.strength
-		var attack_roll := randi_range(1, 10) + attack_strength
-		message_logged.emit("Shield opposes: %d vs ICE %d." % [shield_roll, attack_roll])
-		# CP2020: ties go to the ATTACKER — shield blocks only on a strict win.
-		if shield_roll > attack_roll:
-			message_logged.emit("Shield thwarts the attack. No damage taken.")
+		message_logged.emit("Shield opposes: %d vs %s %d." % [shield_roll, attacker_name, attack_roll])
+		if shield_roll >= attack_roll:
+			# Ties → defender. Shield blocks the attack entirely.
+			message_logged.emit("Shield thwarts the attack (tie goes to defender). No damage taken.")
 			damage = 0
-		elif shield_roll == attack_roll:
-			message_logged.emit("Shield ties the attack — attacker wins, full damage applies.")
 		else:
 			message_logged.emit("Shield breached! Full damage applies.")
+			damage = _roll_payload(prog, attack_strength)
+		# Shield is one-shot — consumed on use.
 		raised_shield = null
 		shield_consumed.emit()
+		# If shield failed and Armor is active, Armor gets a second chance.
+		if damage > 0 and has_armor:
+			damage = _try_armor(attack_roll, damage, attacker_name, prog, attack_strength)
+	elif has_armor:
+		# No shield, but Armor is active — Armor gets the defense roll.
+		damage = _try_armor(attack_roll, 0, attacker_name, prog, attack_strength)
 
+	# Step 2: Apply payload to HP.
 	if damage > 0:
 		current_health -= damage
 		message_logged.emit("%s hits for %d damage (Health %d/%d)." % [attacker_name, damage, current_health, max_health])
 		health_changed.emit(current_health, max_health)
 
+	# Step 3: Mortal/Death save (if HP ≤ 0).
 	if current_health <= 0:
 		current_health = 0
-		message_logged.emit("FLATLINED. Netrunner jacked out.")
-		flatlined.emit()
-		return damage
+		if _roll_death_save():
+			current_health = 1
+			message_logged.emit("DEATH SAVE SUCCEEDED — clinging to life at 1 HP!" )
+			health_changed.emit(current_health, max_health)
+		else:
+			message_logged.emit("DEATH SAVE FAILED — FLATLINED. Netrunner jacked out.")
+			flatlined.emit()
+			return damage
 
-	# --- Anti-personnel neural shock (INT loss + Mortal/Stun save) --------
+	# Step 3b: Anti-personnel after-effects (INT loss + Stun save).
 	if is_anti_personnel and damage > 0:
 		_apply_anti_personnel_effects(attacker_name)
 
 	return damage
 
-# Applies the CP2020 anti-personnel after-effects: INT-stat loss and a
-# meat-space Mortal/Stun save. Called only from apply_damage when
+# Roll the payload damage for a successful hit. Uses the attacking program's
+# _roll_damage() (per-program dice), or falls back to flat attack_strength
+# for NPC/datafort direct attacks (prog == null).
+func _roll_payload(prog: NetProgram, fallback: int) -> int:
+	if prog != null:
+		return prog._roll_damage()
+	return fallback
+
+# Armor opposed roll (same mechanic as Shield). Returns the damage that
+# still gets through (0 if Armor blocks). Armor is one-shot (consumed on use).
+# `incoming_damage` is the payload already rolled; if Armor wins the opposed
+# roll, damage is 0; if Armor loses, `incoming_damage` applies (or is rolled
+# if not yet rolled).
+func _try_armor(attack_roll: int, incoming_damage: int, attacker_name: String, prog: NetProgram, attack_strength: int) -> int:
+	var armor_roll := randi_range(1, 10) + active_armor.strength
+	message_logged.emit("Armor opposes: %d vs %s %d." % [armor_roll, attacker_name, attack_roll])
+	var damage: int = 0
+	if armor_roll >= attack_roll:
+		# Ties → defender. Armor blocks the attack entirely.
+		message_logged.emit("Armor blocks the attack (tie goes to defender). No damage taken.")
+	else:
+		message_logged.emit("Armor breached! Full damage applies.")
+		# If the payload was already rolled (Shield failed first), use it;
+		# otherwise roll it now.
+		damage = incoming_damage if incoming_damage > 0 else _roll_payload(prog, attack_strength)
+	# Armor is one-shot — consumed on use.
+	active_armor = null
+	armor_consumed.emit()
+	return damage
+
+# Wound state based on cumulative damage (CP2020 meat-space wound tracks).
+# Returns a dictionary with the wound label and Stun save penalty.
+func _wound_state() -> Dictionary:
+	var cumulative: int = max_health - current_health
+	if cumulative <= 0:
+		return {"label": "Healthy", "penalty": 0}
+	elif cumulative <= 4:
+		return {"label": "Light", "penalty": 0}
+	elif cumulative <= 8:
+		return {"label": "Serious", "penalty": 2}
+	elif cumulative <= 12:
+		return {"label": "Critical", "penalty": 4}
+	else:
+		return {"label": "Mortal", "penalty": 6}
+
+# CP2020 Stun/Shock save: roll 1D10 UNDER (BOD - wound penalty). If the
+# adjusted BOD is 0 or less, auto-fail. Returns true if the save succeeds
+# (runner stays conscious), false if stunned.
+func _roll_stun_save() -> bool:
+	var wound := _wound_state()
+	var adjusted_bod: int = body - int(wound["penalty"])
+	if adjusted_bod <= 0:
+		message_logged.emit("Stun save: BOD %d - %s wound penalty %d = %d → AUTO-FAIL." % [body, wound["label"], wound["penalty"], adjusted_bod])
+		return false
+	var roll: int = randi_range(1, 10)
+	var success := roll < adjusted_bod
+	message_logged.emit("Stun save: rolled %d vs BOD %d (-%d %s) = need under %d → %s." % [roll, body, wound["penalty"], wound["label"], adjusted_bod, "SUCCESS" if success else "FAIL"])
+	return success
+
+# CP2020 Death Save: when HP reaches 0, roll 1D10 + BODY vs 15. Success =
+# stabilize at 1 HP; failure = flatline.
+func _roll_death_save() -> bool:
+	var roll: int = randi_range(1, 10) + body
+	var target: int = 15
+	var success := roll >= target
+	message_logged.emit("Death Save: 1D10+BODY = %d vs target %d → %s." % [roll, target, "SUCCESS" if success else "FAIL"])
+	return success
+
+# Applies the CP2020 anti-personnel after-effects (Step 3b–4): INT-stat loss
+# and a meat-space Stun save. Called only from apply_damage when
 # is_anti_personnel is true and the hit reached HP. Assumes the runner is
-# still alive (current_health > 0) — flatline is handled by the caller.
+# still alive (current_health > 0) — flatline/Death Save is handled by the
+# caller.
 func _apply_anti_personnel_effects(attacker_name: String) -> void:
 	# 1. INT-stat loss: 1 INT per anti-personnel hit, cumulative, floor at 0.
 	if intelligence - intelligence_lost > 0:
 		intelligence_lost += 1
 		var cur_int: int = intelligence - intelligence_lost
-		message_logged.emit("%s's neural shock \u2014 INT reduced by 1 (now %d)." % [attacker_name, cur_int])
+		message_logged.emit("%s's neural shock — INT reduced by 1 (now %d)." % [attacker_name, cur_int])
 		int_changed.emit(cur_int, intelligence)
 	else:
-		message_logged.emit("%s's neural shock \u2014 INT already drained to 0." % attacker_name)
+		message_logged.emit("%s's neural shock — INT already drained to 0." % attacker_name)
 
-	# 2. Mortal/Stun save: 1D10 + BODY vs a target scaled to cumulative damage.
-	var cumulative: int = max_health - current_health
-	var save_target: int
-	if cumulative <= 3:
-		save_target = 8
-	elif cumulative <= 7:
-		save_target = 12
+	# 2. Stun/Shock save: roll 1D10 UNDER BOD minus wound penalty.
+	if not _roll_stun_save():
+		is_stunned = true
+		message_logged.emit("STUNNED by neural shock! Death Trap — cannot act, move, or jack out. Black ICE auto-hits every turn!")
+		stunned.emit()
 	else:
-		save_target = 15
-	var save_roll: int = randi_range(1, 10) + body
-	message_logged.emit("Mortal/Stun save: 1D10+BODY = %d vs target %d (cumulative damage %d)." % [save_roll, save_target, cumulative])
-	if save_roll >= save_target:
-		message_logged.emit("Mortal save succeeded \u2014 fighting through the shock.")
-	else:
-		message_logged.emit("STUNNED by neural shock! Actions impaired.")
-		stunned.emit(1)
+		message_logged.emit("Fighting through the shock — remaining conscious.")
+
+# Returns true if the runner can act (not stunned, not flatlined).
+func can_act() -> bool:
+	return not is_stunned and current_health > 0
 
 func raise_shield(program: NetProgram) -> void:
 	raised_shield = program

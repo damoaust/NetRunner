@@ -5,11 +5,8 @@
 [ext_resource type="Script" path="res://scripts/resources/CP2020TileData.gd" id="2_kfgo1"]
 [ext_resource type="Script" path="res://scripts/resources/CP2020DatafortLayout.gd" id="3_a4hh2"]
 [ext_resource type="Resource" path="res://data/killer2.tres" id="4_a4hh2"]
-
-[sub_resource type="Resource" id="Resource_a4hh2"]
-script = ExtResource("2_kfgo1")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
+[ext_resource type="Resource" path="res://data/hellhound.tres" id="5_hh"]
+[ext_resource type="Resource" path="res://data/flatline.tres" id="6_fl"]
 
 [sub_resource type="Resource" id="Resource_51p43"]
 script = ExtResource("2_kfgo1")
@@ -179,17 +176,6 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_3wwhr"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_wf6v6"]
-script = ExtResource("2_kfgo1")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_jqqsk"]
-script = ExtResource("2_kfgo1")
-tile_type = 3
-tile_name = "Entry"
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_q6s7y"]
@@ -546,6 +532,7 @@ copied_file_paths = PackedStringArray()
 script = ExtResource("2_kfgo1")
 tile_type = 7
 tile_name = "Black ICE"
+ice_program = ExtResource("5_hh")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_o3jd4"]
@@ -589,6 +576,7 @@ copied_file_paths = PackedStringArray()
 script = ExtResource("2_kfgo1")
 tile_type = 7
 tile_name = "Black ICE"
+ice_program = ExtResource("6_fl")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_r3he1"]
@@ -896,6 +884,11 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_bmh2s"]
+script = ExtResource("2_kfgo1")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_lju83"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
@@ -927,6 +920,11 @@ tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_v7wfu"]
+script = ExtResource("2_kfgo1")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5cs7o"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
@@ -1072,6 +1070,23 @@ tile_type = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_qspx1"]
+script = ExtResource("2_kfgo1")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5jiqg"]
+script = ExtResource("2_kfgo1")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_kfgo1"]
+script = ExtResource("2_kfgo1")
+tile_type = 4
+tile_name = "Code Gate"
+strength_str = 4
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_orpy2"]
 script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
@@ -1236,9 +1251,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_0gygj"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_8g40a"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1feaa"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_e8k2t"]
@@ -1401,9 +1430,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_vix3m"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_l2wb3"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_s8j4i"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_gjmyo"]
@@ -1566,9 +1609,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_y5628"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_tibqc"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_erq2n"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_3nps7"]
@@ -1706,6 +1763,11 @@ script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_rpbj8"]
+script = ExtResource("2_kfgo1")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_572yj"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
@@ -1726,9 +1788,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_gvny2"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_86208"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_28vdb"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_evwe8"]
@@ -1891,9 +1967,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_e683p"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_r1wqo"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rnaec"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_iswbt"]
@@ -2056,6 +2146,28 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_dxfvo"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2f5d8"]
+script = ExtResource("2_kfgo1")
+tile_type = 9
+tile_name = "Netrunner"
+npc_name = "Dick Killer"
+npc_has_override = true
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_he8av"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_m2qn5"]
 script = ExtResource("2_kfgo1")
 tile_type = 2
@@ -2216,9 +2328,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_yl0ka"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_fxsv2"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_yf1s5"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_elogl"]
@@ -2381,9 +2507,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_oru7x"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_yolll"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2w5qi"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_p6ji6"]
@@ -2397,6 +2537,11 @@ tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_0m54w"]
+script = ExtResource("2_kfgo1")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_7xr8k"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
@@ -2541,9 +2686,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_axq1v"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_ialkp"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3gpkv"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_3yuse"]
@@ -2706,9 +2865,23 @@ script = ExtResource("2_kfgo1")
 tile_type = 2
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_s3guh"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_85uyj"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_npdmc"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_v4ygd"]
@@ -3038,6 +3211,11 @@ script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_u5172"]
+script = ExtResource("2_kfgo1")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_odyjb"]
 script = ExtResource("2_kfgo1")
 tile_type = 5
@@ -3212,6 +3390,25 @@ script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_swuhb"]
+script = ExtResource("2_kfgo1")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_01258"]
+script = ExtResource("2_kfgo1")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_b8yev"]
+script = ExtResource("2_kfgo1")
+tile_type = 6
+tile_name = "CPU"
+loot_programs = Array[ExtResource("1_gbddp")]([ExtResource("4_a4hh2")])
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_efy6w"]
 script = ExtResource("2_kfgo1")
 tile_type = 9
@@ -3224,6 +3421,12 @@ npc_max_health = 3
 npc_max_mu = 3
 npc_disposition = 0
 npc_has_override = true
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jjwah"]
+script = ExtResource("2_kfgo1")
+tile_type = 6
+tile_name = "CPU"
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_fb8l6"]
@@ -4241,222 +4444,21 @@ script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_kfgo1"]
-script = ExtResource("2_kfgo1")
-tile_type = 4
-tile_name = "Code Gate"
-strength_str = 4
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_5jiqg"]
-script = ExtResource("2_kfgo1")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_orpy2"]
-script = ExtResource("2_kfgo1")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_0gygj"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_vix3m"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_y5628"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_gvny2"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_e683p"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_dxfvo"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_yl0ka"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_oru7x"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_axq1v"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_s3guh"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_npdmc"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_3gpkv"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_2w5qi"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_yf1s5"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_he8av"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_rnaec"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_28vdb"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_erq2n"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_s8j4i"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_1feaa"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_bmh2s"]
+[sub_resource type="Resource" id="Resource_a4hh2"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_5cs7o"]
+[sub_resource type="Resource" id="Resource_wf6v6"]
+script = ExtResource("2_kfgo1")
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jqqsk"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_2f5d8"]
-script = ExtResource("2_kfgo1")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program_name = "Dick Killer"
-ice_strength = 1
-ice_max_ap = 5
-ice_max_integrity = 1
-ice_has_override = true
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_7xr8k"]
-script = ExtResource("2_kfgo1")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_rpbj8"]
-script = ExtResource("2_kfgo1")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_swuhb"]
-script = ExtResource("2_kfgo1")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_u5172"]
-script = ExtResource("2_kfgo1")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_jjwah"]
-script = ExtResource("2_kfgo1")
-tile_type = 6
-tile_name = "CPU"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_b8yev"]
-script = ExtResource("2_kfgo1")
-tile_type = 6
-tile_name = "CPU"
-loot_programs = Array[ExtResource("1_gbddp")]([ExtResource("4_a4hh2")])
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_01258"]
-script = ExtResource("2_kfgo1")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_38uvf"]
@@ -4476,7 +4478,7 @@ rows = 35
 columns = 25
 resident_programs = Array[ExtResource("1_gbddp")]([SubResource("Resource_38uvf")])
 grid_tiles = {
-Vector2i(0, 0): SubResource("Resource_a4hh2"),
+Vector2i(0, 0): SubResource("Resource_wf6v6"),
 Vector2i(0, 1): SubResource("Resource_51p43"),
 Vector2i(0, 2): SubResource("Resource_djh2h"),
 Vector2i(0, 3): SubResource("Resource_i7qii"),
@@ -4511,8 +4513,8 @@ Vector2i(0, 31): SubResource("Resource_4h0hs"),
 Vector2i(0, 32): SubResource("Resource_3wia7"),
 Vector2i(0, 33): SubResource("Resource_jfg5o"),
 Vector2i(0, 34): SubResource("Resource_3wwhr"),
-Vector2i(1, 0): SubResource("Resource_wf6v6"),
-Vector2i(1, 1): SubResource("Resource_jqqsk"),
+Vector2i(1, 0): SubResource("Resource_jqqsk"),
+Vector2i(1, 1): SubResource("Resource_a4hh2"),
 Vector2i(1, 2): SubResource("Resource_q6s7y"),
 Vector2i(1, 3): SubResource("Resource_uo3r8"),
 Vector2i(1, 4): SubResource("Resource_ytvko"),

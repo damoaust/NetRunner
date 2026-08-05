@@ -17,21 +17,17 @@ extends Resource
 @export var target_subnet_path: String = "" # Resource path (.tres) to the linked remote subnet/datafort
 @export var target_entry_coord: Vector2i = Vector2i(-1, -1) # Arrival coordinate in the remote subnet
 
-# --- Per-tile ICE overrides (BLACK_ICE tiles). Zero/empty = use the hub
-# security-tier template from cp2020_game_session. Non-zero values here take
-# precedence and let designers hand-tune individual ICE. ---
-# Optional assigned program .tres. When set, the program supplies the ICE's
-# program_name / strength / effect_type (driving take_turn behavior via
-# BlackIce.effect_type). The scalar ice_max_ap / ice_max_integrity / ice_traces
-# fields still apply (NetProgram has no equivalents). The program is
-# duplicate()d at spawn time so the cached .tres is never mutated.
+# --- Per-tile ICE config (BLACK_ICE tiles). A program .tres is REQUIRED —
+# every BLACK_ICE tile must have an assigned ice_program. The program
+# supplies the ICE's program_name / strength / effect_type / damage_dice
+# (driving take_turn behavior via the program's script). max_integrity is
+# derived 1:1 from program.strength at spawn; movement is STR-based
+# (program.strength spaces per turn, per CP2020). The program is
+# duplicate()d at spawn time so the cached .tres is never mutated. Tracing
+# behavior is deferred to program-specific subclasses (Hellhound/Flatline).
+# There are no tier templates — tiles without an assigned program are
+# skipped at spawn with a warning. ---
 @export var ice_program: NetProgram = null
-@export var ice_program_name: String = ""
-@export var ice_strength: int = 0
-@export var ice_max_ap: int = 0
-@export var ice_max_integrity: int = 0
-@export var ice_traces: bool = false
-@export var ice_has_override: bool = false
 
 # --- Per-tile NPC overrides (NETWATCH / NETRUNNER tiles). Zero/empty = use the
 # tier NPC template from cp2020_game_session.TIER_NPC_TEMPLATES. Non-zero
