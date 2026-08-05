@@ -95,23 +95,23 @@ graph TD
     InteractionHandler["InteractionHandler (cp2020_interaction_handler.gd)"]
     TurnManager["TurnManager (cp2020_turn_manager.gd)"]
 
-    Workbench -->|sets RunState.selected_deck| RunState
+    Workbench -->|"sets RunState.selected_deck"| RunState
     Workbench -->|change_scene| WorldMap
-    WorldMap -->|ENTER city: sets selected_city_grid_path + change_scene| CityGrid
-    CityGrid -->|DIVE datafort: sets selected_subnet_path + selected_security_tier + change_scene| GameSession
-    CityGrid -->|Return to World Map: reset trace + clear city-grid context| WorldMap
-    GameSession -->|draw_grid(canvas, layout)| BoardRenderer
+    WorldMap -->|"ENTER city: sets selected_city_grid_path + change_scene"| CityGrid
+    CityGrid -->|"DIVE datafort: sets selected_subnet_path + selected_security_tier + change_scene"| GameSession
+    CityGrid -->|"Return to World Map: reset trace + clear city-grid context"| WorldMap
+    GameSession -->|"draw_grid(canvas, layout)"| BoardRenderer
     GameSession -->|recalculate_fog_of_war| BoardRenderer
     Netrunner -->|position_changed| GameSession
     Netrunner -->|interacted_with_tile| GameSession
-    InteractionHandler -->|action_triggered(name, coord, prog)| GameSession
-    GameSession -->|execute_decryption / shield / ice_attack| Netrunner
+    InteractionHandler -->|"action_triggered(name, coord, prog)"| GameSession
+    GameSession -->|"execute_decryption / shield / ice_attack"| Netrunner
     TurnManager -->|turn_ended| GameSession
-    BlackIce -->|attacked_netrunner(damage)| GameSession
-    GameSession -->|travel_ldl: load_subnet (preserve trace)| GameSession
-    GameSession -->|return_world_map: change_scene to City Grid (preserve trace)| CityGrid
-    GameSession -->|jack_out / flatline: reset trace + clear context + change_scene| WorldMap
-    BlackIce -->|flatline -> change_scene| Workbench
+    BlackIce -->|"attacked_netrunner(damage)"| GameSession
+    GameSession -->|"travel_ldl: load_subnet (preserve trace)"| GameSession
+    GameSession -->|"return_world_map: change_scene to City Grid (preserve trace)"| CityGrid
+    GameSession -->|"jack_out / flatline: reset trace + clear context + change_scene"| WorldMap
+    BlackIce -->|"flatline -> change_scene"| Workbench
 ```
 
 ### Scene Flow (3-Level Map Model)
