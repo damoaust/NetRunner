@@ -8,13 +8,31 @@ extends Control
 # LDL cost, security code and trace value.
 
 const CELL: int = 40
+const GRID_OFFSET_X: int = 20
 const GRID_OFFSET_Y: int = 90
+const W: int = 1280
+const H: int = 720
 
 enum Tool { DATAFORT, LDL_ENTRY, ERASER }
+
+# Cyberpunk/neon palette (matches the world map designer).
+const COLOR_BG: Color = Color(0.02, 0.03, 0.06, 1.0)
+const COLOR_GRID: Color = Color(0.0, 0.78, 0.92, 0.22)
+const COLOR_GRID_BRIGHT: Color = Color(0.0, 0.9, 1.0, 0.55)
+const COLOR_RUNNER: Color = Color(0.0, 1.0, 1.0, 1.0)
+const COLOR_SCANLINE: Color = Color(0.0, 0.0, 0.0, 0.12)
+const COLOR_TEXT_LABEL: Color = Color(0.7, 0.9, 1.0, 0.9)
+const COLOR_TEXT_HEADER: Color = Color(0.85, 0.95, 1.0, 0.95)
+const COLOR_UI_BG: Color = Color(0.03, 0.05, 0.08, 0.92)
+const COLOR_UI_BORDER: Color = Color(0.0, 0.85, 1.0, 0.85)
+const COLOR_UI_TEXT: Color = Color(0.75, 0.95, 1.0, 1.0)
+const COLOR_UI_HOVER: Color = Color(1.0, 1.0, 0.35, 1.0)
 
 var current_tool: Tool = Tool.DATAFORT
 var selected_datafort: CP2020CityGridDatafort = null
 var current_layout: CP2020CityGridLayout = null
+var _pulse_time: float = 0.0
+var _webdings_font: Font = null
 
 @onready var city_name_edit: LineEdit = get_node_or_null("TopPanel/SettingsRow/CityNameEdit")
 @onready var columns_spinbox: SpinBox = $TopPanel/SettingsRow/ColumnsSpinBox
@@ -23,6 +41,7 @@ var current_layout: CP2020CityGridLayout = null
 @onready var datafort_button: Button = $TopPanel/ToolRow/DatafortButton
 @onready var ldl_entry_button: Button = $TopPanel/ToolRow/LdlEntryButton
 @onready var eraser_button: Button = $TopPanel/ToolRow/EraserButton
+@onready var top_panel: VBoxContainer = $TopPanel
 @onready var save_button: Button = $TopPanel/ToolRow/SaveButton
 @onready var load_button: Button = $TopPanel/ToolRow/LoadButton
 
@@ -42,6 +61,7 @@ var current_layout: CP2020CityGridLayout = null
 
 
 func _ready() -> void:
+	_webdings_font = _create_webdings_font()
 	if current_layout == null:
 		current_layout = CP2020CityGridLayout.new()
 		current_layout.grid_cols = 20
@@ -52,7 +72,102 @@ func _ready() -> void:
 	_refresh_side_panel()
 	if city_name_edit and current_layout:
 		city_name_edit.text = current_layout.city_name
+	_apply_cyberpunk_ui_theme()
 	queue_redraw()
+
+
+func _create_webdings_font() -> Font:
+	var paths := ["res://data/webdings.ttf", "C:/Windows/Fonts/webdings.ttf"]
+	for ttf_path in paths:
+		if FileAccess.file_exists(ttf_path):
+			var ff := FontFile.new()
+			var err := ff.load_dynamic_font(ttf_path)
+			if err == OK:
+				return ff
+			push_warning("Failed to load Webdings from %s (error %d)" % [ttf_path, err])
+	push_warning("Webdings font not found; datafort markers will not render correctly.")
+	return null
+
+
+func _process(_delta: float) -> void:
+	_pulse_time += _delta
+	queue_redraw()
+
+
+func _apply_cyberpunk_ui_theme() -> void:
+	# Style every relevant Control under TopPanel and SidePanel.
+	var controls: Array[Control] = []
+	if top_panel:
+		for child in top_panel.get_children():
+			if child is Control:
+				controls.append(child)
+				for sub in child.get_children():
+					if sub is Control:
+						controls.append(sub)
+	if side_panel:
+		for child in side_panel.get_children():
+			if child is Control:
+				controls.append(child)
+
+	for ctrl in controls:
+		ctrl.add_theme_color_override("font_color", COLOR_UI_TEXT)
+		ctrl.add_theme_constant_override("outline_size", 3)
+		ctrl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+		if ctrl is Button:
+			ctrl.add_theme_color_override("font_color", COLOR_UI_TEXT)
+			ctrl.add_theme_color_override("font_hover_color", COLOR_UI_HOVER)
+			ctrl.add_theme_color_override("font_pressed_color", COLOR_UI_HOVER)
+			ctrl.add_theme_color_override("font_focus_color", COLOR_UI_HOVER)
+			ctrl.add_theme_color_override("font_disabled_color", Color(0.4, 0.4, 0.4, 0.6))
+			var btn_style := _make_panel_style(COLOR_UI_BG, COLOR_UI_BORDER)
+			var btn_hover := _make_panel_style(Color(COLOR_UI_BG.r + 0.05, COLOR_UI_BG.g + 0.05, COLOR_UI_BG.b + 0.05, 0.95), COLOR_UI_HOVER)
+			var btn_pressed := _make_panel_style(Color(COLOR_UI_BG.r * 0.8, COLOR_UI_BG.g * 0.8, COLOR_UI_BG.b * 0.8, 0.95), COLOR_UI_BORDER)
+			ctrl.add_theme_stylebox_override("normal", btn_style)
+			ctrl.add_theme_stylebox_override("hover", btn_hover)
+			ctrl.add_theme_stylebox_override("pressed", btn_pressed)
+			ctrl.add_theme_stylebox_override("focus", btn_hover)
+			ctrl.add_theme_stylebox_override("disabled", btn_style)
+		elif ctrl is LineEdit or ctrl is SpinBox:
+			ctrl.add_theme_color_override("font_color", COLOR_UI_TEXT)
+			ctrl.add_theme_color_override("font_placeholder_color", Color(0.5, 0.7, 0.75, 0.7))
+			var edit_style := _make_panel_style(Color(0.02, 0.04, 0.06, 0.95), COLOR_UI_BORDER)
+			ctrl.add_theme_stylebox_override("normal", edit_style)
+			ctrl.add_theme_stylebox_override("focus", _make_panel_style(Color(0.02, 0.04, 0.06, 0.95), COLOR_UI_HOVER))
+		elif ctrl is OptionButton:
+			ctrl.add_theme_color_override("font_color", COLOR_UI_TEXT)
+			ctrl.add_theme_color_override("font_hover_color", COLOR_UI_HOVER)
+			var opt_style := _make_panel_style(Color(0.02, 0.04, 0.06, 0.95), COLOR_UI_BORDER)
+			var opt_hover := _make_panel_style(Color(0.05, 0.08, 0.12, 0.95), COLOR_UI_HOVER)
+			ctrl.add_theme_stylebox_override("normal", opt_style)
+			ctrl.add_theme_stylebox_override("hover", opt_hover)
+			ctrl.add_theme_stylebox_override("pressed", opt_hover)
+			ctrl.add_theme_stylebox_override("focus", opt_hover)
+
+	# Panel containers themselves get a dark glass background with a cyan border.
+	if top_panel:
+		top_panel.add_theme_stylebox_override("panel", _make_panel_style(COLOR_UI_BG, COLOR_UI_BORDER))
+	if side_panel:
+		side_panel.visible = selected_datafort != null
+		side_panel.add_theme_stylebox_override("panel", _make_panel_style(COLOR_UI_BG, COLOR_UI_BORDER))
+
+
+func _make_panel_style(bg: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg
+	style.border_color = border
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left = 8
+	style.content_margin_top = 6
+	style.content_margin_right = 8
+	style.content_margin_bottom = 6
+	return style
 
 
 func _setup_file_dialogs_if_missing() -> void:
@@ -317,7 +432,7 @@ func _apply_tool(coord: Vector2i) -> void:
 
 
 func _screen_to_grid(screen_pos: Vector2) -> Vector2i:
-	var x := int(screen_pos.x / CELL)
+	var x := int((screen_pos.x - GRID_OFFSET_X) / CELL)
 	var y := int((screen_pos.y - GRID_OFFSET_Y) / CELL)
 	return Vector2i(clampi(x, 0, current_layout.grid_cols - 1), clampi(y, 0, current_layout.grid_rows - 1))
 
@@ -331,39 +446,162 @@ func _draw() -> void:
 		return
 	var total_w := current_layout.grid_cols * CELL
 	var total_h := current_layout.grid_rows * CELL
-	var bg := Color(0.04, 0.08, 0.16, 1.0)
-	var grid_line := Color(0.4, 0.4, 0.4, 1.0)
-
-	draw_rect(Rect2(0, GRID_OFFSET_Y, total_w, total_h), bg, true)
-
-	# Grid lines.
-	for x in range(current_layout.grid_cols + 1):
-		draw_line(Vector2(x * CELL, GRID_OFFSET_Y), Vector2(x * CELL, GRID_OFFSET_Y + total_h), grid_line, 1.0)
-	for y in range(current_layout.grid_rows + 1):
-		draw_line(Vector2(0, GRID_OFFSET_Y + y * CELL), Vector2(total_w, GRID_OFFSET_Y + y * CELL), grid_line, 1.0)
-
 	var font := _theme_font()
+	var wfont := _webdings_font if _webdings_font != null else font
+	var pulse := _pulse_value()
 
-	# LDL entry marker.
+	_draw_designer_background(total_w, total_h)
+	_draw_designer_scanlines()
+	_draw_designer_grid(total_w, total_h, pulse)
+	_draw_designer_ldl_entry(font, pulse)
+	_draw_designer_dataforts(wfont, font, pulse)
+	_draw_designer_header(font, wfont, pulse)
+
+
+func _pulse_value() -> float:
+	return 0.5 + 0.5 * sin(_pulse_time * 3.0)
+
+
+func _draw_designer_background(total_w: int, total_h: int) -> void:
+	var canvas_size := get_viewport_rect().size
+	draw_rect(Rect2(Vector2.ZERO, canvas_size), COLOR_BG, true)
+
+	var vignette := Color(0.0, 0.0, 0.0, 0.3)
+	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y, total_w, 100), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y + total_h - 100, total_w, 100), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y, 100, total_h), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X + total_w - 100, GRID_OFFSET_Y, 100, total_h), vignette, true)
+
+
+func _draw_designer_scanlines() -> void:
+	var canvas_size := get_viewport_rect().size
+	var y: float = 0.0
+	while y < canvas_size.y:
+		draw_line(Vector2(0, y), Vector2(canvas_size.x, y), COLOR_SCANLINE, 1.0)
+		y += 4.0
+
+
+func _draw_designer_grid(total_w: int, total_h: int, pulse: float) -> void:
+	var bright_alpha := COLOR_GRID_BRIGHT.a * (0.5 + 0.5 * pulse)
+	var origin := Vector2(GRID_OFFSET_X, GRID_OFFSET_Y)
+	for x in range(current_layout.grid_cols + 1):
+		var line_color := COLOR_GRID
+		if x % 5 == 0:
+			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
+		draw_line(origin + Vector2(x * CELL, 0), origin + Vector2(x * CELL, total_h), line_color, 1.0 if x % 5 != 0 else 1.5)
+	for y in range(current_layout.grid_rows + 1):
+		var line_color := COLOR_GRID
+		if y % 5 == 0:
+			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
+		draw_line(origin + Vector2(0, y * CELL), origin + Vector2(total_w, y * CELL), line_color, 1.0 if y % 5 != 0 else 1.5)
+	_draw_designer_tech_frame(origin, Vector2(total_w, total_h), COLOR_GRID_BRIGHT, 2.0)
+
+
+func _draw_designer_ldl_entry(font: Font, pulse: float) -> void:
 	var entry := current_layout.ldl_entry
-	var ecenter := Vector2(entry.x * CELL + CELL / 2.0, GRID_OFFSET_Y + entry.y * CELL + CELL / 2.0)
-	draw_arc(ecenter, CELL * 0.42, 0, TAU, 24, Color(0.2, 0.9, 1.0, 1.0), 2.0)
-	draw_string(font, Vector2(ecenter.x - 10, ecenter.y + 4), "LDL", HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(0.2, 0.9, 1.0, 1.0))
+	var center := Vector2(GRID_OFFSET_X + entry.x * CELL + CELL / 2.0, GRID_OFFSET_Y + entry.y * CELL + CELL / 2.0)
+	var ring_alpha := 0.6 + 0.4 * pulse
+	draw_arc(center, CELL * 0.42, _pulse_time * 2.0, _pulse_time * 2.0 + TAU * 0.85, 24, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, ring_alpha), 2.0)
+	var label := "LDL"
+	var label_size := 10
+	var label_dims := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, label_size)
+	var label_pos := center - label_dims * 0.5 + Vector2(0, label_size * 0.35)
+	draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_CENTER, -1, label_size, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, 0.9))
 
-	# Datafort chips.
+
+func _draw_designer_dataforts(wfont: Font, label_font: Font, pulse: float) -> void:
+	const BUILDING_CHAR := "\u0043"  # Webdings building glyph at code point 0x43.
+	const BUILDING_SIZE := 28
 	for df in current_layout.dataforts:
-		var tier: int = int(df.security_tier)
-		var tier_color: Color = CP2020SecurityTier.COLORS.get(tier, Color(0.0, 1.0, 0.9, 1.0))
-		var outline := tier_color
+		var tier: int = clampi(int(df.security_tier), 0, CP2020SecurityTier.Tier.size() - 1)
+		var tier_color: Color = CP2020SecurityTier.COLORS[tier]
+		var center := Vector2(GRID_OFFSET_X + df.pos.x * CELL + CELL / 2.0, GRID_OFFSET_Y + df.pos.y * CELL + CELL / 2.0)
+
+		# Selection highlight overrides tier color.
+		var df_color := tier_color
 		if df == selected_datafort:
-			outline = Color(1.0, 1.0, 0.0, 1.0)
-		var rect := Rect2(df.pos.x * CELL, GRID_OFFSET_Y + df.pos.y * CELL, CELL, CELL)
-		draw_rect(rect, Color(tier_color.r, tier_color.g, tier_color.b, 0.35), true)
-		draw_rect(rect, outline, false, 2.0)
-		var glyph := String(CP2020SecurityTier.GLYPHS.get(tier, "?"))
-		draw_string(font, Vector2(df.pos.x * CELL + 12, GRID_OFFSET_Y + df.pos.y * CELL + 26), glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, outline)
-		var label_pos := Vector2(df.pos.x * CELL + 4, GRID_OFFSET_Y + df.pos.y * CELL + CELL + 2)
-		draw_string(font, label_pos, df.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, outline)
+			df_color = Color(1.0, 1.0, 0.0, 1.0)
+
+		# Neon glow.
+		for i in range(3):
+			var glow_radius := CELL * (0.55 + i * 0.18)
+			var glow_alpha := (0.18 - i * 0.05) * (0.7 + 0.3 * pulse)
+			draw_arc(center, glow_radius, 0, TAU, 32, Color(df_color.r, df_color.g, df_color.b, glow_alpha), 3.0)
+
+		# Corner brackets.
+		_draw_designer_corner_brackets(center, CELL * 0.55, df_color, 2.0)
+
+		# Webdings building glyph (code point 0x43).
+		var glyph_dims := wfont.get_string_size(BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, BUILDING_SIZE)
+		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, BUILDING_SIZE * 0.35)
+		draw_string(wfont, glyph_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, BUILDING_SIZE, df_color)
+
+		# Datafort label.
+		var label_pos := Vector2(GRID_OFFSET_X + df.pos.x * CELL + 4, GRID_OFFSET_Y + df.pos.y * CELL + CELL + 4)
+		draw_string(label_font, label_pos, df.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COLOR_TEXT_LABEL)
+
+
+func _draw_designer_header(font: Font, wfont: Font, pulse: float) -> void:
+	const BUILDING_CHAR := "\u0043"  # Webdings building glyph at code point 0x43.
+	const LEGEND_ICON_SIZE := 12
+	var title := "CITY GRID DESIGNER // %s" % current_layout.city_name.to_upper()
+	var header_y := 48.0
+	var bracket_alpha := 0.7 + 0.3 * pulse
+	draw_string(font, Vector2(18, header_y), "[", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bracket_alpha))
+	draw_string(font, Vector2(30, header_y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, COLOR_TEXT_HEADER)
+	var title_width := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	draw_string(font, Vector2(34 + title_width, header_y), "]", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bracket_alpha))
+	var line_y := header_y + 8
+	var pulse_x := 30 + fmod(_pulse_time * 80.0, title_width + 20)
+	draw_line(Vector2(18, line_y), Vector2(36 + title_width, line_y), COLOR_GRID_BRIGHT, 1.0)
+	draw_circle(Vector2(30 + pulse_x, line_y), 3.0, COLOR_RUNNER)
+
+	# Tier legend (top-right, inside the header margin) — Webdings building icon + short label.
+	var legend_x := float(W - 18)
+	var legend_y := header_y - 6
+	for i in range(CP2020SecurityTier.Tier.size() - 1, -1, -1):
+		var tier_color: Color = CP2020SecurityTier.COLORS[i]
+		var short := String(CP2020SecurityTier.SHORT[i])
+		var tw := font.get_string_size(short, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var icon_w := wfont.get_string_size(BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, LEGEND_ICON_SIZE).x
+		legend_x -= icon_w + 4
+		var icon_pos := Vector2(legend_x, legend_y + 11)
+		draw_string(wfont, icon_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_ICON_SIZE, tier_color)
+		legend_x -= tw + 6
+		draw_string(font, Vector2(legend_x, legend_y + 11), short, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.85, 0.85, 0.9))
+
+
+func _draw_designer_corner_brackets(center: Vector2, half_size: float, color: Color, width: float) -> void:
+	var inset := half_size * 0.55
+	var tl := center + Vector2(-half_size, -half_size)
+	var top_r := center + Vector2(half_size, -half_size)
+	var bl := center + Vector2(-half_size, half_size)
+	var bottom_r := center + Vector2(half_size, half_size)
+	draw_line(tl, tl + Vector2(inset, 0), color, width)
+	draw_line(tl, tl + Vector2(0, inset), color, width)
+	draw_line(top_r, top_r + Vector2(-inset, 0), color, width)
+	draw_line(top_r, top_r + Vector2(0, inset), color, width)
+	draw_line(bl, bl + Vector2(inset, 0), color, width)
+	draw_line(bl, bl + Vector2(0, -inset), color, width)
+	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width)
+	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width)
+
+
+func _draw_designer_tech_frame(origin: Vector2, frame_size: Vector2, color: Color, width: float) -> void:
+	var tl := origin
+	var top_r := origin + Vector2(frame_size.x, 0)
+	var bl := origin + Vector2(0, frame_size.y)
+	var bottom_r := origin + frame_size
+	var inset := 18.0
+	draw_rect(Rect2(origin, frame_size), color, false, width)
+	draw_line(tl, tl + Vector2(inset, 0), color, width + 1.0)
+	draw_line(tl, tl + Vector2(0, inset), color, width + 1.0)
+	draw_line(top_r, top_r + Vector2(-inset, 0), color, width + 1.0)
+	draw_line(top_r, top_r + Vector2(0, inset), color, width + 1.0)
+	draw_line(bl, bl + Vector2(inset, 0), color, width + 1.0)
+	draw_line(bl, bl + Vector2(0, -inset), color, width + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width + 1.0)
 
 
 func _theme_font() -> Font:
