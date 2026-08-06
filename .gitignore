@@ -2,5 +2,6 @@
 .godot/
 /android/
 
-# Local system font copy (Webdings is a system font; do not commit).
+# Local system font copies (proprietary system fonts; do not commit).
 data/webdings.ttf
+data/seguiemj.ttf

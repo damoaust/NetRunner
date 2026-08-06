@@ -3,6 +3,8 @@ extends Node
 
 signal action_triggered(action_name: String, target_coord: Vector2i, program_resource: Variant)
 
+const POPUP_THEME := preload("res://scripts/resources/cp2020_popup_theme.gd")
+
 # Variable to hold our dynamically generated menu
 var _dynamic_menu: PopupMenu = null
 
@@ -41,7 +43,8 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	if not _dynamic_menu:
 		_dynamic_menu = PopupMenu.new()
 		add_child(_dynamic_menu) # Add it to the scene tree so it can be drawn
-	
+		POPUP_THEME.apply_cyberpunk_theme(_dynamic_menu, 16)
+
 	_dynamic_menu.clear()
 
 	# Calculate grid coordinates using the World coordinates (current_mouse_pos)
@@ -260,10 +263,10 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 						_dynamic_menu.set_item_disabled(item_idx, true)
 					else:
 						any_copyable = true
-				# "Copy All" — disabled when no copyable+fitting file remains.
-				_dynamic_menu.add_item("Copy All", 6999)
-				var copy_all_idx = _dynamic_menu.get_item_index(6999)
-				_dynamic_menu.set_item_disabled(copy_all_idx, not any_copyable)
+					# "Copy All" — disabled when no copyable+fitting file remains.
+					_dynamic_menu.add_item("Copy All", 6999)
+					var copy_all_idx = _dynamic_menu.get_item_index(6999)
+					_dynamic_menu.set_item_disabled(copy_all_idx, not any_copyable)
 				# Always open the menu here so the player sees the ✓ state /
 				# visual indicator even when every file is already copied.
 				options_added = true

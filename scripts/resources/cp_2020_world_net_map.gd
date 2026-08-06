@@ -13,10 +13,25 @@ extends Node2D
 signal sub_net_selected(subnet_resource_path: String, target_city: String)
 
 const DEFAULT_LAYOUT_PATH: String = "res://data/world_map_default.tres"
-const BACKDROP_PATH: String = "res://data/world_pacifica_map.png"
+const FRAME_PATH: String = "res://data/world_map_frame.png"
+const GRID_PATH: String = "res://data/world_map_grid.png"
 const CELL: int = 40
+const W: int = 1280
+const H: int = 720
+const SCREEN_OFFSET: Vector2 = Vector2(20, 60)
+const POPUP_THEME := preload("res://scripts/resources/cp2020_popup_theme.gd")
 
 const OPEN_OCEAN_NAME: String = "OPEN OCEAN"
+
+# Cyberpunk/neon palette.
+const COLOR_BG: Color = Color(0.02, 0.03, 0.06, 1.0)
+const COLOR_GRID: Color = Color(0.0, 0.78, 0.92, 0.22)
+const COLOR_GRID_BRIGHT: Color = Color(0.0, 0.9, 1.0, 0.55)
+const COLOR_RUNNER: Color = Color(0.0, 1.0, 1.0, 1.0)
+const COLOR_SCANLINE: Color = Color(0.0, 0.0, 0.0, 0.12)
+const COLOR_HUB_GLOW: Color = Color(0.0, 1.0, 0.9, 0.35)
+const COLOR_TEXT_HEADER: Color = Color(0.85, 0.95, 1.0, 0.95)
+const COLOR_TEXT_LABEL: Color = Color(0.7, 0.9, 1.0, 0.9)
 
 # Data source for the world map. Authored by the world map designer and saved
 # as a .tres; the runtime loads it here. If unassigned, falls back to
@@ -32,6 +47,8 @@ var tile_region: Dictionary = {}     # Vector2i -> int region index
 var hub_tiles: Dictionary = {}       # Vector2i -> true (overlay marker)
 var city_hubs: Array = []            # {name, pos, subnet_path, ldl_cost, security_code, trace_value}
 var backdrop_texture: Texture2D = null
+var frame_texture: Texture2D = null
+var grid_texture: Texture2D = null
 var runner_pos: Vector2i = Vector2i.ZERO
 var interface_rank: int = 6
 var spawn_hub_name: String = ""
@@ -46,6 +63,9 @@ var spawn_hub_name: String = ""
 # Nearby hubs offered in the current jump/dive popup (survives the signal
 # callback, mirroring the interaction_handler _current_programs pattern).
 var _popup_nearby: Array = []
+
+# Animation state for pulsing neon elements.
+var _pulse_time: float = 0.0
 
 
 func _ready() -> void:
@@ -67,6 +87,11 @@ func _ready() -> void:
 	queue_redraw()
 
 
+func _process(_delta: float) -> void:
+	_pulse_time += _delta
+	queue_redraw()
+
+
 # ---------------------------------------------------------------------------
 # Camera follow
 # ---------------------------------------------------------------------------
@@ -74,17 +99,18 @@ func _ready() -> void:
 func _update_camera_limits() -> void:
 	if camera == null:
 		return
-	# Clamp the camera so it never shows outside the world map rectangle.
+	# Clamp the camera so it can always show the full grid plus its margins.
+	# The grid content occupies SCREEN_OFFSET.x .. right and SCREEN_OFFSET.y .. bottom.
 	camera.limit_left = 0
 	camera.limit_top = 0
-	camera.limit_right = grid_cols * CELL
-	camera.limit_bottom = grid_rows * CELL
+	camera.limit_right = W
+	camera.limit_bottom = H
 
 
 func _center_camera_on_runner() -> void:
 	if camera == null:
 		return
-	var center := Vector2(runner_pos.x * CELL + CELL / 2.0, runner_pos.y * CELL + CELL / 2.0)
+	var center := SCREEN_OFFSET + Vector2(runner_pos.x * CELL + CELL / 2.0, runner_pos.y * CELL + CELL / 2.0)
 	camera.position = center
 
 
@@ -108,10 +134,12 @@ func _build_world() -> void:
 	grid_cols = world_map_layout.grid_cols
 	grid_rows = world_map_layout.grid_rows
 
-	# Pacifica backdrop (procedurally generated PNG). Optional — falls back to
-	# solid ocean if missing.
-	if ResourceLoader.exists(BACKDROP_PATH):
-		backdrop_texture = load(BACKDROP_PATH) as Texture2D
+	# Frame + grid layer (CRT-bezel with Pacifica content). Optional — falls
+	# back to solid ocean if missing.
+	if ResourceLoader.exists(FRAME_PATH):
+		frame_texture = load(FRAME_PATH) as Texture2D
+	if ResourceLoader.exists(GRID_PATH):
+		grid_texture = load(GRID_PATH) as Texture2D
 
 	# Regions (categorising only — colour + HUD label; never block movement).
 	for region in world_map_layout.regions:
@@ -173,55 +201,210 @@ func _resolve_interface_rank() -> int:
 # ---------------------------------------------------------------------------
 
 func _draw() -> void:
-	var ocean_color := Color(0.05, 0.12, 0.25, 1.0)
-	var grid_color := Color(1, 1, 1, 0.08)
-	var runner_color := Color(0.2, 0.9, 1.0, 1.0)
 	var font := _theme_font()
+	var pulse := _pulse_value()
 
-	# Pacifica backdrop (procedural PNG). Drawn full-bleed over the grid.
-	if backdrop_texture != null:
-		var canvas_rect := Rect2(Vector2.ZERO, Vector2(grid_cols * CELL, grid_rows * CELL))
-		draw_texture_rect_region(backdrop_texture, canvas_rect, Rect2(Vector2.ZERO, backdrop_texture.get_size()))
-	else:
-		# No backdrop: paint the ocean as a flat field.
-		draw_rect(Rect2(Vector2.ZERO, Vector2(grid_cols * CELL, grid_rows * CELL)), ocean_color, true)
+	_draw_background(pulse)
+	_draw_scanlines()
+	_draw_region_fills(pulse)
+	_draw_grid(pulse)
+	_draw_hubs(font, pulse)
+	_draw_runner(pulse)
+	_draw_header(font, pulse)
 
-	# WORLD MAP title strip.
-	draw_string(font, Vector2(8, 18), "WORLD MAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.7, 0.9, 1.0, 0.9))
 
-	for x in range(grid_cols):
-		for y in range(grid_rows):
-			var cell := Vector2i(x, y)
-			var rect := Rect2(x * CELL, y * CELL, CELL, CELL)
-			# Region overlays add a translucent tint to the underlying backdrop
-			# (so Pacifica continent shapes still show through).
-			var region_index: int = tile_region.get(cell, -1)
-			if region_index >= 0 and region_index < regions.size():
-				draw_rect(rect, regions[region_index].color, true)
-			# Subtle grid lines on top of the backdrop.
-			draw_rect(rect, grid_color, false, 1.0)
+func _pulse_value() -> float:
+	return 0.5 + 0.5 * sin(_pulse_time * 3.0)
 
-	# Hub markers: plain city markers (tier lives on the City Grid dataforts).
-	var city_marker := Color(0.0, 1.0, 0.7, 1.0)
+
+func _draw_background(pulse: float) -> void:
+	# Deep-space ocean fill.
+	draw_rect(Rect2(Vector2.ZERO, Vector2(W, H)), COLOR_BG, true)
+
+	# Subtle vignette: darkens edges so the neon grid pops.
+	var vignette := Color(0.0, 0.0, 0.0, 0.35)
+	var top := Rect2(0, 0, W, 120)
+	var bottom := Rect2(0, H - 120, W, 120)
+	var left := Rect2(0, 0, 120, H)
+	var right := Rect2(W - 120, 0, 120, H)
+	draw_rect(top, vignette, true)
+	draw_rect(bottom, vignette, true)
+	draw_rect(left, vignette, true)
+	draw_rect(right, vignette, true)
+
+	# Decorative horizon scan band behind the grid.
+	var band_alpha := 0.04 + 0.03 * pulse
+	draw_rect(Rect2(0, SCREEN_OFFSET.y - 4, W, 4), Color(COLOR_GRID.r, COLOR_GRID.g, COLOR_GRID.b, band_alpha), true)
+
+
+func _draw_scanlines() -> void:
+	# Classic CRT scanline overlay across the whole screen.
+	var y: float = 0.0
+	while y < H:
+		draw_line(Vector2(0, y), Vector2(W, y), COLOR_SCANLINE, 1.0)
+		y += 4.0
+
+
+func _draw_grid(pulse: float) -> void:
+	# Neon grid lines. Major divisions every 5 cells get a brighter pulse.
+	var origin := SCREEN_OFFSET
+	var grid_w := grid_cols * CELL
+	var grid_h := grid_rows * CELL
+	var bright_alpha := COLOR_GRID_BRIGHT.a * (0.5 + 0.5 * pulse)
+
+	for x in range(grid_cols + 1):
+		var line_color := COLOR_GRID
+		if x % 5 == 0:
+			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
+		draw_line(origin + Vector2(x * CELL, 0), origin + Vector2(x * CELL, grid_h), line_color, 1.0 if x % 5 != 0 else 1.5)
+
+	for y in range(grid_rows + 1):
+		var line_color := COLOR_GRID
+		if y % 5 == 0:
+			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
+		draw_line(origin + Vector2(0, y * CELL), origin + Vector2(grid_w, y * CELL), line_color, 1.0 if y % 5 != 0 else 1.5)
+
+	# Outer tech frame around the grid.
+	_draw_tech_frame(origin, Vector2(grid_w, grid_h), COLOR_GRID_BRIGHT, 2.0)
+
+
+func _draw_region_fills(pulse: float) -> void:
+	# Dark neon region tiles with a soft inner glow.
+	for raw_key in tile_region.keys():
+		var coord: Vector2i = _parse_coord(raw_key)
+		var idx: int = int(tile_region[raw_key])
+		if idx < 0 or idx >= regions.size():
+			continue
+		var base: Color = regions[idx].color
+		var rect := Rect2(SCREEN_OFFSET + Vector2(coord.x * CELL, coord.y * CELL), Vector2(CELL, CELL))
+		# Darkened fill so the grid still reads through it.
+		var fill := Color(base.r * 0.35, base.g * 0.35, base.b * 0.35, 0.55)
+		draw_rect(rect, fill, true)
+		# Subtle top edge highlight.
+		var highlight := Color(base.r, base.g, base.b, 0.35 + 0.15 * pulse)
+		draw_line(rect.position, rect.position + Vector2(CELL, 0), highlight, 1.5)
+
+
+func _draw_hubs(font: Font, pulse: float) -> void:
 	for hub in city_hubs:
-		var rect := Rect2(hub.pos.x * CELL, hub.pos.y * CELL, CELL, CELL)
-		# When a backdrop is present, hubs live ON TOP of the procedurally drawn
-		# continent dots — don't draw a green cell wash that hides the marker.
-		if backdrop_texture == null:
-			draw_rect(rect, Color(city_marker.r, city_marker.g, city_marker.b, 0.25), true)
-		draw_rect(rect, city_marker, false, 2.0)
-		var label_pos := Vector2(hub.pos.x * CELL + 4, hub.pos.y * CELL + CELL + 2)
-		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, city_marker)
-		# Spawn hub: LDL entry marker (cyan ring + "LDL" tag).
-		if hub.name == spawn_hub_name:
-			var spawn_center := rect.get_center()
-			draw_arc(spawn_center, CELL * 0.42, 0, TAU, 24, Color(0.2, 0.9, 1.0, 1.0), 2.0)
-			draw_string(font, Vector2(spawn_center.x - 10, spawn_center.y + 4), "LDL", HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(0.2, 0.9, 1.0, 1.0))
+		var center := SCREEN_OFFSET + Vector2(hub.pos.x * CELL + CELL / 2.0, hub.pos.y * CELL + CELL / 2.0)
+		var tier: int = clampi(int(hub.get("security_tier", 0)), 0, CP2020SecurityTier.Tier.size() - 1)
+		var tier_color: Color = CP2020SecurityTier.COLORS[tier]
+		var glyph: String = CP2020SecurityTier.GLYPHS[tier]
 
-	# Runner avatar (cyan circle).
-	var center := Vector2(runner_pos.x * CELL + CELL / 2.0, runner_pos.y * CELL + CELL / 2.0)
-	draw_arc(center, CELL * 0.35, 0, TAU, 24, runner_color, 2.0)
-	draw_circle(center, CELL * 0.18, runner_color)
+		# Tier-colored neon glow behind the hub.
+		for i in range(3):
+			var glow_radius := CELL * (0.55 + i * 0.18)
+			var glow_alpha := (0.18 - i * 0.05) * (0.7 + 0.3 * pulse)
+			draw_arc(center, glow_radius, 0, TAU, 32, Color(tier_color.r, tier_color.g, tier_color.b, glow_alpha), 3.0)
+
+		# Tech corner brackets.
+		_draw_corner_brackets(center, CELL * 0.55, tier_color, 2.0)
+
+		# Central tier glyph.
+		var glyph_size := 16
+		var glyph_dims := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size)
+		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, glyph_size * 0.35)
+		draw_string(font, glyph_pos, glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size, tier_color)
+
+		# City label below the marker.
+		var label_pos := SCREEN_OFFSET + Vector2(hub.pos.x * CELL + 4, hub.pos.y * CELL + CELL + 4)
+		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COLOR_TEXT_LABEL)
+
+		# Spawn hub: rotating cyan ring + LDL tag.
+		if hub.name == spawn_hub_name:
+			var ring_alpha := 0.6 + 0.4 * pulse
+			draw_arc(center, CELL * 0.52, _pulse_time * 2.0, _pulse_time * 2.0 + TAU * 0.85, 32, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, ring_alpha), 2.5)
+			draw_string(font, Vector2(center.x - 12, center.y + 26), "LDL", HORIZONTAL_ALIGNMENT_CENTER, -1, 9, COLOR_RUNNER)
+
+
+func _draw_runner(pulse: float) -> void:
+	var center := SCREEN_OFFSET + Vector2(runner_pos.x * CELL + CELL / 2.0, runner_pos.y * CELL + CELL / 2.0)
+	var size := CELL * 0.32 * (0.9 + 0.1 * pulse)
+
+	# Outer rotating targeting ring.
+	var ring_alpha := 0.5 + 0.3 * pulse
+	draw_arc(center, CELL * 0.48, -_pulse_time * 3.0, -_pulse_time * 3.0 + TAU * 0.9, 32, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, ring_alpha), 2.0)
+
+	# Neon glow.
+	for i in range(3):
+		var glow_size := size + i * 4.0
+		var glow_alpha := 0.25 - i * 0.07
+		_draw_diamond(center, glow_size, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, glow_alpha), true)
+
+	# Solid diamond avatar.
+	_draw_diamond(center, size, COLOR_RUNNER, true)
+	_draw_diamond(center, size * 0.7, Color(0.0, 0.0, 0.0, 0.6), true)
+
+
+func _draw_diamond(center: Vector2, size: float, color: Color, filled: bool) -> void:
+	var points := PackedVector2Array([
+		center + Vector2(0, -size),
+		center + Vector2(size, 0),
+		center + Vector2(0, size),
+		center + Vector2(-size, 0),
+	])
+	if filled:
+		draw_polygon(points, PackedColorArray([color, color, color, color]))
+	else:
+		points.append(points[0])
+		draw_polyline(points, color, 2.0)
+
+
+func _draw_corner_brackets(center: Vector2, half_size: float, color: Color, width: float) -> void:
+	var inset := half_size * 0.55
+	var tl := center + Vector2(-half_size, -half_size)
+	var top_r := center + Vector2(half_size, -half_size)
+	var bl := center + Vector2(-half_size, half_size)
+	var bottom_r := center + Vector2(half_size, half_size)
+	# Top-left.
+	draw_line(tl, tl + Vector2(inset, 0), color, width)
+	draw_line(tl, tl + Vector2(0, inset), color, width)
+	# Top-right.
+	draw_line(top_r, top_r + Vector2(-inset, 0), color, width)
+	draw_line(top_r, top_r + Vector2(0, inset), color, width)
+	# Bottom-left.
+	draw_line(bl, bl + Vector2(inset, 0), color, width)
+	draw_line(bl, bl + Vector2(0, -inset), color, width)
+	# Bottom-right.
+	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width)
+	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width)
+
+
+func _draw_tech_frame(origin: Vector2, size: Vector2, color: Color, width: float) -> void:
+	var tl := origin
+	var top_r := origin + Vector2(size.x, 0)
+	var bl := origin + Vector2(0, size.y)
+	var bottom_r := origin + size
+	var inset := 18.0
+	# Outer rectangle.
+	draw_rect(Rect2(origin, size), color, false, width)
+	# Corner accents.
+	draw_line(tl, tl + Vector2(inset, 0), color, width + 1.0)
+	draw_line(tl, tl + Vector2(0, inset), color, width + 1.0)
+	draw_line(top_r, top_r + Vector2(-inset, 0), color, width + 1.0)
+	draw_line(top_r, top_r + Vector2(0, inset), color, width + 1.0)
+	draw_line(bl, bl + Vector2(inset, 0), color, width + 1.0)
+	draw_line(bl, bl + Vector2(0, -inset), color, width + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width + 1.0)
+
+
+func _draw_header(font: Font, pulse: float) -> void:
+	# Cyberpunk header bar with tech brackets, drawn below the HUD strip so
+	# it never overlaps the Location/Actions/Credits/Trace labels.
+	var header_y := 48.0
+	var title := "WORLD NET MAP // PACIFIC RIM"
+	draw_string(font, Vector2(18, header_y), "[", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, 0.7 + 0.3 * pulse))
+	draw_string(font, Vector2(30, header_y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, COLOR_TEXT_HEADER)
+	var title_width := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	draw_string(font, Vector2(34 + title_width, header_y), "]", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, 0.7 + 0.3 * pulse))
+
+	# Thin underline with a travelling pulse.
+	var line_y := header_y + 8
+	var pulse_x := 30 + fmod(_pulse_time * 80.0, title_width + 20)
+	draw_line(Vector2(18, line_y), Vector2(36 + title_width, line_y), COLOR_GRID_BRIGHT, 1.0)
+	draw_circle(Vector2(30 + pulse_x, line_y), 3.0, COLOR_RUNNER)
 
 
 func _theme_font() -> Font:
@@ -266,10 +449,11 @@ func _input(event: InputEvent) -> void:
 
 
 func _screen_to_grid(world_pos: Vector2) -> Vector2i:
-	# Convert a world position (under the cursor) to a grid cell. The Node2D
-	# sits at the origin with identity transform, so world == local here.
-	var x := int(world_pos.x / CELL)
-	var y := int(world_pos.y / CELL)
+	# Convert a world position (under the cursor) to a grid cell. The map grid
+	# is anchored at SCREEN_OFFSET, so subtract that before dividing by CELL.
+	var local := world_pos - SCREEN_OFFSET
+	var x := int(local.x / CELL)
+	var y := int(local.y / CELL)
 	return Vector2i(clampi(x, 0, grid_cols - 1), clampi(y, 0, grid_rows - 1))
 
 
@@ -316,6 +500,8 @@ func _open_ldl_popup(hub_pos: Vector2i) -> void:
 	else:
 		add_child(popup)
 
+	POPUP_THEME.apply_cyberpunk_theme(popup, 18)
+
 	# Build the nearby-hub jump list (Chebyshev <= 5, excluding self).
 	_popup_nearby = _nearby_hubs(hub_pos)
 
@@ -328,12 +514,12 @@ func _open_ldl_popup(hub_pos: Vector2i) -> void:
 		popup.add_item("Hack LDL -> %s (Sec %d, +Trace %d)" % [dest.name, int(dest.security_code), int(dest.trace_value)], 100 + i)
 		popup.add_item("Pay LDL -> %s (%d eb)" % [dest.name, int(dest.ldl_cost)], 200 + i)
 	popup.add_separator()
-	popup.add_item("Jack Out to Hub", 998)
+	popup.add_item("> Jack Out to Hub", 998)
 	popup.add_item("Cancel", 999)
 
 	popup.id_pressed.connect(_on_ldl_popup_id.bind(hub))
 	# Position the popup near the hub in screen coordinates.
-	var world_pos := Vector2(hub_pos.x * CELL + CELL, hub_pos.y * CELL)
+	var world_pos := SCREEN_OFFSET + Vector2(hub_pos.x * CELL + CELL, hub_pos.y * CELL)
 	var screen_pos := _world_to_screen(world_pos) + Vector2(20, 20)
 	popup.position = screen_pos
 	popup.popup()
@@ -399,10 +585,11 @@ func _open_jackout_popup() -> void:
 		hud_layer.add_child(popup)
 	else:
 		add_child(popup)
-	popup.add_item("Jack Out to Hub", 998)
+	POPUP_THEME.apply_cyberpunk_theme(popup, 18)
+	popup.add_item("> Jack Out to Hub", 998)
 	popup.add_item("Cancel", 999)
 	popup.id_pressed.connect(_on_jackout_popup_id)
-	var world_pos := Vector2(runner_pos.x * CELL + CELL, runner_pos.y * CELL)
+	var world_pos := SCREEN_OFFSET + Vector2(runner_pos.x * CELL + CELL, runner_pos.y * CELL)
 	var screen_pos := _world_to_screen(world_pos) + Vector2(20, 20)
 	popup.position = screen_pos
 	popup.popup()

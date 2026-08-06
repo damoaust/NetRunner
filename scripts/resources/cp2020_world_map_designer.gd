@@ -7,14 +7,24 @@ extends Control
 # remains traversable.
 
 const CELL: int = 40
+const GRID_OFFSET_X: int = 20
 const GRID_OFFSET_Y: int = 90
 
 enum Tool { REGION, HUB, ERASER }
+
+# Cyberpunk/neon palette (matches the runtime world map).
+const COLOR_BG: Color = Color(0.02, 0.03, 0.06, 1.0)
+const COLOR_GRID: Color = Color(0.0, 0.78, 0.92, 0.22)
+const COLOR_GRID_BRIGHT: Color = Color(0.0, 0.9, 1.0, 0.55)
+const COLOR_RUNNER: Color = Color(0.0, 1.0, 1.0, 1.0)
+const COLOR_SCANLINE: Color = Color(0.0, 0.0, 0.0, 0.12)
+const COLOR_TEXT_LABEL: Color = Color(0.7, 0.9, 1.0, 0.9)
 
 var current_tool: Tool = Tool.REGION
 var active_region_index: int = 0
 var selected_hub: CP2020WorldHub = null
 var current_layout: CP2020WorldMapLayout = null
+var _pulse_time: float = 0.0
 
 @onready var columns_spinbox: SpinBox = $TopPanel/SettingsRow/ColumnsSpinBox
 @onready var rows_spinbox: SpinBox = $TopPanel/SettingsRow/RowsSpinBox
@@ -49,8 +59,8 @@ var current_layout: CP2020WorldMapLayout = null
 func _ready() -> void:
 	if current_layout == null:
 		current_layout = CP2020WorldMapLayout.new()
-		current_layout.grid_cols = 32
-		current_layout.grid_rows = 18
+		current_layout.grid_cols = 31
+		current_layout.grid_rows = 16
 		_add_default_regions()
 	_setup_file_dialogs_if_missing()
 	_setup_signals()
@@ -60,15 +70,17 @@ func _ready() -> void:
 	queue_redraw()
 
 
+func _process(_delta: float) -> void:
+	_pulse_time += _delta
+	queue_redraw()
+
+
 func _add_default_regions() -> void:
 	if current_layout.regions.size() > 0:
 		return
 	var defaults := [
-		["NORTH AMERICA", Color(0.10, 0.30, 0.18, 1.0)],
-		["SOUTH AMERICA", Color(0.10, 0.34, 0.26, 1.0)],
-		["EUROPE", Color(0.14, 0.28, 0.30, 1.0)],
-		["AFRICA", Color(0.32, 0.28, 0.12, 1.0)],
-		["FAR EAST", Color(0.12, 0.30, 0.22, 1.0)],
+		["EAST ASIA", Color(0.32, 0.20, 0.10, 1.0)],
+		["AMERICAS", Color(0.10, 0.30, 0.18, 1.0)],
 		["OCEANIA", Color(0.12, 0.32, 0.30, 1.0)],
 	]
 	for entry in defaults:
@@ -403,7 +415,7 @@ func _apply_tool(coord: Vector2i) -> void:
 
 
 func _screen_to_grid(screen_pos: Vector2) -> Vector2i:
-	var x := int(screen_pos.x / CELL)
+	var x := int((screen_pos.x - GRID_OFFSET_X) / CELL)
 	var y := int((screen_pos.y - GRID_OFFSET_Y) / CELL)
 	return Vector2i(clampi(x, 0, current_layout.grid_cols - 1), clampi(y, 0, current_layout.grid_rows - 1))
 
@@ -422,44 +434,152 @@ func _parse_coord(raw_key: Variant) -> Vector2i:
 func _draw() -> void:
 	if current_layout == null:
 		return
+	var pulse := 0.5 + 0.5 * sin(_pulse_time * 3.0)
 	var total_w := current_layout.grid_cols * CELL
 	var total_h := current_layout.grid_rows * CELL
-	var ocean := Color(0.05, 0.12, 0.28, 1.0)
-	var grid_line := Color(0.4, 0.4, 0.4, 1.0)
+	var font := _theme_font()
 
-	# Ocean background.
-	draw_rect(Rect2(0, GRID_OFFSET_Y, total_w, total_h), ocean, true)
+	_draw_designer_background(total_w, total_h)
+	_draw_designer_scanlines()
+	_draw_designer_regions(pulse)
+	_draw_designer_grid(total_w, total_h, pulse)
+	_draw_designer_hubs(font, pulse)
+	_draw_designer_header(font, pulse)
 
-	# Region tiles.
+
+func _draw_designer_background(total_w: int, total_h: int) -> void:
+	# Full-canvas dark backdrop.
+	var canvas_size := get_viewport_rect().size
+	draw_rect(Rect2(Vector2.ZERO, canvas_size), COLOR_BG, true)
+
+	# Vignette around the grid.
+	var vignette := Color(0.0, 0.0, 0.0, 0.3)
+	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y, total_w, 100), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y + total_h - 100, total_w, 100), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y, 100, total_h), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X + total_w - 100, GRID_OFFSET_Y, 100, total_h), vignette, true)
+
+
+func _draw_designer_scanlines() -> void:
+	var canvas_size := get_viewport_rect().size
+	var y: float = 0.0
+	while y < canvas_size.y:
+		draw_line(Vector2(0, y), Vector2(canvas_size.x, y), COLOR_SCANLINE, 1.0)
+		y += 4.0
+
+
+func _draw_designer_regions(pulse: float) -> void:
 	for raw_key in current_layout.tile_region.keys():
 		var coord := _parse_coord(raw_key)
 		var idx := int(current_layout.tile_region[raw_key])
-		if idx >= 0 and idx < current_layout.regions.size():
-			var rect := Rect2(coord.x * CELL, GRID_OFFSET_Y + coord.y * CELL, CELL, CELL)
-			draw_rect(rect, current_layout.regions[idx].color, true)
+		if idx < 0 or idx >= current_layout.regions.size():
+			continue
+		var base: Color = current_layout.regions[idx].color
+		var rect := Rect2(GRID_OFFSET_X + coord.x * CELL, GRID_OFFSET_Y + coord.y * CELL, CELL, CELL)
+		var fill := Color(base.r * 0.35, base.g * 0.35, base.b * 0.35, 0.55)
+		draw_rect(rect, fill, true)
+		var highlight := Color(base.r, base.g, base.b, 0.35 + 0.15 * pulse)
+		draw_line(rect.position, rect.position + Vector2(CELL, 0), highlight, 1.5)
 
-	# Grid lines.
+
+func _draw_designer_grid(total_w: int, total_h: int, pulse: float) -> void:
+	var bright_alpha := COLOR_GRID_BRIGHT.a * (0.5 + 0.5 * pulse)
+	var origin := Vector2(GRID_OFFSET_X, GRID_OFFSET_Y)
 	for x in range(current_layout.grid_cols + 1):
-		draw_line(Vector2(x * CELL, GRID_OFFSET_Y), Vector2(x * CELL, GRID_OFFSET_Y + total_h), grid_line, 1.0)
+		var line_color := COLOR_GRID
+		if x % 5 == 0:
+			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
+		draw_line(origin + Vector2(x * CELL, 0), origin + Vector2(x * CELL, total_h), line_color, 1.0 if x % 5 != 0 else 1.5)
 	for y in range(current_layout.grid_rows + 1):
-		draw_line(Vector2(0, GRID_OFFSET_Y + y * CELL), Vector2(total_w, GRID_OFFSET_Y + y * CELL), grid_line, 1.0)
+		var line_color := COLOR_GRID
+		if y % 5 == 0:
+			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
+		draw_line(origin + Vector2(0, y * CELL), origin + Vector2(total_w, y * CELL), line_color, 1.0 if y % 5 != 0 else 1.5)
+	# Tech frame around the grid.
+	_draw_designer_tech_frame(origin, Vector2(total_w, total_h), COLOR_GRID_BRIGHT, 2.0)
 
-	# Hubs (plain city markers — tier now lives on city-grid datafort icons).
-	var font := _theme_font()
+
+func _draw_designer_hubs(font: Font, pulse: float) -> void:
 	for hub in current_layout.hubs:
-		var rect := Rect2(hub.pos.x * CELL, GRID_OFFSET_Y + hub.pos.y * CELL, CELL, CELL)
-		var outline := Color(0.0, 1.0, 0.9, 1.0)
+		var center := Vector2(GRID_OFFSET_X + hub.pos.x * CELL + CELL / 2.0, GRID_OFFSET_Y + hub.pos.y * CELL + CELL / 2.0)
+		var tier: int = clampi(int(hub.security_tier), 0, CP2020SecurityTier.Tier.size() - 1)
+		var tier_color: Color = CP2020SecurityTier.COLORS[tier]
+		var glyph: String = CP2020SecurityTier.GLYPHS[tier]
+
+		# Selection gets a strong yellow highlight; otherwise use the tier color.
+		var hub_color := tier_color
 		if hub == selected_hub:
-			outline = Color(1.0, 1.0, 0.0, 1.0)
-		draw_rect(rect, Color(outline.r, outline.g, outline.b, 0.25), true)
-		draw_rect(rect, outline, false, 2.0)
-		var center := rect.get_center()
-		draw_arc(center, CELL * 0.28, 0, TAU, 20, outline, 2.0)
-		var label_pos := Vector2(hub.pos.x * CELL + 4, GRID_OFFSET_Y + hub.pos.y * CELL + CELL + 2)
-		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, outline)
+			hub_color = Color(1.0, 1.0, 0.0, 1.0)
+
+		# Neon glow.
+		for i in range(3):
+			var glow_radius := CELL * (0.55 + i * 0.18)
+			var glow_alpha := (0.18 - i * 0.05) * (0.7 + 0.3 * pulse)
+			draw_arc(center, glow_radius, 0, TAU, 32, Color(hub_color.r, hub_color.g, hub_color.b, glow_alpha), 3.0)
+
+		# Corner brackets.
+		_draw_designer_corner_brackets(center, CELL * 0.55, hub_color, 2.0)
+
+		# Tier glyph.
+		var glyph_size := 16
+		var glyph_dims := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size)
+		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, glyph_size * 0.35)
+		draw_string(font, glyph_pos, glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size, hub_color)
+
+		# City label.
+		var label_pos := Vector2(GRID_OFFSET_X + hub.pos.x * CELL + 4, GRID_OFFSET_Y + hub.pos.y * CELL + CELL + 4)
+		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COLOR_TEXT_LABEL)
+
 		# Spawn hub marker.
 		if hub.name == current_layout.runner_spawn_hub:
-			draw_arc(center, CELL * 0.42, 0, TAU, 24, Color(0.2, 0.9, 1.0, 1.0), 2.0)
+			var ring_alpha := 0.6 + 0.4 * pulse
+			draw_arc(center, CELL * 0.52, _pulse_time * 2.0, _pulse_time * 2.0 + TAU * 0.85, 32, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, ring_alpha), 2.5)
+
+
+func _draw_designer_header(font: Font, pulse: float) -> void:
+	var title := "WORLD MAP DESIGNER // PACIFIC RIM"
+	var header_y := 48.0
+	draw_string(font, Vector2(18, header_y), "[", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, 0.7 + 0.3 * pulse))
+	draw_string(font, Vector2(30, header_y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, COLOR_TEXT_LABEL)
+	var title_width := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	draw_string(font, Vector2(34 + title_width, header_y), "]", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, 0.7 + 0.3 * pulse))
+	var line_y := header_y + 8
+	var pulse_x := 30 + fmod(_pulse_time * 80.0, title_width + 20)
+	draw_line(Vector2(18, line_y), Vector2(36 + title_width, line_y), COLOR_GRID_BRIGHT, 1.0)
+	draw_circle(Vector2(30 + pulse_x, line_y), 3.0, COLOR_RUNNER)
+
+
+func _draw_designer_corner_brackets(center: Vector2, half_size: float, color: Color, width: float) -> void:
+	var inset := half_size * 0.55
+	var tl := center + Vector2(-half_size, -half_size)
+	var top_r := center + Vector2(half_size, -half_size)
+	var bl := center + Vector2(-half_size, half_size)
+	var bottom_r := center + Vector2(half_size, half_size)
+	draw_line(tl, tl + Vector2(inset, 0), color, width)
+	draw_line(tl, tl + Vector2(0, inset), color, width)
+	draw_line(top_r, top_r + Vector2(-inset, 0), color, width)
+	draw_line(top_r, top_r + Vector2(0, inset), color, width)
+	draw_line(bl, bl + Vector2(inset, 0), color, width)
+	draw_line(bl, bl + Vector2(0, -inset), color, width)
+	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width)
+	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width)
+
+
+func _draw_designer_tech_frame(origin: Vector2, frame_size: Vector2, color: Color, width: float) -> void:
+	var tl := origin
+	var top_r := origin + Vector2(frame_size.x, 0)
+	var bl := origin + Vector2(0, frame_size.y)
+	var bottom_r := origin + frame_size
+	var inset := 18.0
+	draw_rect(Rect2(origin, frame_size), color, false, width)
+	draw_line(tl, tl + Vector2(inset, 0), color, width + 1.0)
+	draw_line(tl, tl + Vector2(0, inset), color, width + 1.0)
+	draw_line(top_r, top_r + Vector2(-inset, 0), color, width + 1.0)
+	draw_line(top_r, top_r + Vector2(0, inset), color, width + 1.0)
+	draw_line(bl, bl + Vector2(inset, 0), color, width + 1.0)
+	draw_line(bl, bl + Vector2(0, -inset), color, width + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width + 1.0)
 
 
 func _theme_font() -> Font:

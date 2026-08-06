@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/cp2020_world_map_designer.gd" id="1_wmdesigner"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_screenshot_helper.gd" id="2_shot"]
 
 [node name="Cp2020WorldMapDesigner" type="Control"]
 layout_mode = 3
@@ -164,3 +165,6 @@ text = "Set as Runner Spawn"
 [node name="DeleteHubButton" type="Button" parent="SidePanel"]
 layout_mode = 2
 text = "Delete Hub"
+
+[node name="ScreenshotHelper" type="Node2D" parent="."]
+script = ExtResource("2_shot")

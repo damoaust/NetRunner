@@ -92,6 +92,9 @@ var program_integrity: Dictionary = {}
 var current_position: Vector2i = Vector2i.ZERO
 var current_layout: CP2020DatafortLayout
 
+# Animation state for the cyberpunk diamond avatar (matches world-map runner).
+var _pulse_time: float = 0.0
+
 func get_used_memory() -> int:
 	var total_mu = 0
 	for prog in installed_programs:
@@ -142,11 +145,41 @@ func update_visual_position() -> void:
 	var center_y = grid_offset_y + (current_position.y * cell_size) + (cell_size / 2.0)
 	position = Vector2(center_x, center_y)
 
+func _process(delta: float) -> void:
+	_pulse_time += delta
+	queue_redraw()
+
 func _draw() -> void:
-	# Glowing Cyan Netrunner Avatar
-	draw_circle(Vector2.ZERO, 10, Color.CYAN)
-	draw_arc(Vector2.ZERO, 12, 0, TAU, 16, Color.CYAN, 2.0)
-	draw_circle(Vector2.ZERO, 4, Color.WHITE)
+	var pulse := 0.5 * (1.0 + sin(_pulse_time * 3.0))
+	var center := Vector2.ZERO
+	var size := cell_size * 0.32 * (0.9 + 0.1 * pulse)
+
+	# Outer rotating targeting ring.
+	var ring_alpha := 0.5 + 0.3 * pulse
+	draw_arc(center, cell_size * 0.48, -_pulse_time * 3.0, -_pulse_time * 3.0 + TAU * 0.9, 32, Color(Color.CYAN.r, Color.CYAN.g, Color.CYAN.b, ring_alpha), 2.0)
+
+	# Neon glow layers.
+	for i in range(3):
+		var glow_size := size + i * 4.0
+		var glow_alpha := 0.25 - i * 0.07
+		_draw_diamond(center, glow_size, Color(Color.CYAN.r, Color.CYAN.g, Color.CYAN.b, glow_alpha), true)
+
+	# Solid diamond avatar.
+	_draw_diamond(center, size, Color.CYAN, true)
+	_draw_diamond(center, size * 0.7, Color(0.0, 0.0, 0.0, 0.6), true)
+
+func _draw_diamond(center: Vector2, size: float, color: Color, filled: bool) -> void:
+	var points := PackedVector2Array([
+		center + Vector2(0, -size),
+		center + Vector2(size, 0),
+		center + Vector2(0, size),
+		center + Vector2(-size, 0),
+	])
+	if filled:
+		draw_polygon(points, PackedColorArray([color, color, color, color]))
+	else:
+		points.append(points[0])
+		draw_polyline(points, color, 2.0)
 
 func install_program(prog: NetProgram) -> bool:
 	if not prog:

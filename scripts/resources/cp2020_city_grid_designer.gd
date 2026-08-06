@@ -32,7 +32,7 @@ var current_tool: Tool = Tool.DATAFORT
 var selected_datafort: CP2020CityGridDatafort = null
 var current_layout: CP2020CityGridLayout = null
 var _pulse_time: float = 0.0
-var _webdings_font: Font = null
+var _datafort_font: Font = null
 
 @onready var city_name_edit: LineEdit = get_node_or_null("TopPanel/SettingsRow/CityNameEdit")
 @onready var columns_spinbox: SpinBox = $TopPanel/SettingsRow/ColumnsSpinBox
@@ -61,7 +61,7 @@ var _webdings_font: Font = null
 
 
 func _ready() -> void:
-	_webdings_font = _create_webdings_font()
+	_datafort_font = _create_datafort_font()
 	if current_layout == null:
 		current_layout = CP2020CityGridLayout.new()
 		current_layout.grid_cols = 20
@@ -76,16 +76,26 @@ func _ready() -> void:
 	queue_redraw()
 
 
-func _create_webdings_font() -> Font:
-	var paths := ["res://data/webdings.ttf", "C:/Windows/Fonts/webdings.ttf"]
-	for ttf_path in paths:
+func _create_datafort_font() -> Font:
+	# Try an emoji font first so the city marker can use the 🏢 office-building emoji.
+	var emoji_paths := ["res://data/seguiemj.ttf", "C:/Windows/Fonts/seguiemj.ttf"]
+	for ttf_path in emoji_paths:
+		if FileAccess.file_exists(ttf_path):
+			var ff := FontFile.new()
+			var err := ff.load_dynamic_font(ttf_path)
+			if err == OK:
+				return ff
+			push_warning("Failed to load emoji font from %s (error %d)" % [ttf_path, err])
+	# Fallback to Webdings cityscape glyph.
+	var webdings_paths := ["res://data/webdings.ttf", "C:/Windows/Fonts/webdings.ttf"]
+	for ttf_path in webdings_paths:
 		if FileAccess.file_exists(ttf_path):
 			var ff := FontFile.new()
 			var err := ff.load_dynamic_font(ttf_path)
 			if err == OK:
 				return ff
 			push_warning("Failed to load Webdings from %s (error %d)" % [ttf_path, err])
-	push_warning("Webdings font not found; datafort markers will not render correctly.")
+	push_warning("No datafort marker font found; markers will not render correctly.")
 	return null
 
 
@@ -447,7 +457,7 @@ func _draw() -> void:
 	var total_w := current_layout.grid_cols * CELL
 	var total_h := current_layout.grid_rows * CELL
 	var font := _theme_font()
-	var wfont := _webdings_font if _webdings_font != null else font
+	var wfont := _datafort_font if _datafort_font != null else font
 	var pulse := _pulse_value()
 
 	_draw_designer_background(total_w, total_h)
@@ -510,8 +520,8 @@ func _draw_designer_ldl_entry(font: Font, pulse: float) -> void:
 
 
 func _draw_designer_dataforts(wfont: Font, label_font: Font, pulse: float) -> void:
-	const BUILDING_CHAR := "\u0043"  # Webdings building glyph at code point 0x43.
-	const BUILDING_SIZE := 28
+	const BUILDING_CHAR := "🏢"  # Office building emoji (U+1F3E2).
+	const BUILDING_SIZE := 30
 	for df in current_layout.dataforts:
 		var tier: int = clampi(int(df.security_tier), 0, CP2020SecurityTier.Tier.size() - 1)
 		var tier_color: Color = CP2020SecurityTier.COLORS[tier]
@@ -531,18 +541,23 @@ func _draw_designer_dataforts(wfont: Font, label_font: Font, pulse: float) -> vo
 		# Corner brackets.
 		_draw_designer_corner_brackets(center, CELL * 0.55, df_color, 2.0)
 
-		# Webdings building glyph (code point 0x43).
+		# Building emoji: larger, centered in the tile.
 		var glyph_dims := wfont.get_string_size(BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, BUILDING_SIZE)
-		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, BUILDING_SIZE * 0.35)
-		draw_string(wfont, glyph_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, BUILDING_SIZE, df_color)
+		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, 25)
+		draw_string(wfont, glyph_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_LEFT, -1, BUILDING_SIZE, df_color)
 
-		# Datafort label.
-		var label_pos := Vector2(GRID_OFFSET_X + df.pos.x * CELL + 4, GRID_OFFSET_Y + df.pos.y * CELL + CELL + 4)
-		draw_string(label_font, label_pos, df.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COLOR_TEXT_LABEL)
+		# Datafort label centered below the tile.
+		var label_size := 11
+		var label_dims := label_font.get_string_size(df.name, HORIZONTAL_ALIGNMENT_CENTER, -1, label_size)
+		var label_pos := Vector2(
+			GRID_OFFSET_X + df.pos.x * CELL + (CELL - label_dims.x) * 0.5,
+			GRID_OFFSET_Y + df.pos.y * CELL + CELL + 12
+		)
+		draw_string(label_font, label_pos, df.name, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size, COLOR_TEXT_LABEL)
 
 
 func _draw_designer_header(font: Font, wfont: Font, pulse: float) -> void:
-	const BUILDING_CHAR := "\u0043"  # Webdings building glyph at code point 0x43.
+	const BUILDING_CHAR := "🏢"  # Office building emoji (U+1F3E2).
 	const LEGEND_ICON_SIZE := 12
 	var title := "CITY GRID DESIGNER // %s" % current_layout.city_name.to_upper()
 	var header_y := 48.0
@@ -556,19 +571,17 @@ func _draw_designer_header(font: Font, wfont: Font, pulse: float) -> void:
 	draw_line(Vector2(18, line_y), Vector2(36 + title_width, line_y), COLOR_GRID_BRIGHT, 1.0)
 	draw_circle(Vector2(30 + pulse_x, line_y), 3.0, COLOR_RUNNER)
 
-	# Tier legend (top-right, inside the header margin) — Webdings building icon + short label.
-	var legend_x := float(W - 18)
-	var legend_y := header_y - 6
-	for i in range(CP2020SecurityTier.Tier.size() - 1, -1, -1):
+	# Tier legend (vertical, right of the grid, flush with the map edge).
+	var grid_right := GRID_OFFSET_X + current_layout.grid_cols * CELL + 8
+	var legend_x := grid_right
+	var legend_y := GRID_OFFSET_Y + 4
+	for i in range(CP2020SecurityTier.Tier.size()):
 		var tier_color: Color = CP2020SecurityTier.COLORS[i]
 		var short := String(CP2020SecurityTier.SHORT[i])
-		var tw := font.get_string_size(short, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-		var icon_w := wfont.get_string_size(BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, LEGEND_ICON_SIZE).x
-		legend_x -= icon_w + 4
 		var icon_pos := Vector2(legend_x, legend_y + 11)
 		draw_string(wfont, icon_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_ICON_SIZE, tier_color)
-		legend_x -= tw + 6
-		draw_string(font, Vector2(legend_x, legend_y + 11), short, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.85, 0.85, 0.9))
+		draw_string(font, Vector2(legend_x + LEGEND_ICON_SIZE + 4, legend_y + 11), short, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.85, 0.85, 0.9))
+		legend_y += 16
 
 
 func _draw_designer_corner_brackets(center: Vector2, half_size: float, color: Color, width: float) -> void:
