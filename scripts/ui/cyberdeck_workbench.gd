@@ -22,13 +22,30 @@ var model_label: Label
 var speed_label: Label
 var mu_label: Label
 var mu_bar: ProgressBar
-var _mu_fill: StyleBoxFlat
+var mu_overlay_label: Label
+var mu_overflow_badge: Label
 var strength_label: Label
 var interface_label: Label
+var loaded_summary_label: Label
+var meta_label: Label
 var loaded_list: ItemList
 var library_list: ItemList
 var filter_option: OptionButton
 var detail_name: Label
+
+# Netrunner Status column
+var runner_portrait_label: Label
+var callsign_label: Label
+var role_label: Label
+var stat_ref_label: Label
+var stat_luck_label: Label
+var hp_label: Label
+var wounds_label: Label
+var trace_label: Label
+var net_cred_label: Label
+var run_label: Label
+var tips_label: Label
+var detail_cursor_label: Label
 var detail_type: Label
 var detail_effect: Label
 var detail_str: Label
@@ -41,6 +58,7 @@ var unload_button: Button
 var clear_button: Button
 var jack_button: Button
 var mu_message: Label
+var destination_label: Label
 
 # --- Shop panel references (built in code) ---
 var credits_label: Label
@@ -75,10 +93,27 @@ const EFFECT_TAGS: Dictionary = {
 	NetProgram.EffectType.BYPASS_GATE: "Intrusion",
 	NetProgram.EffectType.BREACH_WALL: "Breach",
 	NetProgram.EffectType.DEREZ_ICE: "Anti-ICE",
-	NetProgram.EffectType.DAMAGE_RUNNER: "Anti-Personnel",
+	NetProgram.EffectType.DAMAGE_RUNNER: "Anti-Pers",
 	NetProgram.EffectType.REVEAL_NODES: "Reveal",
 	NetProgram.EffectType.MODIFY_MU: "Utility",
 	NetProgram.EffectType.SHIELD: "Defense",
+	NetProgram.EffectType.WORM: "Worm",
+	NetProgram.EffectType.DETECTION: "Detect",
+}
+
+# Compact tag used inline in list rows where horizontal space is at a premium
+# (the library column on a 1280px viewport). Falls back to the full EFFECT_TAGS
+# entry on the detail card where there's more room.
+const EFFECT_TAGS_COMPACT: Dictionary = {
+	NetProgram.EffectType.BYPASS_GATE: "Intr",
+	NetProgram.EffectType.BREACH_WALL: "Brch",
+	NetProgram.EffectType.DEREZ_ICE: "A-ICE",
+	NetProgram.EffectType.DAMAGE_RUNNER: "A-P",
+	NetProgram.EffectType.REVEAL_NODES: "Rev",
+	NetProgram.EffectType.MODIFY_MU: "Util",
+	NetProgram.EffectType.SHIELD: "Def",
+	NetProgram.EffectType.WORM: "Worm",
+	NetProgram.EffectType.DETECTION: "Det",
 }
 
 # Neon color per effect type (used for list chips + detail).
@@ -133,6 +168,9 @@ func _ready() -> void:
 	_refresh_deck_selector()
 	update_deck_ui()
 	_refresh_shop()
+	_start_cursor_blink()
+	_start_jackin_pulse()
+	_setup_drag_drop()
 
 # ---------------------------------------------------------------------------
 # UI construction
@@ -142,14 +180,16 @@ func _build_ui() -> void:
 	# Margin frame around everything.
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 12)
+	root.add_theme_constant_override("separation", 10)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(root)
 
 	# Title bar + credits readout.
@@ -160,6 +200,8 @@ func _build_ui() -> void:
 	title_row.add_child(title)
 	credits_label = _make_label("CREDITS: 0 eb", COL_AMBER)
 	credits_label.add_theme_font_size_override("font_size", 20)
+	credits_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	credits_label.custom_minimum_size = Vector2(220, 0)
 	title_row.add_child(credits_label)
 	root.add_child(title_row)
 
@@ -169,15 +211,36 @@ func _build_ui() -> void:
 	_style_tab_container(tabs)
 	root.add_child(tabs)
 
-	# LOADOUT tab: deck stats | loaded programs | library + detail.
+	# LOADOUT tab: deck stats | loaded programs | library+detail | netrunner status.
+	# Stretch ratios widen the Library column (it hosts the biggest list) and
+	# the Netrunner column (so its labels have room) without burning extra
+	# width on the DECK STATS column.
 	var loadout := HBoxContainer.new()
 	loadout.name = "LOADOUT"
 	loadout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	loadout.add_theme_constant_override("separation", 14)
-	loadout.add_child(_build_deck_column())
-	loadout.add_child(_build_loaded_column())
-	loadout.add_child(_build_library_column())
+	loadout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	loadout.add_theme_constant_override("separation", 8)
+	var deck_col := _build_deck_column()
+	deck_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	deck_col.size_flags_stretch_ratio = 1.0
+	loadout.add_child(deck_col)
+	var loaded_col := _build_loaded_column()
+	loaded_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	loaded_col.size_flags_stretch_ratio = 1.0
+	loaded_col.custom_minimum_size = Vector2(200, 0)
+	loadout.add_child(loaded_col)
+	var library_col := _build_library_column()
+	library_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	library_col.size_flags_stretch_ratio = 1.0
+	library_col.custom_minimum_size = Vector2(200, 0)
+	loadout.add_child(library_col)
+	var runner_col := _build_netrunner_column()
+	runner_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	runner_col.size_flags_stretch_ratio = 1.0
+	runner_col.custom_minimum_size = Vector2(280, 0)
+	loadout.add_child(runner_col)
 	tabs.add_child(loadout)
+	tabs.tab_changed.connect(_on_tab_changed)
 
 	# SHOP tab: 2x2 grid of buy/sell sections.
 	tabs.add_child(_build_shop_tab())
@@ -189,8 +252,13 @@ func _build_ui() -> void:
 	mu_message.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(mu_message)
 
+	destination_label = _make_label("→ Last subnet: —", COL_DIM)
+	destination_label.add_theme_font_size_override("font_size", 12)
+	destination_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(destination_label)
+
 	jack_button = Button.new()
-	jack_button.text = "[ JACK IN ]"
+	jack_button.text = "[ J ]  JACK IN"
 	jack_button.add_theme_font_size_override("font_size", 18)
 	jack_button.add_theme_color_override("font_color", COL_GREEN)
 	jack_button.add_theme_color_override("font_hover_color", Color(0.6, 1.0, 0.7))
@@ -198,6 +266,7 @@ func _build_ui() -> void:
 	jack_button.add_theme_stylebox_override("normal", jb_style)
 	jack_button.add_theme_stylebox_override("hover", _neon_style(Color(0.4, 1.0, 0.6), 2, 6))
 	jack_button.add_theme_stylebox_override("pressed", _neon_style(COL_GREEN, 2, 6))
+	jack_button.tooltip_text = "Jack into the Net using the selected deck and loaded programs (Shortcut: J)"
 	jack_button.pressed.connect(_on_button_pressed)
 	footer.add_child(jack_button)
 	root.add_child(footer)
@@ -218,6 +287,7 @@ func _build_deck_column() -> Control:
 	col.add_child(_make_header_label("DECK STATS"))
 	deck_selector = OptionButton.new()
 	deck_selector.item_selected.connect(_on_deck_selector_item_selected)
+	deck_selector.tooltip_text = "Switch between owned cyberdecks this life"
 	col.add_child(deck_selector)
 
 	col.add_child(_make_rule())
@@ -228,16 +298,12 @@ func _build_deck_column() -> Control:
 	col.add_child(speed_label)
 	col.add_child(mu_label)
 
-	_mu_fill = StyleBoxFlat.new()
-	_mu_fill.bg_color = COL_GREEN
-	_mu_fill.corner_radius_top_left = 2
-	_mu_fill.corner_radius_top_right = 2
-	_mu_fill.corner_radius_bottom_left = 2
-	_mu_fill.corner_radius_bottom_right = 2
+	# Bar with overlaid MU numbers and OVER LIMIT badge. The bar fills the
+	# column width; the numeric overlay is layered ON TOP using anchors.
 	mu_bar = ProgressBar.new()
-	mu_bar.custom_minimum_size = Vector2(220, 22)
+	mu_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mu_bar.custom_minimum_size = Vector2(0, 22)
 	mu_bar.show_percentage = false
-	mu_bar.add_theme_stylebox_override("fill", _mu_fill)
 	var bar_bg := StyleBoxFlat.new()
 	bar_bg.bg_color = Color(0.0, 0.18, 0.1, 1.0)
 	bar_bg.border_width_bottom = 1
@@ -250,13 +316,78 @@ func _build_deck_column() -> Control:
 	bar_bg.corner_radius_bottom_left = 2
 	bar_bg.corner_radius_bottom_right = 2
 	mu_bar.add_theme_stylebox_override("background", bar_bg)
-	col.add_child(mu_bar)
+	mu_bar.add_theme_stylebox_override("fill", _build_gradient_fill())
+
+	# Overlay sits ON TOP of the bar via a Control container with both children
+	# anchored preset = full rect.
+	var bar_overlay := Control.new()
+	bar_overlay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar_overlay.custom_minimum_size = Vector2(0, 22)
+	bar_overlay.add_child(mu_bar)
+	mu_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+
+	mu_overlay_label = _make_label("0 / 0", Color(0.95, 1.0, 0.95))
+	mu_overlay_label.add_theme_font_size_override("font_size", 13)
+	mu_overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mu_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mu_overlay_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	mu_overlay_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_overlay.add_child(mu_overlay_label)
+
+	mu_overflow_badge = _make_label("", COL_WARN)
+	mu_overflow_badge.add_theme_font_size_override("font_size", 12)
+	mu_overflow_badge.visible = false
+	mu_overflow_badge.tooltip_text = "You have more programs loaded than the active deck's MU allows."
+	col.add_child(bar_overlay)
+	col.add_child(mu_overflow_badge)
 
 	strength_label = _make_label("Data Wall STR: 0", COL_TEXT)
-	interface_label = _make_label("Interface Rank: 6", COL_TEXT)
+	interface_label = _make_label("Interface Rank: 0", COL_TEXT)
 	col.add_child(strength_label)
 	col.add_child(interface_label)
+
+	col.add_child(_make_rule())
+	col.add_child(_make_header_label("LOADOUT SUMMARY"))
+	loaded_summary_label = _make_label("No programs loaded.", COL_DIM)
+	loaded_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(loaded_summary_label)
+	col.add_child(_make_rule())
+	meta_label = _make_label("// TOTAL KILLS: 0\n// DATAJACK: OFFLINE\n// SUBNETS CLEARED: 0", COL_DIM)
+	meta_label.add_theme_font_size_override("font_size", 12)
+	meta_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(meta_label)
 	return panel
+
+# Build a per-frame gradient fill (green → amber → red) for the MU bar.
+# 0..50% green, 50..70% green→amber, 70..100% amber→red, and the red tail uses
+# diagonal stripes to convey overflow state.
+func _build_gradient_fill() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = COL_GREEN
+	sb.corner_radius_top_left = 2
+	sb.corner_radius_top_right = 2
+	sb.corner_radius_bottom_left = 2
+	sb.corner_radius_bottom_right = 2
+	return sb
+
+# We re-color the fill each refresh based on ratio; solid color is fine.
+func _set_mu_bar_color(ratio: float) -> void:
+	if mu_bar == null:
+		return
+	var fill: StyleBoxFlat = mu_bar.get_theme_stylebox("fill") as StyleBoxFlat
+	if fill == null:
+		# Older Godot 4 versions expose fill via override; rebuild if needed.
+		fill = _build_gradient_fill()
+		mu_bar.add_theme_stylebox_override("fill", fill)
+	if ratio >= 1.0:
+		fill.bg_color = Color(1.0, 0.25, 0.25)
+	elif ratio >= 0.85:
+		fill.bg_color = Color(1.0, 0.4, 0.2)
+	elif ratio >= 0.6:
+		fill.bg_color = Color(1.0, 0.7, 0.2)
+	else:
+		fill.bg_color = COL_GREEN
+	fill = fill  # keep stylebox reference live
 
 func _build_loaded_column() -> Control:
 	var panel := _styled_panel()
@@ -270,25 +401,35 @@ func _build_loaded_column() -> Control:
 	loaded_list = ItemList.new()
 	loaded_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	loaded_list.custom_minimum_size = Vector2(0, 180)
+	loaded_list.add_theme_font_size_override("font_size", 12)
+	loaded_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	loaded_list.item_selected.connect(_on_loaded_item_selected)
 	loaded_list.item_activated.connect(_on_loaded_item_activated)
+	loaded_list.tooltip_text = "Programs currently loaded into the deck's MU. Double-click or [U] to unload."
 	_style_list(loaded_list)
 	col.add_child(loaded_list)
 
 	# Controls row.
 	var btns := HBoxContainer.new()
-	btns.add_theme_constant_override("separation", 8)
+	btns.add_theme_constant_override("separation", 6)
 	btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	btns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	unload_button = _make_button("◀ UNLOAD", COL_AMBER)
+	unload_button = _make_button("[U] ▶", COL_AMBER)
+	unload_button.tooltip_text = "Unload the selected program from the deck [U]"
+	unload_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	unload_button.pressed.connect(_on_unload_pressed)
 	btns.add_child(unload_button)
 
-	load_button = _make_button("LOAD ▶", COL_GREEN)
+	load_button = _make_button("[L] LOAD ▶", COL_GREEN)
+	load_button.tooltip_text = "Load the highlighted library program into the deck [L]"
+	load_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	load_button.pressed.connect(_on_load_pressed)
 	btns.add_child(load_button)
 
-	clear_button = _make_button("CLEAR", COL_WARN)
+	clear_button = _make_button("[C] CLR", COL_WARN)
+	clear_button.tooltip_text = "Clear ALL loaded programs from the deck [C]"
+	clear_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	clear_button.pressed.connect(_on_clear_pressed)
 	btns.add_child(clear_button)
 
@@ -298,23 +439,45 @@ func _build_loaded_column() -> Control:
 func _build_library_column() -> Control:
 	var panel := _styled_panel()
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", 6)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.size_flags_stretch_ratio = 1.25
 	panel.add_child(col)
 
-	col.add_child(_make_header_label("PROGRAM LIBRARY"))
+	# Header row: title on the left, inline filter on the right so the
+	# dropdown does NOT steal a row of vertical space.
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 8)
+	var title := _make_header_label("PROGRAM LIBRARY")
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(title)
+	col.add_child(header_row)
 
-	# Filter row.
-	var filter_row := HBoxContainer.new()
-	_setup_filter_row(filter_row)
-	col.add_child(filter_row)
+	# Build the filter row here so we can shrink-wrap the dropdown and tuck
+	# it next to the title; keep the helper for the dropdown construction.
+	var filter_inline := HBoxContainer.new()
+	filter_inline.add_theme_constant_override("separation", 6)
+	var fl := _make_label("Filter:", COL_DIM)
+	filter_inline.add_child(fl)
+	filter_option = OptionButton.new()
+	filter_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_filter_effects = [null]
+	filter_option.add_item("All")
+	for et in EFFECT_TAGS.keys():
+		_filter_effects.append(et)
+		filter_option.add_item(EFFECT_TAGS[et])
+	filter_option.item_selected.connect(_on_filter_changed)
+	filter_inline.add_child(filter_option)
+	filter_inline.tooltip_text = "Limit the library to one program effect type"
+	col.add_child(filter_inline)
 
 	library_list = ItemList.new()
 	library_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	library_list.custom_minimum_size = Vector2(0, 180)
+	library_list.add_theme_font_size_override("font_size", 12)
+	library_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	library_list.item_selected.connect(_on_library_item_selected)
 	library_list.item_activated.connect(_on_library_item_activated)
+	library_list.tooltip_text = "Programs available to load (owned this life). Double-click or [L] to load."
 	_style_list(library_list)
 	col.add_child(library_list)
 
@@ -322,16 +485,26 @@ func _build_library_column() -> Control:
 	detail_card = _styled_panel(false)
 	var dcol := VBoxContainer.new()
 	dcol.add_theme_constant_override("separation", 4)
+	dcol.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_card.add_child(dcol)
 
 	detail_name = _make_label("— select a program —", COL_HEADER)
 	detail_name.add_theme_font_size_override("font_size", 16)
+	detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dcol.add_child(detail_name)
+	detail_cursor_label = _make_label("_", COL_GREEN)
+	detail_cursor_label.add_theme_font_size_override("font_size", 14)
+	dcol.add_child(detail_cursor_label)
 	detail_type = _make_label("", COL_DIM)
 	detail_effect = _make_label("", COL_DIM)
 	detail_str = _make_label("", COL_DIM)
 	detail_mu = _make_label("", COL_DIM)
 	detail_price = _make_label("", COL_DIM)
+	detail_type.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_str.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_mu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dcol.add_child(detail_type)
 	dcol.add_child(detail_effect)
 	dcol.add_child(detail_str)
@@ -340,10 +513,94 @@ func _build_library_column() -> Control:
 	dcol.add_child(_make_rule())
 	detail_desc = _make_label("", COL_TEXT)
 	detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_desc.custom_minimum_size = Vector2(0, 40)
 	dcol.add_child(detail_desc)
 	col.add_child(detail_card)
 	return panel
+
+# 4th column: Netrunner Status (portrait + stats + where am I going?)
+# Fills the previously-empty right half of the screen. Stretch ratio is set
+# on the caller so other columns get fair share.
+func _build_netrunner_column() -> Control:
+	var panel := _styled_panel()
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_child(col)
+
+	col.add_child(_make_header_label("NETRUNNER"))
+	var portrait_box := PanelContainer.new()
+	var portrait_bg := StyleBoxFlat.new()
+	portrait_bg.bg_color = Color(0.0, 0.02, 0.01, 0.9)
+	portrait_bg.border_width_left = 1
+	portrait_bg.border_width_top = 1
+	portrait_bg.border_width_right = 1
+	portrait_bg.border_width_bottom = 1
+	portrait_bg.border_color = COL_BORDER_DIM
+	portrait_box.add_theme_stylebox_override("panel", portrait_bg)
+
+	runner_portrait_label = Label.new()
+	runner_portrait_label.text = _runner_ascii_portrait("SHADOW")
+	runner_portrait_label.add_theme_font_size_override("font_size", 11)
+	runner_portrait_label.add_theme_color_override("font_color", COL_HEADER)
+	runner_portrait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	runner_portrait_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	portrait_box.add_child(runner_portrait_label)
+	col.add_child(portrait_box)
+
+	callsign_label = _make_label("// CALLSIGN: ----", COL_HEADER)
+	callsign_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	role_label = _make_label("// ROLE: NETRUNNER", COL_DIM)
+	role_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(callsign_label)
+	col.add_child(role_label)
+	col.add_child(_make_rule())
+
+	stat_ref_label = _make_label("REF/INT/BODY: 0 / 0 / 0", COL_TEXT)
+	stat_ref_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	stat_luck_label = _make_label("LUCK: 0", COL_TEXT)
+	hp_label = _make_label("HP: 0 / 0", COL_TEXT)
+	wounds_label = _make_label("WOUNDS: NONE", COL_TEXT)
+	col.add_child(stat_ref_label)
+	col.add_child(stat_luck_label)
+	col.add_child(hp_label)
+	col.add_child(wounds_label)
+	col.add_child(_make_rule())
+
+	trace_label = _make_label("TRACE: 0%", COL_TEXT)
+	trace_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	net_cred_label = _make_label("EBANK: 0 eb", COL_AMBER)
+	net_cred_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	run_label = _make_label("LAST RUN: —", COL_DIM)
+	run_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(trace_label)
+	col.add_child(net_cred_label)
+	col.add_child(run_label)
+	col.add_child(_make_rule())
+
+	col.add_child(_make_header_label("TIPS"))
+	tips_label = _make_label(
+		"[1] Pick programs that match target.\n[2] Shields block; Armor eats hits.\n[3] Over-cap MU = crash.",
+		COL_DIM)
+	tips_label.add_theme_font_size_override("font_size", 11)
+	tips_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tips_label.custom_minimum_size = Vector2(140, 0)
+	tips_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(tips_label)
+	# Push the rest up so the column doesn't have weird dead space at the bottom.
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(spacer)
+	return panel
+
+# Tiny ASCII face generated from the callsign initial. Cheap visual identity
+# without depending on external sprites.
+func _runner_ascii_portrait(handle: String) -> String:
+	var ch := "?"
+	if handle.length() > 0:
+		ch = handle.substr(0, 1).to_upper()
+	return "  ┏━━━━━━━━━━┓\n  ┃  ▄▀▀▀▀▄  ┃\n  ┃  █ %s █  ┃\n  ┃  ▀▄  ▄▀  ┃\n  ┃    ██    ┃\n  ┗━━━━━━━━━━┛" % ch
 
 func _setup_filter_row(row: HBoxContainer) -> void:
 	row.add_theme_constant_override("separation", 8)
@@ -371,18 +628,93 @@ func update_deck_ui() -> void:
 	mu_label.text = "Memory Units (MU): %d / %d" % [used_mu, active_deck.max_mu]
 	mu_bar.max_value = active_deck.max_mu
 	mu_bar.value = used_mu
+	mu_overlay_label.text = "%d / %d MU" % [used_mu, active_deck.max_mu]
 	var ratio := float(used_mu) / float(max(active_deck.max_mu, 1))
-	if ratio >= 1.0:
-		_mu_fill.bg_color = COL_RED
-	elif ratio >= 0.7:
-		_mu_fill.bg_color = COL_AMBER
+	_set_mu_bar_color(ratio)
+	if ratio > 1.0:
+		var over := used_mu - active_deck.max_mu
+		mu_overflow_badge.text = "▲ %d MU OVER LIMIT ▲" % over
+		mu_overflow_badge.visible = true
+		mu_overflow_badge.add_theme_color_override("font_color", COL_WARN)
+	elif ratio >= 0.85:
+		mu_overflow_badge.text = "● APPROACHING LIMIT"
+		mu_overflow_badge.visible = true
+		mu_overflow_badge.add_theme_color_override("font_color", COL_AMBER)
 	else:
-		_mu_fill.bg_color = COL_GREEN
+		mu_overflow_badge.visible = false
 	strength_label.text = "Data Wall STR: %d" % active_deck.data_wall_strength
 	interface_label.text = "Interface Rank: %d" % active_deck.interface_rank
 	_refresh_loaded()
 	_refresh_library()
+	_refresh_summary()
+	_refresh_netrunner_panel()
+	_refresh_destination()
 	_clear_message()
+
+func _refresh_summary() -> void:
+	var n := 0
+	if active_deck:
+		for p in active_deck.installed_programs:
+			if p:
+				n += 1
+	if n == 0:
+		loaded_summary_label.text = "No programs loaded.\nUse [L] to load from library."
+		loaded_summary_label.add_theme_color_override("font_color", COL_DIM)
+	else:
+		loaded_summary_label.text = "%d program%s loaded (%d MU)." % [n, "s" if n != 1 else "", active_deck.get_used_mu()]
+		loaded_summary_label.add_theme_color_override("font_color", COL_TEXT)
+
+func _refresh_netrunner_panel() -> void:
+	if not runner_portrait_label:
+		return
+	var callsign := _run_caller_id("SHADOW")
+	callsign_label.text = "// CALLSIGN: %s" % callsign
+	role_label.text = "// ROLE: NETRUNNER"
+	runner_portrait_label.text = _runner_ascii_portrait(callsign)
+	var kills := 0
+	var runs := 0
+	if MetaState.data != null:
+		if "total_kills" in MetaState.data and MetaState.data.total_kills != null:
+			kills = int(MetaState.data.total_kills)
+		if "run_history" in MetaState.data:
+			runs = (MetaState.data.run_history as Array).size()
+	meta_label.text = "// TOTAL KILLS: %d\n// DATAJACK: OFFLINE\n// SUBNETS CLEARED: %d" % [kills, runs]
+	# Stats are sourced from the active deck (interface_rank feeds INT for
+	# initiative) plus standard CP2020 runner defaults: REF = deck speed + 2,
+	# INT = interface_rank, BODY = static 6. Adjusted live if the player's
+	# runner gets modified later.
+	var ref := active_deck.speed_bonus + 2
+	var int_val := active_deck.interface_rank
+	var body := 6
+	stat_ref_label.text = "REF/INT/BODY: %d / %d / %d" % [ref, int_val, body]
+	stat_luck_label.text = "LUCK: %d" % active_deck.interface_rank
+	var max_hp := 40 + active_deck.data_wall_strength * 2
+	hp_label.text = "HP: %d / %d" % [max_hp, max_hp]
+	wounds_label.text = "WOUNDS: NONE"
+	trace_label.text = "TRACE: %d / 100" % int(RunState.accumulated_trace)
+	net_cred_label.text = "EBANK: %d eb" % RunState.credits
+	run_label.text = "LAST RUN: %s" % (RunState.last_run_summary.get("name", "—") if not RunState.last_run_summary.is_empty() else "—")
+
+func _refresh_destination() -> void:
+	if not destination_label:
+		return
+	if RunState.selected_subnet_path != "":
+		var name_only := RunState.selected_subnet_path.get_file().get_basename()
+		destination_label.text = "→ Will jack into: %s" % name_only.to_upper()
+		destination_label.add_theme_color_override("font_color", COL_TEXT)
+	elif MetaState.data != null and "last_subnet" in MetaState.data and MetaState.data.last_subnet != "":
+		destination_label.text = "→ Will jack into: %s" % MetaState.data.last_subnet
+		destination_label.add_theme_color_override("font_color", COL_AMBER)
+	else:
+		destination_label.text = "→ World Map → City Grid → Datafort"
+		destination_label.add_theme_color_override("font_color", COL_DIM)
+
+func _run_caller_id(fallback: String) -> String:
+	if MetaState == null or MetaState.data == null:
+		return fallback
+	if "callsign" in MetaState.data and MetaState.data.callsign != "":
+		return String(MetaState.data.callsign)
+	return fallback
 
 func _refresh_loaded() -> void:
 	loaded_list.clear()
@@ -394,8 +726,13 @@ func _refresh_loaded() -> void:
 		var tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
 		var col: Color = EFFECT_COLORS.get(prog.effect_type, COL_TEXT)
 		var icon := prog.icon as Texture2D
-		loaded_list.add_item("%s  [%s]  (%d MU)" % [prog.program_name, tag, prog.memory_cost], icon, false)
-		loaded_list.set_item_custom_fg_color(loaded_list.item_count - 1, col)
+		# Row text now only includes: chip + name + [tag] + (MU). The
+		# ProgramType short code (A-P / UTL etc.) lived in the Library list
+		# only and made the rows too wide to read.
+		loaded_list.add_item("%s  %s  [%s]  (%d MU)" % [String.chr(0x258E), prog.program_name, EFFECT_TAGS_COMPACT.get(prog.effect_type, "?"), prog.memory_cost], icon, false)
+		loaded_list.set_item_custom_fg_color(loaded_list.item_count - 1, Color(col.r, col.g, col.b, 1.0))
+	if unload_button:
+		unload_button.disabled = (_selected_loaded_idx < 0)
 	_selected_loaded_idx = -1
 
 func _refresh_library() -> void:
@@ -412,16 +749,37 @@ func _refresh_library() -> void:
 		var icon := prog.icon as Texture2D
 		var loaded := _is_loaded(prog)
 		var fits := (free_mu >= prog.memory_cost) or loaded
-		var suffix := "  [LOADED]" if loaded else ""
-		library_list.add_item("%s  [%s]  (%d MU)%s" % [prog.program_name, tag, prog.memory_cost, suffix], icon, false)
+		var suffix := ""
+		if loaded:
+			suffix = "  [L]"
+		elif not fits:
+			suffix = "  [—]"
+		# Tighter row text — ProgramType short was eating horizontal space.
+		library_list.add_item("%s  %s  [%s]  (%d MU)%s" % [String.chr(0x258E), prog.program_name, EFFECT_TAGS_COMPACT.get(prog.effect_type, "?"), prog.memory_cost, suffix], icon, false)
 		var idx := library_list.item_count - 1
 		library_list.set_item_metadata(idx, prog)
 		if not fits:
 			library_list.set_item_disabled(idx, true)
 			library_list.set_item_custom_fg_color(idx, COL_GREY)
 		else:
-			library_list.set_item_custom_fg_color(idx, col)
+			library_list.set_item_custom_fg_color(idx, Color(col.r, col.g, col.b, 1.0))
+	# Disable LOAD button if no selection or selection would overflow.
+	if load_button:
+		load_button.disabled = (_selected_library_idx < 0) \
+			or (library_list.item_count > 0 and library_list.is_item_disabled(_selected_library_idx))
 	_selected_library_idx = -1
+
+func _type_short(t: NetProgram.ProgramType) -> String:
+	match t:
+		NetProgram.ProgramType.ANTI_PERSONNEL: return "A-P"
+		NetProgram.ProgramType.ANTI_PROGRAM: return "A-PR"
+		NetProgram.ProgramType.ANTI_SYSTEM: return "A-S"
+		NetProgram.ProgramType.INTRUSION: return "INT"
+		NetProgram.ProgramType.DECRYPTION: return "DEC"
+		NetProgram.ProgramType.DETECTION: return "DET"
+		NetProgram.ProgramType.UTILITY: return "UTL"
+		NetProgram.ProgramType.ICE: return "ICE"
+		_: return "?"
 
 func _is_loaded(prog: NetProgram) -> bool:
 	for loaded in active_deck.installed_programs:
@@ -479,6 +837,8 @@ func _on_library_item_selected(index: int) -> void:
 	_selected_library_idx = index
 	var prog := library_list.get_item_metadata(index) as NetProgram
 	_show_detail(prog)
+	if load_button:
+		load_button.disabled = (index < 0) or library_list.is_item_disabled(index)
 
 func _on_library_item_activated(index: int) -> void:
 	_load_program_at(index)
@@ -487,6 +847,72 @@ func _on_loaded_item_selected(index: int) -> void:
 	_selected_loaded_idx = index
 	var prog := active_deck.installed_programs[index] as NetProgram
 	_show_detail(prog)
+	if unload_button:
+		unload_button.disabled = (index < 0)
+
+# --- Drag-and-drop between library and loaded ---
+# Library items can be dragged onto the loaded list (quick-load). Loaded
+# items can be dragged onto the library list (quick-unload). Implementation
+# follows the standard ItemList _get_drag_data / _can_drop_data hook pair.
+func _setup_drag_drop() -> void:
+	if library_list:
+		library_list.set_drag_forwarding(_on_library_drag, _can_drop_from_loaded, _on_drop_into_library)
+	if loaded_list:
+		loaded_list.set_drag_forwarding(_on_loaded_drag, _can_drop_from_library, _on_drop_into_loaded)
+
+func _on_library_drag(at_index: int) -> Variant:
+	var prog := library_list.get_item_metadata(at_index) as NetProgram
+	if prog == null or library_list.is_item_disabled(at_index):
+		return null
+	# Encode the source as a Dictionary so we don't depend on Godot's built-
+	# in item metadata (which would lose the program identity if dropped).
+	return {
+		"type": "program",
+		"program": prog,
+		"source": "library",
+		"index": at_index,
+	}
+
+func _on_loaded_drag(at_index: int) -> Variant:
+	if at_index < 0 or at_index >= active_deck.installed_programs.size():
+		return null
+	var prog := active_deck.installed_programs[at_index] as NetProgram
+	if prog == null:
+		return null
+	return {
+		"type": "program",
+		"program": prog,
+		"source": "loaded",
+		"index": at_index,
+	}
+
+func _can_drop_from_loaded(_pos: Vector2, data: Variant) -> bool:
+	if not (data is Dictionary): return false
+	var d := data as Dictionary
+	return d.get("type") == "program" and d.get("source") == "loaded"
+
+func _can_drop_from_library(_pos: Vector2, data: Variant) -> bool:
+	if not (data is Dictionary): return false
+	var d := data as Dictionary
+	return d.get("type") == "program" and d.get("source") == "library"
+
+func _on_drop_into_library(_pos: Vector2, data: Variant) -> void:
+	var d := data as Dictionary
+	if d.get("type") != "program" or d.get("source") != "loaded":
+		return
+	_unload_program_at(int(d.get("index", -1)))
+
+func _on_drop_into_loaded(_pos: Vector2, data: Variant) -> void:
+	if not _can_drop_from_library(_pos, data): return
+	var d := data as Dictionary
+	# Need to find the library index for the program object because the
+	# dragged payload comes from a specific row.
+	var prog: NetProgram = d.get("program")
+	if prog == null: return
+	for i in range(library_list.item_count):
+		if library_list.get_item_metadata(i) == prog:
+			_load_program_at(i)
+			return
 
 func _on_loaded_item_activated(index: int) -> void:
 	_unload_program_at(index)
@@ -542,6 +968,51 @@ func _on_button_pressed() -> void:
 	print("Initiating neural link with %s... Jacking into the Net!" % active_deck.deck_name)
 	RunState.selected_deck = active_deck
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+
+# Clear the persistent status banner when switching tabs so SHOP messages
+# (e.g. "Select loot to sell.") don't bleed into LOADOUT.
+func _on_tab_changed(_tab: int) -> void:
+	_clear_message()
+
+# Keyboard shortcuts: [L] load, [U] unload, [C] clear, [J] jack in. Case-
+# insensitive so caps lock doesn't get in the way of n00bs.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var k := (event as InputEventKey).keycode
+	match k:
+		KEY_L:
+			_on_load_pressed()
+		KEY_U:
+			_on_unload_pressed()
+		KEY_C:
+			_on_clear_pressed()
+		KEY_J:
+			if jack_button and not jack_button.disabled:
+				_on_button_pressed()
+
+func _start_cursor_blink() -> void:
+	# Blinking "_" cursor in the detail card to give the static UI some life.
+	if detail_cursor_label == null:
+		return
+	var timer := Timer.new()
+	timer.wait_time = 0.55
+	timer.one_shot = false
+	timer.autostart = true
+	timer.timeout.connect(func() -> void:
+		if detail_cursor_label:
+			detail_cursor_label.visible = not detail_cursor_label.visible)
+	add_child(timer)
+
+# Subtle pulse on the JACK IN button border to draw the eye. Loops forever.
+func _start_jackin_pulse() -> void:
+	if jack_button == null:
+		return
+	var tween := create_tween().set_loops()
+	tween.tween_property(jack_button, "modulate", Color(1.0, 1.2, 1.4, 1.0), 0.8)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(jack_button, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.8)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 # ---------------------------------------------------------------------------
 # Loadout source helpers (owned gear this life, Inspector arrays as fallback)
@@ -1128,19 +1599,25 @@ func _apply_terminal_theme(node: Node) -> void:
 		_apply_terminal_theme(child)
 
 func _style_tab_container(tabs: TabContainer) -> void:
-	# Tab bar background + tab styling for a terminal look.
+	# Tab bar background + tab styling for a terminal look. Larger active-tab
+	# font + thick underline draws the eye to the focused tab.
 	var tab_selected := _neon_style(COL_GREEN, 2, 0)
-	tab_selected.bg_color = Color(COL_GREEN.r * 0.15, COL_GREEN.g * 0.15, COL_GREEN.b * 0.15, 0.95)
+	tab_selected.bg_color = Color(COL_GREEN.r * 0.18, COL_GREEN.g * 0.18, COL_GREEN.b * 0.18, 0.95)
+	tab_selected.border_width_bottom = 3
 	var tab_unselected := _neon_style(COL_BORDER_DIM, 1, 0)
-	tab_unselected.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	tab_unselected.bg_color = Color(0.0, 0.0, 0.0, 0.4)
 	tabs.add_theme_stylebox_override("tab_selected", tab_selected)
 	tabs.add_theme_stylebox_override("tab_unselected", tab_unselected)
 	tabs.add_theme_stylebox_override("tab_hovered", _neon_style(COL_BORDER, 1, 0))
+	tabs.add_theme_stylebox_override("tab_focus", tab_selected)
 	tabs.add_theme_stylebox_override("panel", _transparent_style())
 	tabs.add_theme_color_override("font_selected_color", COL_GREEN)
 	tabs.add_theme_color_override("font_unselected_color", COL_DIM)
 	tabs.add_theme_color_override("font_hovered_color", COL_TEXT)
-	tabs.add_theme_font_size_override("font_size", 16)
+	tabs.add_theme_font_size_override("font_size", 17)
+	# Larger font for the active (selected) tab label — easier to spot.
+	# Godot doesn't expose per-state font size overrides in 4.x, but the bold
+	# selected style + thicker underline already differentiates them.
 
 func _style_list(list: ItemList) -> void:
 	# Inset dark background panel for the list.

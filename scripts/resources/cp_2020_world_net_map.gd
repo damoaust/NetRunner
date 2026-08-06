@@ -13,6 +13,7 @@ extends Node2D
 signal sub_net_selected(subnet_resource_path: String, target_city: String)
 
 const DEFAULT_LAYOUT_PATH: String = "res://data/world_map_default.tres"
+const BACKDROP_PATH: String = "res://data/world_pacifica_map.png"
 const CELL: int = 40
 
 const OPEN_OCEAN_NAME: String = "OPEN OCEAN"
@@ -30,6 +31,7 @@ var regions: Array = []              # [{name, color}]
 var tile_region: Dictionary = {}     # Vector2i -> int region index
 var hub_tiles: Dictionary = {}       # Vector2i -> true (overlay marker)
 var city_hubs: Array = []            # {name, pos, subnet_path, ldl_cost, security_code, trace_value}
+var backdrop_texture: Texture2D = null
 var runner_pos: Vector2i = Vector2i.ZERO
 var interface_rank: int = 6
 var spawn_hub_name: String = ""
@@ -106,6 +108,11 @@ func _build_world() -> void:
 	grid_cols = world_map_layout.grid_cols
 	grid_rows = world_map_layout.grid_rows
 
+	# Pacifica backdrop (procedurally generated PNG). Optional — falls back to
+	# solid ocean if missing.
+	if ResourceLoader.exists(BACKDROP_PATH):
+		backdrop_texture = load(BACKDROP_PATH) as Texture2D
+
 	# Regions (categorising only — colour + HUD label; never block movement).
 	for region in world_map_layout.regions:
 		if region is CP2020WorldRegion:
@@ -123,12 +130,12 @@ func _build_world() -> void:
 				"name": hub.name,
 				"pos": hub.pos,
 				"subnet_path": hub.subnet_path,
-					"city_grid_path": hub.city_grid_path,
-					"ldl_cost": hub.ldl_cost,
-					"security_code": hub.security_code,
-					"trace_value": hub.trace_value,
-					"security_tier": int(hub.security_tier),
-				})
+				"city_grid_path": hub.city_grid_path,
+				"ldl_cost": hub.ldl_cost,
+				"security_code": hub.security_code,
+				"trace_value": hub.trace_value,
+				"security_tier": int(hub.security_tier),
+			})
 			hub_tiles[hub.pos] = true
 
 
@@ -171,6 +178,14 @@ func _draw() -> void:
 	var runner_color := Color(0.2, 0.9, 1.0, 1.0)
 	var font := _theme_font()
 
+	# Pacifica backdrop (procedural PNG). Drawn full-bleed over the grid.
+	if backdrop_texture != null:
+		var canvas_rect := Rect2(Vector2.ZERO, Vector2(grid_cols * CELL, grid_rows * CELL))
+		draw_texture_rect_region(backdrop_texture, canvas_rect, Rect2(Vector2.ZERO, backdrop_texture.get_size()))
+	else:
+		# No backdrop: paint the ocean as a flat field.
+		draw_rect(Rect2(Vector2.ZERO, Vector2(grid_cols * CELL, grid_rows * CELL)), ocean_color, true)
+
 	# WORLD MAP title strip.
 	draw_string(font, Vector2(8, 18), "WORLD MAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.7, 0.9, 1.0, 0.9))
 
@@ -178,28 +193,30 @@ func _draw() -> void:
 		for y in range(grid_rows):
 			var cell := Vector2i(x, y)
 			var rect := Rect2(x * CELL, y * CELL, CELL, CELL)
-			# Colour by region (categorising only). Absence == open ocean.
+			# Region overlays add a translucent tint to the underlying backdrop
+			# (so Pacifica continent shapes still show through).
 			var region_index: int = tile_region.get(cell, -1)
 			if region_index >= 0 and region_index < regions.size():
 				draw_rect(rect, regions[region_index].color, true)
-			else:
-				draw_rect(rect, ocean_color, true)
-			# Grid lines.
+			# Subtle grid lines on top of the backdrop.
 			draw_rect(rect, grid_color, false, 1.0)
 
 	# Hub markers: plain city markers (tier lives on the City Grid dataforts).
 	var city_marker := Color(0.0, 1.0, 0.7, 1.0)
 	for hub in city_hubs:
 		var rect := Rect2(hub.pos.x * CELL, hub.pos.y * CELL, CELL, CELL)
-		draw_rect(rect, Color(city_marker.r, city_marker.g, city_marker.b, 0.25), true)
+		# When a backdrop is present, hubs live ON TOP of the procedurally drawn
+		# continent dots — don't draw a green cell wash that hides the marker.
+		if backdrop_texture == null:
+			draw_rect(rect, Color(city_marker.r, city_marker.g, city_marker.b, 0.25), true)
 		draw_rect(rect, city_marker, false, 2.0)
 		var label_pos := Vector2(hub.pos.x * CELL + 4, hub.pos.y * CELL + CELL + 2)
 		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, city_marker)
 		# Spawn hub: LDL entry marker (cyan ring + "LDL" tag).
 		if hub.name == spawn_hub_name:
-			var center := rect.get_center()
-			draw_arc(center, CELL * 0.42, 0, TAU, 24, Color(0.2, 0.9, 1.0, 1.0), 2.0)
-			draw_string(font, Vector2(center.x - 10, center.y + 4), "LDL", HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(0.2, 0.9, 1.0, 1.0))
+			var spawn_center := rect.get_center()
+			draw_arc(spawn_center, CELL * 0.42, 0, TAU, 24, Color(0.2, 0.9, 1.0, 1.0), 2.0)
+			draw_string(font, Vector2(spawn_center.x - 10, spawn_center.y + 4), "LDL", HORIZONTAL_ALIGNMENT_CENTER, -1, 9, Color(0.2, 0.9, 1.0, 1.0))
 
 	# Runner avatar (cyan circle).
 	var center := Vector2(runner_pos.x * CELL + CELL / 2.0, runner_pos.y * CELL + CELL / 2.0)
