@@ -334,6 +334,11 @@ Performs procedural drawing via `CanvasItem.draw_*` calls based on the 3 tile vi
 - MU bar colour states: green (<70%), amber (70–95%), red (≥95%/over).
 - `Jack In` writes the active deck to `RunState.selected_deck` and changes scene to the world map. Jacking in with zero programs loaded shows a warning and is blocked until at least one program is loaded.
 - Loadouts persist across deck switches within a session (edits mutate the in-memory deck resource directly).
+- **SHOP tab** (built in `_build_shop_tab()`): 2×2 grid of sections:
+  - **BUY DECKS**: lists available cyberdecks from the data catalogue; select + `BUY DECK` adds to `RunState.owned_decks` and sets as `selected_deck`.
+  - **BUY PROGRAMS**: lists all discovered `NetProgram` resources from `data/`; select + `BUY PROGRAM` adds to `RunState.owned_programs`.
+  - **SELL LOOT**: lists programs carried in `RunState.loot` (collected from datafort tiles); select + `SELL` fences at 50% of program price, adds to `RunState.credits`.
+  - **SELL FILES**: lists files carried in `RunState.carried_files` (copied from `MEMORY_UNIT` tiles); select + `SELL FILE` fences at `credit_value`; **`SELL ALL`** button fences all carried files at once. Files consume deck MU while carried (shown in MU bar).
 
 ### 5.9 World Map Runtime ([cp_2020_world_net_map.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp_2020_world_net_map.gd))
 - Geographic grid titled **"WORLD MAP"**. Runner spawns on the configured spawn hub (Night City fallback) and moves tile-by-tile with a 5-action turn limit (no ICE on the world map). Regions are categorising only — any in-bounds tile is traversable, including open ocean. No tier legend (tier is a datafort property, shown on the City Grid).

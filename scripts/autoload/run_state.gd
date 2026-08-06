@@ -179,6 +179,18 @@ func sell_file(file: NetFile) -> int:
 	carried_files.remove_at(idx)
 	return sell_price
 
+# Sells all carried files at once, returns total proceeds.
+func sell_all_files() -> int:
+	if carried_files.is_empty():
+		return 0
+	var total: int = 0
+	for f in carried_files:
+		if f != null:
+			total += f.credit_value
+	credits += total
+	carried_files.clear()
+	return total
+
 # --- Owned-gear purchase helpers (used by the hub shop) ---
 # Purchases a deck: subtracts price from credits, appends a duplicate to
 # owned_decks, returns true. Returns false if deck is null or insufficient

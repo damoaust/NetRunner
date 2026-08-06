@@ -70,6 +70,7 @@ var buy_deck_button: Button
 var buy_program_button: Button
 var sell_loot_button: Button
 var sell_file_button: Button
+var sell_all_files_button: Button
 # --- Purchase Unlocks window (permanent MetaState blueprint unlocks) ---
 var unlock_button: Button
 var unlock_window: Window
@@ -1100,6 +1101,13 @@ func _build_shop_tab() -> Control:
 		_on_sell_file_selected, _on_sell_file_pressed, "SELL FILE", COL_AMBER)
 	shop_sell_files_list = sell_files["list"]
 	sell_file_button = sell_files["button"]
+	# Add SELL ALL button alongside SELL FILE
+	var sell_all_button := _make_button("SELL ALL", COL_RED)
+	sell_all_button.pressed.connect(_on_sell_all_files_pressed)
+	sell_all_files_button = sell_all_button
+	# The panel's VBoxContainer is the first child - add second button there
+	var sell_files_vbox := sell_files["panel"].get_child(0) as VBoxContainer
+	sell_files_vbox.add_child(sell_all_button)
 	grid.add_child(sell_files["panel"])
 
 	return tab
@@ -1309,6 +1317,14 @@ func _on_sell_file_pressed() -> void:
 		_show_message("Fenced %s for %d eb." % [file.file_name, proceeds], COL_GREEN)
 	else:
 		_show_message("Could not sell that file.")
+
+func _on_sell_all_files_pressed() -> void:
+	if RunState.carried_files.is_empty():
+		_show_message("No files to sell.", COL_AMBER)
+		return
+	var proceeds := RunState.sell_all_files()
+	_after_transaction()
+	_show_message("Fenced all files for %d eb." % proceeds, COL_GREEN)
 
 # ---------------------------------------------------------------------------
 # Purchase Unlocks window — permanent MetaState blueprint unlocks.
