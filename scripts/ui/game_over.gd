@@ -117,6 +117,7 @@ func _ready() -> void:
 
 func _on_new_life_pressed() -> void:
 	RunState.start_new_life()
+	RunState.clear_run_save()
 	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
 
 

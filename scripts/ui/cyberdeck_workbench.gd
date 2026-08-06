@@ -154,7 +154,8 @@ const COL_GREY := Color(0.38, 0.45, 0.42)
 
 func _ready() -> void:
 	# First launch / after permadeath: ensure a life is in progress with
-	# starting gear before building the loadout.
+	# starting gear before building the loadout. RunState autoload already
+	# attempts to load a saved run from the previous session.
 	if RunState.owned_decks.is_empty():
 		RunState.start_new_life()
 	_build_ui()
@@ -932,6 +933,7 @@ func _on_clear_pressed() -> void:
 		return
 	active_deck.installed_programs.clear()
 	update_deck_ui()
+	RunState.save_run()
 	_show_message("Loadout cleared.", COL_AMBER)
 
 func _load_program_at(index: int) -> void:
@@ -949,6 +951,7 @@ func _load_program_at(index: int) -> void:
 		return
 	active_deck.installed_programs.append(prog)
 	update_deck_ui()
+	RunState.save_run()
 
 func _unload_program_at(index: int) -> void:
 	if index < 0 or index >= active_deck.installed_programs.size():
@@ -957,6 +960,7 @@ func _unload_program_at(index: int) -> void:
 	if prog:
 		active_deck.installed_programs.erase(prog)
 		update_deck_ui()
+		RunState.save_run()
 
 func _on_button_pressed() -> void:
 	if not active_deck:
@@ -967,6 +971,7 @@ func _on_button_pressed() -> void:
 		return
 	print("Initiating neural link with %s... Jacking into the Net!" % active_deck.deck_name)
 	RunState.selected_deck = active_deck
+	RunState.save_run()
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 
 # Clear the persistent status banner when switching tabs so SHOP messages
@@ -1227,6 +1232,7 @@ func _after_transaction() -> void:
 	_refresh_shop()
 	_refresh_deck_selector()
 	update_deck_ui()
+	RunState.save_run()
 
 # --- Shop signal handlers ---
 func _on_buy_deck_selected(index: int) -> void:
@@ -1483,6 +1489,7 @@ func _on_unlock_pressed() -> void:
 		_refresh_unlock_list()
 		_refresh_shop()
 		_refresh_credits()
+		RunState.save_run()
 		_show_message("Unlocked %s blueprint for %d eb." % [item_name, cost], COL_GREEN)
 	else:
 		_show_message("Unlock failed: %s." % path)

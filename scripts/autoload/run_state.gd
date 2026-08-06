@@ -1,5 +1,7 @@
 extends Node
 
+const RunStateData := preload("res://scripts/autoload/run_state_data.gd")
+
 # Autoload singleton holding cross-scene PER-LIFE state. All of this is lost
 # on permadeath. Set at the workbench, read by the gameplay session.
 
@@ -12,6 +14,8 @@ const STARTING_PROGRAM_PATHS: Array[String] = [
 	"res://data/codecracker.tres",
 	"res://data/shield.tres",
 ]
+
+const RUN_SAVE_PATH: String = "user://run_state.tres"
 
 var selected_deck: Cyberdeck = null
 var selected_subnet_path: String = ""
@@ -46,6 +50,9 @@ var owned_programs: Array[NetProgram] = []
 # to the hub to fence for their credit_value. Consume deck MU alongside
 # programs while carried. Lost on death.
 var carried_files: Array[NetFile] = []
+
+func _ready() -> void:
+	_load_run()
 
 # Full wipe — clears every field to defaults. Called by start_new_life() and
 # by any explicit hard-reset path.
@@ -193,3 +200,111 @@ func buy_program(prog: NetProgram) -> bool:
 # Equips a deck the runner already owns.
 func equip_deck(deck: Cyberdeck) -> void:
 	selected_deck = deck
+
+# --- Run-state persistence (survives app restarts, lost on permadeath) ---
+func save_run() -> void:
+	var data := RunStateData.new()
+	data.credits = credits
+	data.accumulated_trace = accumulated_trace
+	data.selected_subnet_path = selected_subnet_path
+	data.selected_city_grid_path = selected_city_grid_path
+	data.selected_security_tier = selected_security_tier
+	data.last_death_cause = last_death_cause
+	data.last_run_summary = last_run_summary.duplicate()
+	if selected_deck != null and selected_deck.resource_path != "":
+		data.selected_deck_path = selected_deck.resource_path
+	for deck: Cyberdeck in owned_decks:
+		if deck == null:
+			continue
+		var entry: Dictionary = {
+			"path": deck.resource_path if deck.resource_path != "" else "",
+			"installed_program_paths": []
+		}
+		for prog: NetProgram in deck.installed_programs:
+			if prog == null:
+				continue
+			entry["installed_program_paths"].append(prog.resource_path if prog.resource_path != "" else "")
+		data.owned_deck_entries.append(entry)
+	for prog: NetProgram in owned_programs:
+		if prog != null and prog.resource_path != "":
+			data.owned_program_paths.append(prog.resource_path)
+	for prog: NetProgram in loot:
+		if prog != null and prog.resource_path != "":
+			data.loot_paths.append(prog.resource_path)
+	for file: NetFile in carried_files:
+		if file == null:
+			continue
+		data.carried_file_entries.append({
+			"file_name": file.file_name,
+			"description": file.description,
+			"credit_value": file.credit_value,
+			"mu_size": file.mu_size,
+		})
+	var err: int = ResourceSaver.save(data, RUN_SAVE_PATH)
+	if err != OK:
+		push_error("RunState: failed to save run state (error %d)." % err)
+
+func _load_run() -> void:
+	if not ResourceLoader.exists(RUN_SAVE_PATH):
+		return
+	var loaded: Resource = ResourceLoader.load(RUN_SAVE_PATH)
+	if not loaded is RunStateData:
+		push_warning("RunState: saved run is not RunStateData — starting fresh.")
+		return
+	var data: RunStateData = loaded as RunStateData
+	credits = data.credits
+	accumulated_trace = data.accumulated_trace
+	selected_subnet_path = data.selected_subnet_path
+	selected_city_grid_path = data.selected_city_grid_path
+	selected_security_tier = data.selected_security_tier
+	last_death_cause = data.last_death_cause
+	last_run_summary = data.last_run_summary.duplicate()
+	owned_programs.clear()
+	for path: String in data.owned_program_paths:
+		var prog: NetProgram = load(path) as NetProgram
+		if prog != null:
+			owned_programs.append(prog.duplicate())
+	owned_decks.clear()
+	for entry: Variant in data.owned_deck_entries:
+		if entry is not Dictionary:
+			continue
+		var deck_path: String = entry.get("path", "")
+		if deck_path == "":
+			continue
+		var deck_src: Cyberdeck = load(deck_path) as Cyberdeck
+		if deck_src == null:
+			continue
+		var deck: Cyberdeck = deck_src.duplicate()
+		deck.installed_programs.clear()
+		var installed_paths: Array = entry.get("installed_program_paths", [])
+		for prog_path: Variant in installed_paths:
+			var prog_src: NetProgram = load(prog_path) as NetProgram
+			if prog_src != null:
+				deck.installed_programs.append(prog_src.duplicate())
+		owned_decks.append(deck)
+	selected_deck = null
+	if data.selected_deck_path != "":
+		for deck: Cyberdeck in owned_decks:
+			if deck.resource_path == data.selected_deck_path:
+				selected_deck = deck
+				break
+	loot.clear()
+	for path: String in data.loot_paths:
+		var prog: NetProgram = load(path) as NetProgram
+		if prog != null:
+			loot.append(prog.duplicate())
+	carried_files.clear()
+	for entry: Variant in data.carried_file_entries:
+		if entry is not Dictionary:
+			continue
+		var file: NetFile = NetFile.new()
+		file.file_name = entry.get("file_name", "Untitled File")
+		file.description = entry.get("description", "")
+		file.credit_value = entry.get("credit_value", 0)
+		file.mu_size = entry.get("mu_size", 1)
+		carried_files.append(file)
+
+func clear_run_save() -> void:
+	var dir: DirAccess = DirAccess.open("user://")
+	if dir != null:
+		dir.remove(RUN_SAVE_PATH.get_file())
