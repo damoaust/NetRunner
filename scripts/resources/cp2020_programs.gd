@@ -41,6 +41,9 @@ enum EffectType {
 # damage_dice=10 + damage_dice_count=2 to roll 2D10 per hit.
 @export var damage_dice: int = 0
 @export var damage_dice_count: int = 1
+# Path to the original .tres this program was duplicated from. Used by run-state
+# persistence to reconstruct owned programs after app restart.
+@export var source_path: String = ""
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Program behavior (virtual). Subclasses override these to define program-

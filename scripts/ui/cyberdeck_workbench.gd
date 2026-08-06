@@ -158,6 +158,9 @@ func _ready() -> void:
 	# attempts to load a saved run from the previous session.
 	if RunState.owned_decks.is_empty():
 		RunState.start_new_life()
+	# Persist the current hub state whenever the workbench is entered (covers
+	# returning from a run as well as the initial new-life setup).
+	RunState.save_run()
 	_build_ui()
 	# Default active deck to the previously equipped deck if still owned,
 	# else the first owned deck.
@@ -1212,9 +1215,9 @@ func _is_deck_owned(cat_deck: Cyberdeck, cat_path: String) -> bool:
 	for d in RunState.owned_decks:
 		if d == null:
 			continue
-		if cat_path != "" and d.resource_path == cat_path:
+		if cat_path != "" and (d.resource_path == cat_path or d.source_path == cat_path):
 			return true
-		if d.resource_path == "" and cat_deck.deck_name != "" and d.deck_name == cat_deck.deck_name:
+		if d.resource_path == "" and d.source_path == "" and cat_deck.deck_name != "" and d.deck_name == cat_deck.deck_name:
 			return true
 	return false
 
@@ -1222,9 +1225,9 @@ func _is_program_owned(cat_prog: NetProgram, cat_path: String) -> bool:
 	for p in RunState.owned_programs:
 		if p == null:
 			continue
-		if cat_path != "" and p.resource_path == cat_path:
+		if cat_path != "" and (p.resource_path == cat_path or p.source_path == cat_path):
 			return true
-		if p.resource_path == "" and cat_prog.program_name != "" and p.program_name == cat_prog.program_name:
+		if p.resource_path == "" and p.source_path == "" and cat_prog.program_name != "" and p.program_name == cat_prog.program_name:
 			return true
 	return false
 

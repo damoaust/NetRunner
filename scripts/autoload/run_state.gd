@@ -78,17 +78,21 @@ func start_new_life() -> void:
 	# instance the player can modify at the workbench.
 	var deck: Cyberdeck = load(STARTING_DECK_PATH) as Cyberdeck
 	if deck:
+		var deck_src_path := deck.resource_path
 		deck = deck.duplicate()
+		deck.source_path = deck_src_path
 		owned_decks.append(deck)
 		selected_deck = deck
 	else:
 		push_error("RunState: failed to load starting deck '%s'." % STARTING_DECK_PATH)
-	# Starting programs — keep as resource references (match the catalogue
-	# references the workbench uses).
+	# Starting programs — duplicate and tag with source path so they survive
+	# save/load cycles without mutating the cached .tres files.
 	for path: String in STARTING_PROGRAM_PATHS:
 		var prog: NetProgram = load(path) as NetProgram
 		if prog:
-			owned_programs.append(prog)
+			var prog_dup := prog.duplicate()
+			prog_dup.source_path = path
+			owned_programs.append(prog_dup)
 		else:
 			push_error("RunState: failed to load starting program '%s'." % path)
 
@@ -98,9 +102,12 @@ func start_new_life() -> void:
 func add_loot(prog: NetProgram) -> void:
 	if prog == null:
 		return
-	loot.append(prog.duplicate())
-	if prog.resource_path != "":
-		MetaState.unlock_program(prog.resource_path)
+	var source_path := prog.resource_path if prog.resource_path != "" else ""
+	var dup := prog.duplicate()
+	dup.source_path = source_path
+	loot.append(dup)
+	if source_path != "":
+		MetaState.unlock_program(source_path)
 
 # Adds amount to credits (for loot_credits pickups).
 func add_loot_credits(amount: int) -> void:
@@ -182,7 +189,9 @@ func buy_deck(deck: Cyberdeck) -> bool:
 	if credits < deck.price:
 		return false
 	credits -= deck.price
-	owned_decks.append(deck.duplicate())
+	var deck_dup := deck.duplicate()
+	deck_dup.source_path = deck.resource_path
+	owned_decks.append(deck_dup)
 	return true
 
 # Purchases a program: subtracts price from credits, appends a duplicate to
@@ -194,7 +203,9 @@ func buy_program(prog: NetProgram) -> bool:
 	if credits < prog.price:
 		return false
 	credits -= prog.price
-	owned_programs.append(prog.duplicate())
+	var prog_dup := prog.duplicate()
+	prog_dup.source_path = prog.resource_path
+	owned_programs.append(prog_dup)
 	return true
 
 # Equips a deck the runner already owns.
@@ -211,26 +222,33 @@ func save_run() -> void:
 	data.selected_security_tier = selected_security_tier
 	data.last_death_cause = last_death_cause
 	data.last_run_summary = last_run_summary.duplicate()
-	if selected_deck != null and selected_deck.resource_path != "":
-		data.selected_deck_path = selected_deck.resource_path
+	if selected_deck != null:
+		data.selected_deck_path = selected_deck.resource_path if selected_deck.resource_path != "" else selected_deck.source_path
 	for deck: Cyberdeck in owned_decks:
 		if deck == null:
 			continue
+		var deck_path: String = deck.resource_path if deck.resource_path != "" else deck.source_path
 		var entry: Dictionary = {
-			"path": deck.resource_path if deck.resource_path != "" else "",
+			"path": deck_path,
 			"installed_program_paths": []
 		}
 		for prog: NetProgram in deck.installed_programs:
 			if prog == null:
 				continue
-			entry["installed_program_paths"].append(prog.resource_path if prog.resource_path != "" else "")
+			entry["installed_program_paths"].append(prog.resource_path if prog.resource_path != "" else prog.source_path)
 		data.owned_deck_entries.append(entry)
 	for prog: NetProgram in owned_programs:
-		if prog != null and prog.resource_path != "":
-			data.owned_program_paths.append(prog.resource_path)
+		if prog == null:
+			continue
+		var prog_path: String = prog.resource_path if prog.resource_path != "" else prog.source_path
+		if prog_path != "":
+			data.owned_program_paths.append(prog_path)
 	for prog: NetProgram in loot:
-		if prog != null and prog.resource_path != "":
-			data.loot_paths.append(prog.resource_path)
+		if prog == null:
+			continue
+		var loot_path: String = prog.resource_path if prog.resource_path != "" else prog.source_path
+		if loot_path != "":
+			data.loot_paths.append(loot_path)
 	for file: NetFile in carried_files:
 		if file == null:
 			continue
@@ -263,7 +281,9 @@ func _load_run() -> void:
 	for path: String in data.owned_program_paths:
 		var prog: NetProgram = load(path) as NetProgram
 		if prog != null:
-			owned_programs.append(prog.duplicate())
+			var prog_dup := prog.duplicate()
+			prog_dup.source_path = path
+			owned_programs.append(prog_dup)
 	owned_decks.clear()
 	for entry: Variant in data.owned_deck_entries:
 		if entry is not Dictionary:
@@ -275,24 +295,29 @@ func _load_run() -> void:
 		if deck_src == null:
 			continue
 		var deck: Cyberdeck = deck_src.duplicate()
+		deck.source_path = deck_path
 		deck.installed_programs.clear()
 		var installed_paths: Array = entry.get("installed_program_paths", [])
 		for prog_path: Variant in installed_paths:
 			var prog_src: NetProgram = load(prog_path) as NetProgram
 			if prog_src != null:
-				deck.installed_programs.append(prog_src.duplicate())
+				var prog_dup := prog_src.duplicate()
+				prog_dup.source_path = prog_path
+				deck.installed_programs.append(prog_dup)
 		owned_decks.append(deck)
 	selected_deck = null
 	if data.selected_deck_path != "":
 		for deck: Cyberdeck in owned_decks:
-			if deck.resource_path == data.selected_deck_path:
+			if deck.source_path == data.selected_deck_path:
 				selected_deck = deck
 				break
 	loot.clear()
 	for path: String in data.loot_paths:
 		var prog: NetProgram = load(path) as NetProgram
 		if prog != null:
-			loot.append(prog.duplicate())
+			var prog_dup := prog.duplicate()
+			prog_dup.source_path = path
+			loot.append(prog_dup)
 	carried_files.clear()
 	for entry: Variant in data.carried_file_entries:
 		if entry is not Dictionary:
