@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://8gtpg6viaw5m"]
+
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_ssfbg"]
+
+[resource]
+script = ExtResource("1_ssfbg")
+program_name = "Wild Card"
+type = 3
+effect_type = 2
+memory_cost = 3
+strength = 1
+price = 1400
+description = "A simple but compact Killer program, designed by a'runner tagged \"Big Al\", operating out of Chicago's environs.Does 1D6 damage."
+damage_dice = 6
+metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

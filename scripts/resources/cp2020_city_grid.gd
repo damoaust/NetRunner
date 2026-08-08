@@ -10,10 +10,10 @@ extends Node2D
 # Tier-coded datafort icons reuse CP2020SecurityTier consts.
 
 const CELL: int = 40
-const W: int = 1280
-const H: int = 720
+const W: int = 1920
+const H: int = 1080
 const SCREEN_OFFSET: Vector2 = Vector2(20, 80)
-const POPUP_THEME := preload("res://scripts/resources/cp2020_popup_theme.gd")
+const POPUP_THEME := preload("res://scripts/resources/cp2020_theme.gd")
 
 # Cyberpunk/neon palette (matches the world map).
 const COLOR_BG: Color = Color(0.02, 0.03, 0.06, 1.0)
@@ -41,11 +41,9 @@ var city_name: String = "City Grid"
 @onready var camera: Camera2D = get_node_or_null("RunnerCamera")
 
 var _pulse_time: float = 0.0
-var _datafort_font: Font = null
 
 
 func _ready() -> void:
-	_datafort_font = _create_datafort_font()
 	_build_grid()
 	runner_pos = _resolve_entry()
 	if turn_manager:
@@ -58,27 +56,25 @@ func _ready() -> void:
 	queue_redraw()
 
 
-func _create_datafort_font() -> Font:
-	# Try an emoji font first so the city marker can use the 🏢 office-building emoji.
-	var emoji_paths := ["res://data/seguiemj.ttf", "C:/Windows/Fonts/seguiemj.ttf"]
-	for ttf_path in emoji_paths:
-		if FileAccess.file_exists(ttf_path):
-			var ff := FontFile.new()
-			var err := ff.load_dynamic_font(ttf_path)
-			if err == OK:
-				return ff
-			push_warning("Failed to load emoji font from %s (error %d)" % [ttf_path, err])
-	# Fallback to Webdings cityscape glyph.
-	var webdings_paths := ["res://data/webdings.ttf", "C:/Windows/Fonts/webdings.ttf"]
-	for ttf_path in webdings_paths:
-		if FileAccess.file_exists(ttf_path):
-			var ff := FontFile.new()
-			var err := ff.load_dynamic_font(ttf_path)
-			if err == OK:
-				return ff
-			push_warning("Failed to load Webdings from %s (error %d)" % [ttf_path, err])
-	push_warning("No datafort marker font found; markers will not render correctly.")
-	return null
+# Webdings "C" glyph = tier-colored cityscape silhouette. The bundled
+# webdings.ttf was regenerated with a Windows-platform (3,1) cmap (see
+# tools/add_windows_cmap.py) so Godot/HarfBuzz can resolve U+0043.
+const BUILDING_CHAR := "C"
+const BUILDING_FONT_PATH := "res://data/webdings.ttf"
+
+var _datafort_font: FontFile = null
+
+
+func _create_datafort_font() -> FontFile:
+	if _datafort_font != null:
+		return _datafort_font
+	var f := load(BUILDING_FONT_PATH) as FontFile
+	if f == null:
+		push_warning("CITY GRID: webdings.ttf missing — falling back to theme font for datafort glyph.")
+		_datafort_font = _theme_font() as FontFile
+	else:
+		_datafort_font = f
+	return _datafort_font
 
 
 func _process(_delta: float) -> void:
@@ -157,17 +153,16 @@ func _center_camera_on_runner() -> void:
 
 func _draw() -> void:
 	var font := _theme_font()
-	var wfont := _datafort_font if _datafort_font != null else font
 	var pulse := _pulse_value()
 
 	_draw_background(pulse)
 	_draw_scanlines()
 	_draw_vignette()
 	_draw_grid(pulse)
-	_draw_dataforts(wfont, font, pulse)
+	_draw_dataforts(font, pulse)
 	_draw_ldl_entry(font, pulse)
 	_draw_runner(pulse)
-	_draw_header(font, wfont, pulse)
+	_draw_header(font, pulse)
 
 
 func _pulse_value() -> float:
@@ -217,9 +212,7 @@ func _draw_grid(pulse: float) -> void:
 	_draw_tech_frame(origin, Vector2(total_w, total_h), COLOR_GRID_BRIGHT, 2.0)
 
 
-func _draw_dataforts(wfont: Font, label_font: Font, pulse: float) -> void:
-	const BUILDING_CHAR := "🏢"  # Office building emoji (U+1F3E2).
-	const BUILDING_SIZE := 30
+func _draw_dataforts(label_font: Font, pulse: float) -> void:
 	for df in dataforts:
 		var tier: int = int(df.security_tier)
 		var tier_color: Color = CP2020SecurityTier.COLORS.get(tier, Color(0.0, 1.0, 0.9, 1.0))
@@ -234,10 +227,12 @@ func _draw_dataforts(wfont: Font, label_font: Font, pulse: float) -> void:
 		# Corner brackets.
 		_draw_corner_brackets(center, CELL * 0.55, tier_color, 2.0)
 
-		# Building emoji: larger, horizontally centered within the cell bounds.
-		var glyph_dims := wfont.get_string_size(BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, BUILDING_SIZE)
-		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, 25)
-		draw_string(wfont, glyph_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_LEFT, -1, BUILDING_SIZE, tier_color)
+		# Cityscape glyph centered in the tile (tier-colored).
+		var glyph_font := _create_datafort_font()
+		var glyph_size := 30
+		var glyph_dims := glyph_font.get_string_size(BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size)
+		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, glyph_size * 0.35 + 10.0)
+		draw_string(glyph_font, glyph_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size, tier_color)
 
 		# Datafort label centered below the tile.
 		var label_size := 11
@@ -279,8 +274,7 @@ func _draw_runner(pulse: float) -> void:
 	draw_circle(center, CELL * 0.1, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, 0.8))
 
 
-func _draw_header(font: Font, wfont: Font, pulse: float) -> void:
-	const BUILDING_CHAR := "🏢"  # Office building emoji (U+1F3E2).
+func _draw_header(font: Font, pulse: float) -> void:
 	const LEGEND_ICON_SIZE := 12
 	var title := "CITY GRID // %s" % city_name.to_upper()
 	var header_y := 48.0
@@ -301,8 +295,10 @@ func _draw_header(font: Font, wfont: Font, pulse: float) -> void:
 	for i in range(CP2020SecurityTier.Tier.size()):
 		var tier_color: Color = CP2020SecurityTier.COLORS[i]
 		var short := String(CP2020SecurityTier.SHORT[i])
-		var icon_pos := Vector2(legend_x, legend_y + 11)
-		draw_string(wfont, icon_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_ICON_SIZE, tier_color)
+		var legend_font := _create_datafort_font()
+		var icon_dims := legend_font.get_string_size(BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, LEGEND_ICON_SIZE)
+		var icon_pos := Vector2(legend_x + (LEGEND_ICON_SIZE - icon_dims.x) * 0.5, legend_y + LEGEND_ICON_SIZE - 1)
+		draw_string(legend_font, icon_pos, BUILDING_CHAR, HORIZONTAL_ALIGNMENT_CENTER, -1, LEGEND_ICON_SIZE, tier_color)
 		draw_string(font, Vector2(legend_x + LEGEND_ICON_SIZE + 4, legend_y + 11), short, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.85, 0.85, 0.9))
 		legend_y += 16
 

@@ -466,17 +466,7 @@ script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_i7c2s"]
-script = ExtResource("1_sk5yr")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
 [sub_resource type="Resource" id="Resource_isksh"]
-script = ExtResource("1_sk5yr")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_kjmoj"]
 script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
@@ -486,17 +476,7 @@ script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_qm521"]
-script = ExtResource("1_sk5yr")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
 [sub_resource type="Resource" id="Resource_2biw2"]
-script = ExtResource("1_sk5yr")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_xp5ba"]
 script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
@@ -1582,7 +1562,6 @@ copied_file_paths = PackedStringArray()
 script = ExtResource("1_sk5yr")
 tile_type = 7
 ice_program = ExtResource("4_2bqhh")
-ice_has_override = true
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_b5exb"]
@@ -2253,7 +2232,6 @@ copied_file_paths = PackedStringArray()
 script = ExtResource("1_sk5yr")
 tile_type = 7
 ice_program = ExtResource("5_pnu68")
-ice_has_override = true
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_wdbpd"]
@@ -4733,13 +4711,9 @@ Vector2i(2, 27): SubResource("Resource_mk6fu"),
 Vector2i(2, 28): SubResource("Resource_776gt"),
 Vector2i(2, 29): SubResource("Resource_33gfk"),
 Vector2i(3, 0): SubResource("Resource_c3nsy"),
-Vector2i(3, 1): SubResource("Resource_i7c2s"),
 Vector2i(3, 2): SubResource("Resource_isksh"),
-Vector2i(3, 3): SubResource("Resource_kjmoj"),
 Vector2i(3, 4): SubResource("Resource_btb33"),
-Vector2i(3, 5): SubResource("Resource_qm521"),
 Vector2i(3, 6): SubResource("Resource_2biw2"),
-Vector2i(3, 7): SubResource("Resource_xp5ba"),
 Vector2i(3, 8): SubResource("Resource_lglp2"),
 Vector2i(3, 9): SubResource("Resource_be5a8"),
 Vector2i(3, 10): SubResource("Resource_1y1t5"),

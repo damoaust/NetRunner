@@ -7,6 +7,7 @@
 script = ExtResource("1_2lyri")
 name = "Mex GovNet"
 pos = Vector2i(3, 2)
+subnet_path = "res://scenes/forts/fort5.tres"
 security_tier = 2
 security_code = 3
 
@@ -25,8 +26,17 @@ security_tier = 4
 ldl_cost = 70
 security_code = 5
 
+[sub_resource type="Resource" id="Resource_2lyri"]
+script = ExtResource("1_2lyri")
+name = "SoCal Embassy"
+pos = Vector2i(9, 7)
+subnet_path = "res://scenes/forts/pr0n1.tres"
+security_tier = 4
+
 [resource]
 script = ExtResource("2_2caua")
 city_name = "Mexico City"
-dataforts = Array[ExtResource("1_2lyri")]([SubResource("Resource_0jat4"), SubResource("Resource_nx7if"), SubResource("Resource_y2gev")])
+grid_cols = 39
+grid_rows = 13
+dataforts = Array[ExtResource("1_2lyri")]([SubResource("Resource_0jat4"), SubResource("Resource_nx7if"), SubResource("Resource_y2gev"), SubResource("Resource_2lyri")])
 ldl_entry = Vector2i(9, 5)

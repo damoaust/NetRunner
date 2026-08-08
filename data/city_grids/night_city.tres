@@ -22,6 +22,7 @@ ldl_cost = 60
 script = ExtResource("1_vo1hh")
 name = "Lucky 7 Mall"
 pos = Vector2i(11, 2)
+subnet_path = "res://scenes/forts/fort1.tres"
 ldl_cost = 70
 security_code = 5
 
@@ -29,7 +30,7 @@ security_code = 5
 script = ExtResource("1_vo1hh")
 name = "EBM"
 pos = Vector2i(15, 2)
-subnet_path = "res://scenes/forts/london_subnet.tres"
+subnet_path = "res://scenes/forts/fort2.tres"
 security_tier = 3
 ldl_cost = 80
 security_code = 6
@@ -38,6 +39,7 @@ security_code = 6
 script = ExtResource("1_vo1hh")
 name = "NetWatch Office"
 pos = Vector2i(3, 6)
+subnet_path = "res://scenes/forts/fort3.tres"
 security_tier = 2
 ldl_cost = 90
 security_code = 7
@@ -49,8 +51,15 @@ pos = Vector2i(11, 5)
 subnet_path = "res://scenes/forts/pr0n1.tres"
 security_tier = 4
 
+[sub_resource type="Resource" id="Resource_kjwcc"]
+script = ExtResource("1_vo1hh")
+name = "Joey's Pizza"
+pos = Vector2i(7, 7)
+subnet_path = "res://scenes/forts/fort4.tres"
+security_tier = 0
+
 [resource]
 script = ExtResource("2_kjwcc")
 city_name = "Night City"
-dataforts = Array[ExtResource("1_vo1hh")]([SubResource("Resource_kj5fi"), SubResource("Resource_rljcg"), SubResource("Resource_0jgxg"), SubResource("Resource_404ch"), SubResource("Resource_6hw6t"), SubResource("Resource_vo1hh")])
+dataforts = Array[ExtResource("1_vo1hh")]([SubResource("Resource_kj5fi"), SubResource("Resource_rljcg"), SubResource("Resource_0jgxg"), SubResource("Resource_404ch"), SubResource("Resource_6hw6t"), SubResource("Resource_vo1hh"), SubResource("Resource_kjwcc")])
 ldl_entry = Vector2i(9, 5)

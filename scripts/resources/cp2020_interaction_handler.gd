@@ -3,7 +3,7 @@ extends Node
 
 signal action_triggered(action_name: String, target_coord: Vector2i, program_resource: Variant)
 
-const POPUP_THEME := preload("res://scripts/resources/cp2020_popup_theme.gd")
+const POPUP_THEME := preload("res://scripts/resources/cp2020_theme.gd")
 
 # Variable to hold our dynamically generated menu
 var _dynamic_menu: PopupMenu = null

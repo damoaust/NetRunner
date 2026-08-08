@@ -16,10 +16,10 @@ const DEFAULT_LAYOUT_PATH: String = "res://data/world_map_default.tres"
 const FRAME_PATH: String = "res://data/world_map_frame.png"
 const GRID_PATH: String = "res://data/world_map_grid.png"
 const CELL: int = 40
-const W: int = 1280
-const H: int = 720
+const W: int = 1920
+const H: int = 1080
 const SCREEN_OFFSET: Vector2 = Vector2(20, 60)
-const POPUP_THEME := preload("res://scripts/resources/cp2020_popup_theme.gd")
+const POPUP_THEME := preload("res://scripts/resources/cp2020_theme.gd")
 
 const OPEN_OCEAN_NAME: String = "OPEN OCEAN"
 

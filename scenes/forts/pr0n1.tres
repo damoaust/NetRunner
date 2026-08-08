@@ -5,8 +5,15 @@
 [ext_resource type="Script" path="res://scripts/resources/CP2020TileData.gd" id="2_kfgo1"]
 [ext_resource type="Script" path="res://scripts/resources/CP2020DatafortLayout.gd" id="3_a4hh2"]
 [ext_resource type="Resource" path="res://data/killer2.tres" id="4_a4hh2"]
+[ext_resource type="Resource" path="res://data/killer6.tres" id="5_djh2h"]
 [ext_resource type="Resource" path="res://data/hellhound.tres" id="5_hh"]
-[ext_resource type="Resource" path="res://data/flatline.tres" id="6_fl"]
+
+[sub_resource type="Resource" id="Resource_wf6v6"]
+script = ExtResource("2_kfgo1")
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_51p43"]
 script = ExtResource("2_kfgo1")
@@ -174,6 +181,16 @@ tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_3wwhr"]
+script = ExtResource("2_kfgo1")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jqqsk"]
+script = ExtResource("2_kfgo1")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_a4hh2"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
@@ -576,7 +593,7 @@ copied_file_paths = PackedStringArray()
 script = ExtResource("2_kfgo1")
 tile_type = 7
 tile_name = "Black ICE"
-ice_program = ExtResource("6_fl")
+ice_program = ExtResource("5_djh2h")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_r3he1"]
@@ -2158,6 +2175,11 @@ script = ExtResource("2_kfgo1")
 tile_type = 9
 tile_name = "Netrunner"
 npc_name = "Dick Killer"
+npc_strength = 2
+npc_max_integrity = 6
+npc_max_health = 4
+npc_max_mu = 2
+npc_disposition = 0
 npc_has_override = true
 copied_file_paths = PackedStringArray()
 
@@ -4440,23 +4462,6 @@ tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_n1xbr"]
-script = ExtResource("2_kfgo1")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_a4hh2"]
-script = ExtResource("2_kfgo1")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_wf6v6"]
-script = ExtResource("2_kfgo1")
-tile_type = 3
-tile_name = "LDL Link"
-is_ldl_link = true
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_jqqsk"]
 script = ExtResource("2_kfgo1")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()

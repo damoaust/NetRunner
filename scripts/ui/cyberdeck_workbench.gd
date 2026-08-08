@@ -16,63 +16,69 @@ var _selected_loaded_idx: int = -1
 # Library filter: maps filter OptionButton index -> EffectType (null = All).
 var _filter_effects: Array = []
 
-# --- UI references (built in code) ---
-var deck_selector: OptionButton
-var model_label: Label
-var speed_label: Label
-var mu_label: Label
-var mu_bar: ProgressBar
-var mu_overlay_label: Label
-var mu_overflow_badge: Label
-var strength_label: Label
-var interface_label: Label
-var loaded_summary_label: Label
-var meta_label: Label
-var loaded_list: ItemList
-var library_list: ItemList
-var filter_option: OptionButton
-var detail_name: Label
+# CP2020Theme companion: palette consts + programmatic StyleBox/node factories
+# for the few controls still built in code (Purchase-Unlocks window, dynamic
+# buttons). The look itself comes from themes/cyberpunk_theme.tres set on the
+# scene root.
+const THEME := preload("res://scripts/resources/cp2020_theme.gd")
+const THEME_RES := preload("res://themes/cyberpunk_theme.tres")
 
+# --- UI references (scene-tree nodes; static structure lives in
+# CyberdeckWorkbench.tscn and is grabbed here via unique_name_in_owner) ---
+@onready var deck_selector: OptionButton = get_node_or_null("%DeckSelector")
+@onready var model_label: Label = get_node_or_null("%ModelLabel")
+@onready var speed_label: Label = get_node_or_null("%SpeedLabel")
+@onready var mu_label: Label = get_node_or_null("%MuLabel")
+@onready var mu_bar: ProgressBar = get_node_or_null("%MuBar")
+@onready var mu_overlay_label: Label = get_node_or_null("%MuOverlayLabel")
+@onready var mu_overflow_badge: Label = get_node_or_null("%MuOverflowBadge")
+@onready var strength_label: Label = get_node_or_null("%StrengthLabel")
+@onready var interface_label: Label = get_node_or_null("%InterfaceLabel")
+@onready var loaded_summary_label: Label = get_node_or_null("%LoadedSummaryLabel")
+@onready var meta_label: Label = get_node_or_null("%MetaLabel")
+@onready var loaded_list: ItemList = get_node_or_null("%LoadedList")
+@onready var library_list: ItemList = get_node_or_null("%LibraryList")
+@onready var filter_option: OptionButton = get_node_or_null("%FilterOption")
+@onready var detail_name: Label = get_node_or_null("%DetailName")
 # Netrunner Status column
-var runner_portrait_label: Label
-var callsign_label: Label
-var role_label: Label
-var stat_ref_label: Label
-var stat_luck_label: Label
-var hp_label: Label
-var wounds_label: Label
-var trace_label: Label
-var net_cred_label: Label
-var run_label: Label
-var tips_label: Label
-var detail_cursor_label: Label
-var detail_type: Label
-var detail_effect: Label
-var detail_str: Label
-var detail_mu: Label
-var detail_price: Label
-var detail_desc: Label
-var detail_card: PanelContainer
-var load_button: Button
-var unload_button: Button
-var clear_button: Button
-var jack_button: Button
-var mu_message: Label
-var destination_label: Label
-
-# --- Shop panel references (built in code) ---
-var credits_label: Label
-var shop_buy_decks_list: ItemList
-var shop_buy_programs_list: ItemList
-var shop_sell_loot_list: ItemList
-var shop_sell_files_list: ItemList
-var buy_deck_button: Button
-var buy_program_button: Button
-var sell_loot_button: Button
-var sell_file_button: Button
-var sell_all_files_button: Button
-# --- Purchase Unlocks window (permanent MetaState blueprint unlocks) ---
-var unlock_button: Button
+@onready var runner_portrait_label: Label = get_node_or_null("%RunnerPortraitLabel")
+@onready var callsign_label: Label = get_node_or_null("%CallsignLabel")
+@onready var role_label: Label = get_node_or_null("%RoleLabel")
+@onready var stat_ref_label: Label = get_node_or_null("%StatRefLabel")
+@onready var stat_luck_label: Label = get_node_or_null("%StatLuckLabel")
+@onready var hp_label: Label = get_node_or_null("%HpLabel")
+@onready var wounds_label: Label = get_node_or_null("%WoundsLabel")
+@onready var trace_label: Label = get_node_or_null("%TraceLabel")
+@onready var net_cred_label: Label = get_node_or_null("%NetCredLabel")
+@onready var run_label: Label = get_node_or_null("%RunLabel")
+@onready var tips_label: Label = get_node_or_null("%TipsLabel")
+@onready var detail_cursor_label: Label = get_node_or_null("%DetailCursorLabel")
+@onready var detail_type: Label = get_node_or_null("%DetailType")
+@onready var detail_effect: Label = get_node_or_null("%DetailEffect")
+@onready var detail_str: Label = get_node_or_null("%DetailStr")
+@onready var detail_mu: Label = get_node_or_null("%DetailMu")
+@onready var detail_price: Label = get_node_or_null("%DetailPrice")
+@onready var detail_desc: Label = get_node_or_null("%DetailDesc")
+@onready var detail_card: PanelContainer = get_node_or_null("%DetailCard")
+@onready var load_button: Button = get_node_or_null("%LoadButton")
+@onready var unload_button: Button = get_node_or_null("%UnloadButton")
+@onready var clear_button: Button = get_node_or_null("%ClearButton")
+@onready var jack_button: Button = get_node_or_null("%JackButton")
+@onready var mu_message: Label = get_node_or_null("%MuMessage")
+@onready var destination_label: Label = get_node_or_null("%DestinationLabel")
+# --- Shop panel references (scene-tree nodes) ---
+@onready var credits_label: Label = get_node_or_null("%CreditsLabel")
+@onready var shop_buy_decks_list: ItemList = get_node_or_null("%ShopBuyDecksList")
+@onready var shop_buy_programs_list: ItemList = get_node_or_null("%ShopBuyProgramsList")
+@onready var shop_sell_loot_list: ItemList = get_node_or_null("%ShopSellLootList")
+@onready var shop_sell_files_list: ItemList = get_node_or_null("%ShopSellFilesList")
+@onready var buy_deck_button: Button = get_node_or_null("%BuyDeckButton")
+@onready var buy_program_button: Button = get_node_or_null("%BuyProgramButton")
+@onready var sell_loot_button: Button = get_node_or_null("%SellLootButton")
+@onready var sell_file_button: Button = get_node_or_null("%SellFileButton")
+@onready var sell_all_files_button: Button = get_node_or_null("%SellAllFilesButton")
+@onready var unlock_button: Button = get_node_or_null("%UnlockButton")
+# --- Purchase Unlocks window (built in code — it's a popup) ---
 var unlock_window: Window
 var unlock_list: ItemList
 var unlock_buy_button: Button
@@ -85,9 +91,6 @@ var _selected_buy_deck_idx: int = -1
 var _selected_buy_program_idx: int = -1
 var _selected_sell_loot_idx: int = -1
 var _selected_sell_file_idx: int = -1
-
-# Shared monospace terminal font applied across the workbench UI.
-var _mono_font: SystemFont
 
 # Human-readable tags for each program effect type.
 const EFFECT_TAGS: Dictionary = {
@@ -139,7 +142,9 @@ const PROGRAM_TYPE_NAMES: Dictionary = {
 	NetProgram.ProgramType.ICE: "ICE",
 }
 
-# Cyberpunk theme palette.
+# Cyberpunk theme palette. These mirror CP2020Theme (above) and are kept here
+# only to avoid churning every call site that sets runtime text colors; the
+# authoritative copy lives in CP2020Theme.
 const COL_BG := Color(0.0, 0.07, 0.04, 1.0)
 const COL_PANEL := Color(0.02, 0.06, 0.04, 0.96)
 const COL_BORDER := Color(0.0, 1.0, 0.35, 0.65)
@@ -162,7 +167,14 @@ func _ready() -> void:
 	# Persist the current hub state whenever the workbench is entered (covers
 	# returning from a run as well as the initial new-life setup).
 	RunState.save_run()
-	_build_ui()
+	# The static UI structure lives in CyberdeckWorkbench.tscn (theme applied
+	# at the root); here we only wire signals, populate the filter dropdown,
+	# style the list scrollbars, and seed the dynamic content.
+	_connect_signals()
+	_populate_filter()
+	for list in [loaded_list, library_list, shop_buy_decks_list, shop_buy_programs_list, shop_sell_loot_list, shop_sell_files_list]:
+		if list:
+			_style_scrollbars(list)
 	# Default active deck to the previously equipped deck if still owned,
 	# else the first owned deck.
 	var decks := _owned_decks()
@@ -177,427 +189,75 @@ func _ready() -> void:
 	_start_jackin_pulse()
 	_setup_drag_drop()
 
-# ---------------------------------------------------------------------------
-# UI construction
-# ---------------------------------------------------------------------------
-func _build_ui() -> void:
-	_mono_font = _make_mono_font()
-	# Margin frame around everything.
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_bottom", 14)
-	add_child(margin)
-
-	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(root)
-
-	# Title bar + credits readout.
-	var title_row := HBoxContainer.new()
-	title_row.add_theme_constant_override("separation", 12)
-	var title := _make_header_label("◢ CYBERDECK WORKBENCH ◣", true)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_row.add_child(title)
-	credits_label = _make_label("CREDITS: 0 eb", COL_AMBER)
-	credits_label.add_theme_font_size_override("font_size", 20)
-	credits_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	credits_label.custom_minimum_size = Vector2(220, 0)
-	title_row.add_child(credits_label)
-	root.add_child(title_row)
-
-	# Tabbed content: LOADOUT + SHOP, so every list gets full height.
-	var tabs := TabContainer.new()
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_style_tab_container(tabs)
-	root.add_child(tabs)
-
-	# LOADOUT tab: deck stats | loaded programs | library+detail | netrunner status.
-	# Stretch ratios widen the Library column (it hosts the biggest list) and
-	# the Netrunner column (so its labels have room) without burning extra
-	# width on the DECK STATS column.
-	var loadout := HBoxContainer.new()
-	loadout.name = "LOADOUT"
-	loadout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	loadout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	loadout.add_theme_constant_override("separation", 8)
-	var deck_col := _build_deck_column()
-	deck_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	deck_col.size_flags_stretch_ratio = 1.0
-	loadout.add_child(deck_col)
-	var loaded_col := _build_loaded_column()
-	loaded_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	loaded_col.size_flags_stretch_ratio = 1.0
-	loaded_col.custom_minimum_size = Vector2(200, 0)
-	loadout.add_child(loaded_col)
-	var library_col := _build_library_column()
-	library_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	library_col.size_flags_stretch_ratio = 1.0
-	library_col.custom_minimum_size = Vector2(200, 0)
-	loadout.add_child(library_col)
-	var runner_col := _build_netrunner_column()
-	runner_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	runner_col.size_flags_stretch_ratio = 1.0
-	runner_col.custom_minimum_size = Vector2(280, 0)
-	loadout.add_child(runner_col)
-	tabs.add_child(loadout)
-	tabs.tab_changed.connect(_on_tab_changed)
-
-	# SHOP tab: 2x2 grid of buy/sell sections.
-	tabs.add_child(_build_shop_tab())
-
-	# MU overflow / status message + Jack In button row (always visible).
-	var footer := HBoxContainer.new()
-	footer.add_theme_constant_override("separation", 16)
-	mu_message = _make_label("", COL_WARN)
-	mu_message.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(mu_message)
-
-	destination_label = _make_label("→ Last subnet: —", COL_DIM)
-	destination_label.add_theme_font_size_override("font_size", 12)
-	destination_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(destination_label)
-
-	jack_button = Button.new()
-	jack_button.text = "[ J ]  JACK IN"
-	jack_button.add_theme_font_size_override("font_size", 18)
-	jack_button.add_theme_color_override("font_color", COL_GREEN)
-	jack_button.add_theme_color_override("font_hover_color", Color(0.6, 1.0, 0.7))
-	var jb_style := _neon_style(COL_GREEN, 2, 6)
-	jack_button.add_theme_stylebox_override("normal", jb_style)
-	jack_button.add_theme_stylebox_override("hover", _neon_style(Color(0.4, 1.0, 0.6), 2, 6))
-	jack_button.add_theme_stylebox_override("pressed", _neon_style(COL_GREEN, 2, 6))
-	jack_button.tooltip_text = "Jack into the Net using the selected deck and loaded programs (Shortcut: J)"
-	jack_button.pressed.connect(_on_button_pressed)
-	footer.add_child(jack_button)
-	root.add_child(footer)
-
-	# Apply the monospace terminal font to every text control we built.
-	_apply_terminal_theme(self)
-
-	# CRT overlay on top of everything (non-interactive).
-	add_child(_build_crt_overlay())
-
-func _build_deck_column() -> Control:
-	var panel := _styled_panel()
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(col)
-
-	col.add_child(_make_header_label("DECK STATS"))
-	deck_selector = OptionButton.new()
-	deck_selector.item_selected.connect(_on_deck_selector_item_selected)
-	deck_selector.tooltip_text = "Switch between owned cyberdecks this life"
-	col.add_child(deck_selector)
-
-	col.add_child(_make_rule())
-	model_label = _make_label("Model:", COL_TEXT)
-	speed_label = _make_label("Speed Bonus: +0", COL_TEXT)
-	mu_label = _make_label("Memory Units (MU): 0 / 0", COL_TEXT)
-	col.add_child(model_label)
-	col.add_child(speed_label)
-	col.add_child(mu_label)
-
-	# Bar with overlaid MU numbers and OVER LIMIT badge. The bar fills the
-	# column width; the numeric overlay is layered ON TOP using anchors.
-	mu_bar = ProgressBar.new()
-	mu_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mu_bar.custom_minimum_size = Vector2(0, 22)
-	mu_bar.show_percentage = false
-	var bar_bg := StyleBoxFlat.new()
-	bar_bg.bg_color = Color(0.0, 0.18, 0.1, 1.0)
-	bar_bg.border_width_bottom = 1
-	bar_bg.border_width_top = 1
-	bar_bg.border_width_left = 1
-	bar_bg.border_width_right = 1
-	bar_bg.border_color = COL_BORDER_DIM
-	bar_bg.corner_radius_top_left = 2
-	bar_bg.corner_radius_top_right = 2
-	bar_bg.corner_radius_bottom_left = 2
-	bar_bg.corner_radius_bottom_right = 2
-	mu_bar.add_theme_stylebox_override("background", bar_bg)
-	mu_bar.add_theme_stylebox_override("fill", _build_gradient_fill())
-
-	# Overlay sits ON TOP of the bar via a Control container with both children
-	# anchored preset = full rect.
-	var bar_overlay := Control.new()
-	bar_overlay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar_overlay.custom_minimum_size = Vector2(0, 22)
-	bar_overlay.add_child(mu_bar)
-	mu_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
-
-	mu_overlay_label = _make_label("0 / 0", Color(0.95, 1.0, 0.95))
-	mu_overlay_label.add_theme_font_size_override("font_size", 13)
-	mu_overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	mu_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	mu_overlay_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	mu_overlay_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar_overlay.add_child(mu_overlay_label)
-
-	mu_overflow_badge = _make_label("", COL_WARN)
-	mu_overflow_badge.add_theme_font_size_override("font_size", 12)
-	mu_overflow_badge.visible = false
-	mu_overflow_badge.tooltip_text = "You have more programs loaded than the active deck's MU allows."
-	col.add_child(bar_overlay)
-	col.add_child(mu_overflow_badge)
-
-	strength_label = _make_label("Data Wall STR: 0", COL_TEXT)
-	interface_label = _make_label("Interface Rank: 0", COL_TEXT)
-	col.add_child(strength_label)
-	col.add_child(interface_label)
-
-	col.add_child(_make_rule())
-	col.add_child(_make_header_label("LOADOUT SUMMARY"))
-	loaded_summary_label = _make_label("No programs loaded.", COL_DIM)
-	loaded_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(loaded_summary_label)
-	col.add_child(_make_rule())
-	meta_label = _make_label("// TOTAL KILLS: 0\n// DATAJACK: OFFLINE\n// SUBNETS CLEARED: 0", COL_DIM)
-	meta_label.add_theme_font_size_override("font_size", 12)
-	meta_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(meta_label)
-	return panel
-
-# Build a per-frame gradient fill (green → amber → red) for the MU bar.
-# 0..50% green, 50..70% green→amber, 70..100% amber→red, and the red tail uses
-# diagonal stripes to convey overflow state.
-func _build_gradient_fill() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = COL_GREEN
-	sb.corner_radius_top_left = 2
-	sb.corner_radius_top_right = 2
-	sb.corner_radius_bottom_left = 2
-	sb.corner_radius_bottom_right = 2
-	return sb
-
-# We re-color the fill each refresh based on ratio; solid color is fine.
-func _set_mu_bar_color(ratio: float) -> void:
-	if mu_bar == null:
+# Populate the library filter OptionButton (All + one entry per EffectType).
+func _populate_filter() -> void:
+	if filter_option == null:
 		return
-	var fill: StyleBoxFlat = mu_bar.get_theme_stylebox("fill") as StyleBoxFlat
-	if fill == null:
-		# Older Godot 4 versions expose fill via override; rebuild if needed.
-		fill = _build_gradient_fill()
-		mu_bar.add_theme_stylebox_override("fill", fill)
-	if ratio >= 1.0:
-		fill.bg_color = Color(1.0, 0.25, 0.25)
-	elif ratio >= 0.85:
-		fill.bg_color = Color(1.0, 0.4, 0.2)
-	elif ratio >= 0.6:
-		fill.bg_color = Color(1.0, 0.7, 0.2)
-	else:
-		fill.bg_color = COL_GREEN
-	fill = fill  # keep stylebox reference live
-
-func _build_loaded_column() -> Control:
-	var panel := _styled_panel()
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(col)
-
-	col.add_child(_make_header_label("LOADED INTO MEMORY"))
-
-	loaded_list = ItemList.new()
-	loaded_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	loaded_list.custom_minimum_size = Vector2(0, 180)
-	loaded_list.add_theme_font_size_override("font_size", 12)
-	loaded_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	loaded_list.item_selected.connect(_on_loaded_item_selected)
-	loaded_list.item_activated.connect(_on_loaded_item_activated)
-	loaded_list.tooltip_text = "Programs currently loaded into the deck's MU. Double-click or [U] to unload."
-	_style_list(loaded_list)
-	col.add_child(loaded_list)
-
-	# Controls row.
-	var btns := HBoxContainer.new()
-	btns.add_theme_constant_override("separation", 6)
-	btns.alignment = BoxContainer.ALIGNMENT_CENTER
-	btns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	unload_button = _make_button("[U] ▶", COL_AMBER)
-	unload_button.tooltip_text = "Unload the selected program from the deck [U]"
-	unload_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	unload_button.pressed.connect(_on_unload_pressed)
-	btns.add_child(unload_button)
-
-	load_button = _make_button("[L] LOAD ▶", COL_GREEN)
-	load_button.tooltip_text = "Load the highlighted library program into the deck [L]"
-	load_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	load_button.pressed.connect(_on_load_pressed)
-	btns.add_child(load_button)
-
-	clear_button = _make_button("[C] CLR", COL_WARN)
-	clear_button.tooltip_text = "Clear ALL loaded programs from the deck [C]"
-	clear_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	clear_button.pressed.connect(_on_clear_pressed)
-	btns.add_child(clear_button)
-
-	col.add_child(btns)
-	return panel
-
-func _build_library_column() -> Control:
-	var panel := _styled_panel()
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(col)
-
-	# Header row: title on the left, inline filter on the right so the
-	# dropdown does NOT steal a row of vertical space.
-	var header_row := HBoxContainer.new()
-	header_row.add_theme_constant_override("separation", 8)
-	var title := _make_header_label("PROGRAM LIBRARY")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header_row.add_child(title)
-	col.add_child(header_row)
-
-	# Build the filter row here so we can shrink-wrap the dropdown and tuck
-	# it next to the title; keep the helper for the dropdown construction.
-	var filter_inline := HBoxContainer.new()
-	filter_inline.add_theme_constant_override("separation", 6)
-	var fl := _make_label("Filter:", COL_DIM)
-	filter_inline.add_child(fl)
-	filter_option = OptionButton.new()
-	filter_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	filter_option.clear()
 	_filter_effects = [null]
 	filter_option.add_item("All")
 	for et in EFFECT_TAGS.keys():
 		_filter_effects.append(et)
 		filter_option.add_item(EFFECT_TAGS[et])
-	filter_option.item_selected.connect(_on_filter_changed)
-	filter_inline.add_child(filter_option)
-	filter_inline.tooltip_text = "Limit the library to one program effect type"
-	col.add_child(filter_inline)
 
-	library_list = ItemList.new()
-	library_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	library_list.custom_minimum_size = Vector2(0, 180)
-	library_list.add_theme_font_size_override("font_size", 12)
-	library_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	library_list.item_selected.connect(_on_library_item_selected)
-	library_list.item_activated.connect(_on_library_item_activated)
-	library_list.tooltip_text = "Programs available to load (owned this life). Double-click or [L] to load."
-	_style_list(library_list)
-	col.add_child(library_list)
+# Connect every scene-tree control signal in one place. Idempotency isn't
+# needed here because the nodes are fresh from the scene tree.
+func _connect_signals() -> void:
+	if deck_selector:
+		deck_selector.item_selected.connect(_on_deck_selector_item_selected)
+	if filter_option:
+		filter_option.item_selected.connect(_on_filter_changed)
+	if loaded_list:
+		loaded_list.item_selected.connect(_on_loaded_item_selected)
+		loaded_list.item_activated.connect(_on_loaded_item_activated)
+	if library_list:
+		library_list.item_selected.connect(_on_library_item_selected)
+		library_list.item_activated.connect(_on_library_item_activated)
+	if load_button:
+		load_button.pressed.connect(_on_load_pressed)
+	if unload_button:
+		unload_button.pressed.connect(_on_unload_pressed)
+	if clear_button:
+		clear_button.pressed.connect(_on_clear_pressed)
+	if jack_button:
+		jack_button.pressed.connect(_on_button_pressed)
+	if unlock_button:
+		unlock_button.pressed.connect(_open_unlock_window)
+	if buy_deck_button:
+		buy_deck_button.pressed.connect(_on_buy_deck_pressed)
+	if buy_program_button:
+		buy_program_button.pressed.connect(_on_buy_program_pressed)
+	if sell_loot_button:
+		sell_loot_button.pressed.connect(_on_sell_loot_pressed)
+	if sell_file_button:
+		sell_file_button.pressed.connect(_on_sell_file_pressed)
+	if sell_all_files_button:
+		sell_all_files_button.pressed.connect(_on_sell_all_files_pressed)
+	if shop_buy_decks_list:
+		shop_buy_decks_list.item_selected.connect(_on_buy_deck_selected)
+	if shop_buy_programs_list:
+		shop_buy_programs_list.item_selected.connect(_on_buy_program_selected)
+	if shop_sell_loot_list:
+		shop_sell_loot_list.item_selected.connect(_on_sell_loot_selected)
+	if shop_sell_files_list:
+		shop_sell_files_list.item_selected.connect(_on_sell_file_selected)
+	# TabContainer is in the scene tree; wire its tab_changed signal here.
+	var tabs := get_node_or_null("%Tabs") as TabContainer
+	if tabs:
+		tabs.tab_changed.connect(_on_tab_changed)
 
-	# Detail card.
-	detail_card = _styled_panel(false)
-	var dcol := VBoxContainer.new()
-	dcol.add_theme_constant_override("separation", 4)
-	dcol.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_card.add_child(dcol)
-
-	detail_name = _make_label("— select a program —", COL_HEADER)
-	detail_name.add_theme_font_size_override("font_size", 16)
-	detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dcol.add_child(detail_name)
-	detail_cursor_label = _make_label("_", COL_GREEN)
-	detail_cursor_label.add_theme_font_size_override("font_size", 14)
-	dcol.add_child(detail_cursor_label)
-	detail_type = _make_label("", COL_DIM)
-	detail_effect = _make_label("", COL_DIM)
-	detail_str = _make_label("", COL_DIM)
-	detail_mu = _make_label("", COL_DIM)
-	detail_price = _make_label("", COL_DIM)
-	detail_type.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_str.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_mu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dcol.add_child(detail_type)
-	dcol.add_child(detail_effect)
-	dcol.add_child(detail_str)
-	dcol.add_child(detail_mu)
-	dcol.add_child(detail_price)
-	dcol.add_child(_make_rule())
-	detail_desc = _make_label("", COL_TEXT)
-	detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_desc.custom_minimum_size = Vector2(0, 40)
-	dcol.add_child(detail_desc)
-	col.add_child(detail_card)
-	return panel
-
-# 4th column: Netrunner Status (portrait + stats + where am I going?)
-# Fills the previously-empty right half of the screen. Stretch ratio is set
-# on the caller so other columns get fair share.
-func _build_netrunner_column() -> Control:
-	var panel := _styled_panel()
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(col)
-
-	col.add_child(_make_header_label("NETRUNNER"))
-	var portrait_box := PanelContainer.new()
-	var portrait_bg := StyleBoxFlat.new()
-	portrait_bg.bg_color = Color(0.0, 0.02, 0.01, 0.9)
-	portrait_bg.border_width_left = 1
-	portrait_bg.border_width_top = 1
-	portrait_bg.border_width_right = 1
-	portrait_bg.border_width_bottom = 1
-	portrait_bg.border_color = COL_BORDER_DIM
-	portrait_box.add_theme_stylebox_override("panel", portrait_bg)
-
-	runner_portrait_label = Label.new()
-	runner_portrait_label.text = _runner_ascii_portrait("SHADOW")
-	runner_portrait_label.add_theme_font_size_override("font_size", 11)
-	runner_portrait_label.add_theme_color_override("font_color", COL_HEADER)
-	runner_portrait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	runner_portrait_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	portrait_box.add_child(runner_portrait_label)
-	col.add_child(portrait_box)
-
-	callsign_label = _make_label("// CALLSIGN: ----", COL_HEADER)
-	callsign_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	role_label = _make_label("// ROLE: NETRUNNER", COL_DIM)
-	role_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(callsign_label)
-	col.add_child(role_label)
-	col.add_child(_make_rule())
-
-	stat_ref_label = _make_label("REF/INT/BODY: 0 / 0 / 0", COL_TEXT)
-	stat_ref_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	stat_luck_label = _make_label("LUCK: 0", COL_TEXT)
-	hp_label = _make_label("HP: 0 / 0", COL_TEXT)
-	wounds_label = _make_label("WOUNDS: NONE", COL_TEXT)
-	col.add_child(stat_ref_label)
-	col.add_child(stat_luck_label)
-	col.add_child(hp_label)
-	col.add_child(wounds_label)
-	col.add_child(_make_rule())
-
-	trace_label = _make_label("TRACE: 0%", COL_TEXT)
-	trace_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	net_cred_label = _make_label("EBANK: 0 eb", COL_AMBER)
-	net_cred_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	run_label = _make_label("LAST RUN: —", COL_DIM)
-	run_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(trace_label)
-	col.add_child(net_cred_label)
-	col.add_child(run_label)
-	col.add_child(_make_rule())
-
-	col.add_child(_make_header_label("TIPS"))
-	tips_label = _make_label(
-		"[1] Pick programs that match target.\n[2] Shields block; Armor eats hits.\n[3] Over-cap MU = crash.",
-		COL_DIM)
-	tips_label.add_theme_font_size_override("font_size", 11)
-	tips_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tips_label.custom_minimum_size = Vector2(140, 0)
-	tips_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_child(tips_label)
-	# Push the rest up so the column doesn't have weird dead space at the bottom.
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(spacer)
-	return panel
+# ---------------------------------------------------------------------------
+# MU bar
+# ---------------------------------------------------------------------------
+# Recolor the local fill StyleBox override (a per-instance SubResource in the
+# scene) based on the used/total ratio. Mutates the shared override in place.
+func _set_mu_bar_color(ratio: float) -> void:
+	if mu_bar == null:
+		return
+	var fill: StyleBoxFlat = mu_bar.get_theme_stylebox("fill") as StyleBoxFlat
+	if fill == null:
+		return
+	fill.bg_color = THEME.mu_bar_fill_color(ratio)
 
 # Tiny ASCII face generated from the callsign initial. Cheap visual identity
 # without depending on external sprites.
@@ -606,20 +266,6 @@ func _runner_ascii_portrait(handle: String) -> String:
 	if handle.length() > 0:
 		ch = handle.substr(0, 1).to_upper()
 	return "  ┏━━━━━━━━━━┓\n  ┃  ▄▀▀▀▀▄  ┃\n  ┃  █ %s █  ┃\n  ┃  ▀▄  ▄▀  ┃\n  ┃    ██    ┃\n  ┗━━━━━━━━━━┛" % ch
-
-func _setup_filter_row(row: HBoxContainer) -> void:
-	row.add_theme_constant_override("separation", 8)
-	var fl := _make_label("Filter:", COL_DIM)
-	row.add_child(fl)
-	filter_option = OptionButton.new()
-	filter_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_filter_effects = [null]
-	filter_option.add_item("All")
-	for et in EFFECT_TAGS.keys():
-		_filter_effects.append(et)
-		filter_option.add_item(EFFECT_TAGS[et])
-	filter_option.item_selected.connect(_on_filter_changed)
-	row.add_child(filter_option)
 
 # ---------------------------------------------------------------------------
 # Refresh / update
@@ -1055,87 +701,6 @@ func _refresh_deck_selector() -> void:
 # ---------------------------------------------------------------------------
 # Shop panel
 # ---------------------------------------------------------------------------
-func _build_shop_tab() -> Control:
-	var tab := VBoxContainer.new()
-	tab.name = "SHOP"
-	tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tab.add_theme_constant_override("separation", 10)
-
-	# PURCHASE UNLOCKS (opens a separate window — permanent catalogue unlocks)
-	var unlock_row := HBoxContainer.new()
-	unlock_row.add_theme_constant_override("separation", 12)
-	unlock_button = _make_button("PURCHASE UNLOCKS", COL_HEADER)
-	unlock_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	unlock_button.pressed.connect(_open_unlock_window)
-	unlock_row.add_child(unlock_button)
-	tab.add_child(unlock_row)
-	tab.add_child(_make_rule())
-
-	# 2x2 grid of shop sections, each full-height with list + action button.
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	tab.add_child(grid)
-
-	var buy_decks := _build_shop_section("BUY DECKS",
-		_on_buy_deck_selected, _on_buy_deck_pressed, "BUY DECK", COL_GREEN)
-	shop_buy_decks_list = buy_decks["list"]
-	buy_deck_button = buy_decks["button"]
-	grid.add_child(buy_decks["panel"])
-
-	var buy_progs := _build_shop_section("BUY PROGRAMS",
-		_on_buy_program_selected, _on_buy_program_pressed, "BUY PROGRAM", COL_GREEN)
-	shop_buy_programs_list = buy_progs["list"]
-	buy_program_button = buy_progs["button"]
-	grid.add_child(buy_progs["panel"])
-
-	var sell_loot := _build_shop_section("SELL LOOT",
-		_on_sell_loot_selected, _on_sell_loot_pressed, "SELL", COL_AMBER)
-	shop_sell_loot_list = sell_loot["list"]
-	sell_loot_button = sell_loot["button"]
-	grid.add_child(sell_loot["panel"])
-
-	var sell_files := _build_shop_section("SELL FILES",
-		_on_sell_file_selected, _on_sell_file_pressed, "SELL FILE", COL_AMBER)
-	shop_sell_files_list = sell_files["list"]
-	sell_file_button = sell_files["button"]
-	# Add SELL ALL button alongside SELL FILE
-	var sell_all_button := _make_button("SELL ALL", COL_RED)
-	sell_all_button.pressed.connect(_on_sell_all_files_pressed)
-	sell_all_files_button = sell_all_button
-	# The panel's VBoxContainer is the first child - add second button there
-	var sell_files_vbox := sell_files["panel"].get_child(0) as VBoxContainer
-	sell_files_vbox.add_child(sell_all_button)
-	grid.add_child(sell_files["panel"])
-
-	return tab
-
-
-func _build_shop_section(header: String, selected_cb: Callable, pressed_cb: Callable, btn_label: String, btn_color: Color) -> Dictionary:
-	var panel := _styled_panel()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
-	panel.add_child(col)
-
-	col.add_child(_make_header_label(header))
-	col.add_child(_make_rule())
-
-	var list := ItemList.new()
-	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	list.item_selected.connect(selected_cb)
-	_style_list(list)
-	col.add_child(list)
-
-	var button := _make_button(btn_label, btn_color)
-	button.pressed.connect(pressed_cb)
-	col.add_child(button)
-
-	return {"panel": panel, "list": list, "button": button}
-
 func _refresh_credits() -> void:
 	if credits_label:
 		credits_label.text = "CREDITS: %d eb" % RunState.credits
@@ -1384,30 +949,29 @@ func _build_unlock_window() -> void:
 	col.add_theme_constant_override("separation", 8)
 	margin.add_child(col)
 
-	col.add_child(_make_header_label("◢ PURCHASE UNLOCKS ◣", true))
-	unlock_credits_label = _make_label("CREDITS: 0 eb", COL_AMBER)
-	unlock_credits_label.add_theme_font_size_override("font_size", 18)
+	col.add_child(THEME.make_header_label("◢ PURCHASE UNLOCKS ◣", true))
+	unlock_credits_label = THEME.make_label("CREDITS: 0 eb", COL_AMBER, 27)
 	col.add_child(unlock_credits_label)
-	col.add_child(_make_rule())
+	col.add_child(THEME.make_rule())
 
 	unlock_list = ItemList.new()
 	unlock_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	unlock_list.custom_minimum_size = Vector2(0, 300)
-	_style_list(unlock_list)
 	unlock_list.item_selected.connect(_on_unlock_selected)
 	col.add_child(unlock_list)
 
-	unlock_buy_button = _make_button("UNLOCK", COL_HEADER)
+	unlock_buy_button = THEME.make_button("UNLOCK", COL_HEADER)
 	unlock_buy_button.pressed.connect(_on_unlock_pressed)
 	unlock_buy_button.disabled = true
 	col.add_child(unlock_buy_button)
 
-	var close_btn := _make_button("CLOSE", COL_DIM)
+	var close_btn := THEME.make_button("CLOSE", COL_DIM)
 	close_btn.pressed.connect(_close_unlock_window)
 	col.add_child(close_btn)
 
-	# Apply monospace font to everything in the window.
-	_apply_terminal_theme(unlock_window)
+	# Inherit the cyberpunk Theme so the runtime-built window picks up the
+	# mono font + ItemList/Button/PanelContainer styles for free.
+	unlock_window.theme = THEME_RES
 
 func _close_unlock_window() -> void:
 	if unlock_window != null and is_instance_valid(unlock_window):
@@ -1513,182 +1077,6 @@ func _on_unlock_pressed() -> void:
 	else:
 		_show_message("Unlock failed: %s." % path)
 
-# ---------------------------------------------------------------------------
-# UI helpers
-# ---------------------------------------------------------------------------
-func _styled_panel(with_border: bool = true) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = COL_PANEL
-	sb.content_margin_left = 12
-	sb.content_margin_top = 10
-	sb.content_margin_right = 12
-	sb.content_margin_bottom = 10
-	sb.corner_radius_top_left = 4
-	sb.corner_radius_top_right = 4
-	sb.corner_radius_bottom_left = 4
-	sb.corner_radius_bottom_right = 4
-	if with_border:
-		sb.border_width_left = 1
-		sb.border_width_top = 1
-		sb.border_width_right = 1
-		sb.border_width_bottom = 1
-		sb.border_color = COL_BORDER
-		# Soft neon glow around bordered panels.
-		sb.shadow_color = COL_BORDER
-		sb.shadow_size = 6
-		sb.shadow_offset = Vector2.ZERO
-	panel.add_theme_stylebox_override("panel", sb)
-	return panel
-
-func _neon_style(color: Color, border_w: int, radius: int) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(color.r * 0.12, color.g * 0.12, color.b * 0.12, 0.9)
-	sb.border_width_left = border_w
-	sb.border_width_top = border_w
-	sb.border_width_right = border_w
-	sb.border_width_bottom = border_w
-	sb.border_color = color
-	sb.content_margin_left = 10
-	sb.content_margin_top = 6
-	sb.content_margin_right = 10
-	sb.content_margin_bottom = 6
-	sb.corner_radius_top_left = radius
-	sb.corner_radius_top_right = radius
-	sb.corner_radius_bottom_left = radius
-	sb.corner_radius_bottom_right = radius
-	return sb
-
-func _transparent_style() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0, 0, 0)
-	return sb
-
-func _make_label(text: String, color: Color) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_color_override("font_color", color)
-	l.add_theme_font_size_override("font_size", 14)
-	return l
-
-func _make_header_label(text: String, big: bool = false) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_color_override("font_color", COL_HEADER)
-	l.add_theme_font_size_override("font_size", 20 if big else 16)
-	return l
-
-func _make_rule() -> ColorRect:
-	var r := ColorRect.new()
-	r.custom_minimum_size = Vector2(0, 1)
-	r.color = COL_BORDER_DIM
-	return r
-
-func _make_button(text: String, color: Color) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.add_theme_color_override("font_color", color)
-	b.add_theme_color_override("font_hover_color", Color(color.r * 1.3, color.g * 1.3, color.b * 1.3))
-	b.add_theme_color_override("font_pressed_color", color)
-	b.add_theme_stylebox_override("normal", _neon_style(color, 1, 3))
-	b.add_theme_stylebox_override("hover", _neon_style(Color(color.r * 1.2, color.g * 1.2, color.b * 1.2), 1, 3))
-	b.add_theme_stylebox_override("pressed", _neon_style(color, 1, 3))
-	b.add_theme_stylebox_override("disabled", _neon_style(COL_GREY, 1, 3))
-	return b
-
-# ---------------------------------------------------------------------------
-# CRT terminal theme helpers
-# ---------------------------------------------------------------------------
-func _make_mono_font() -> SystemFont:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(["Consolas", "Courier New", "DejaVu Sans Mono", "Menlo"])
-	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
-	f.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
-	f.generate_mipmaps = false
-	return f
-
-func _apply_terminal_theme(node: Node) -> void:
-	if _mono_font == null:
-		return
-	if node is Label:
-		(node as Label).add_theme_font_override("font", _mono_font)
-	elif node is Button:
-		(node as Button).add_theme_font_override("font", _mono_font)
-	elif node is OptionButton:
-		(node as OptionButton).add_theme_font_override("font", _mono_font)
-	elif node is ItemList:
-		(node as ItemList).add_theme_font_override("font", _mono_font)
-	elif node is TabContainer:
-		(node as TabContainer).add_theme_font_override("font", _mono_font)
-	for child in node.get_children():
-		_apply_terminal_theme(child)
-
-func _style_tab_container(tabs: TabContainer) -> void:
-	# Tab bar background + tab styling for a terminal look. Larger active-tab
-	# font + thick underline draws the eye to the focused tab.
-	var tab_selected := _neon_style(COL_GREEN, 2, 0)
-	tab_selected.bg_color = Color(COL_GREEN.r * 0.18, COL_GREEN.g * 0.18, COL_GREEN.b * 0.18, 0.95)
-	tab_selected.border_width_bottom = 3
-	var tab_unselected := _neon_style(COL_BORDER_DIM, 1, 0)
-	tab_unselected.bg_color = Color(0.0, 0.0, 0.0, 0.4)
-	tabs.add_theme_stylebox_override("tab_selected", tab_selected)
-	tabs.add_theme_stylebox_override("tab_unselected", tab_unselected)
-	tabs.add_theme_stylebox_override("tab_hovered", _neon_style(COL_BORDER, 1, 0))
-	tabs.add_theme_stylebox_override("tab_focus", tab_selected)
-	tabs.add_theme_stylebox_override("panel", _transparent_style())
-	tabs.add_theme_color_override("font_selected_color", COL_GREEN)
-	tabs.add_theme_color_override("font_unselected_color", COL_DIM)
-	tabs.add_theme_color_override("font_hovered_color", COL_TEXT)
-	tabs.add_theme_font_size_override("font_size", 17)
-	# Larger font for the active (selected) tab label — easier to spot.
-	# Godot doesn't expose per-state font size overrides in 4.x, but the bold
-	# selected style + thicker underline already differentiates them.
-
-func _style_list(list: ItemList) -> void:
-	# Inset dark background panel for the list.
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.0, 0.0, 0.0, 0.45)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.border_color = COL_BORDER_DIM
-	sb.content_margin_left = 4
-	sb.content_margin_top = 4
-	sb.content_margin_right = 4
-	sb.content_margin_bottom = 4
-	sb.corner_radius_top_left = 2
-	sb.corner_radius_top_right = 2
-	sb.corner_radius_bottom_left = 2
-	sb.corner_radius_bottom_right = 2
-	list.add_theme_stylebox_override("panel", sb)
-
-	# Selected item: neon green highlight.
-	var sel := StyleBoxFlat.new()
-	sel.bg_color = Color(COL_GREEN.r * 0.2, COL_GREEN.g * 0.2, COL_GREEN.b * 0.2, 0.8)
-	sel.border_width_left = 0
-	sel.border_width_top = 0
-	sel.border_width_right = 0
-	sel.border_width_bottom = 1
-	sel.border_color = COL_GREEN
-	list.add_theme_stylebox_override("selected", sel)
-	list.add_theme_stylebox_override("selected_focus", sel)
-
-	var hover := StyleBoxFlat.new()
-	hover.bg_color = Color(COL_BORDER.r * 0.3, COL_BORDER.g * 0.3, COL_BORDER.b * 0.3, 0.5)
-	list.add_theme_stylebox_override("hover", hover)
-
-	list.add_theme_color_override("font_color", COL_TEXT)
-	list.add_theme_color_override("font_selected_color", COL_GREEN)
-	list.add_theme_color_override("font_hover_color", Color(COL_TEXT.r * 1.2, COL_TEXT.g * 1.2, COL_TEXT.b * 1.2))
-	list.add_theme_color_override("guide_color", COL_BORDER_DIM)
-	list.add_theme_font_size_override("font_size", 14)
-	list.add_theme_constant_override("h_separation", 6)
-	list.add_theme_constant_override("v_separation", 3)
-	# Scrollbars are created when the list enters the tree, so style them on ready.
-	list.ready.connect(func() -> void: _style_scrollbars(list))
-
 func _style_scrollbars(list: ItemList) -> void:
 	var grabber := StyleBoxFlat.new()
 	grabber.bg_color = COL_GREEN
@@ -1709,15 +1097,3 @@ func _style_scrollbars(list: ItemList) -> void:
 		bar.add_theme_stylebox_override("grabber", grabber)
 		bar.add_theme_stylebox_override("grabber_highlight", grabber_hl)
 		bar.add_theme_stylebox_override("scroll", scroll_bg)
-
-func _build_crt_overlay() -> ColorRect:
-	var overlay := ColorRect.new()
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.color = Color(1, 1, 1, 1)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mat := ShaderMaterial.new()
-	var shader := load("res://scripts/ui/crt_overlay.gdshader")
-	if shader is Shader:
-		mat.shader = shader as Shader
-	overlay.material = mat
-	return overlay

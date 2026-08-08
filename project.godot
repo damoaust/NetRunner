@@ -22,8 +22,12 @@ MetaState="*res://scripts/autoload/meta_state.gd"
 
 [display]
 
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/mode=3
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/size/fullscreen=true
 
 [editor_plugins]
 
@@ -59,3 +63,4 @@ move_right={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+anti_aliasing/quality/msaa_2d=1

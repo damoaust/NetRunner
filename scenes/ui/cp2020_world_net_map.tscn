@@ -3,14 +3,11 @@
 [ext_resource type="Script" uid="uid://c07fig008mde3" path="res://scripts/resources/cp_2020_world_net_map.gd" id="1_2v4ka"]
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="2_tm"]
 [ext_resource type="Resource" path="res://data/world_map_default.tres" id="3_layout"]
-[ext_resource type="Script" path="res://scripts/resources/cp2020_screenshot_helper.gd" id="4_shot"]
+[ext_resource type="Theme" path="res://themes/cyberpunk_theme.tres" id="4_theme"]
 
 [node name="Cp2020WorldNetMap" type="Node2D"]
 script = ExtResource("1_2v4ka")
 world_map_layout = ExtResource("3_layout")
-
-[node name="ScreenshotHelper" type="Node2D" parent="."]
-script = ExtResource("4_shot")
 
 [node name="TurnManager" type="Node" parent="."]
 script = ExtResource("2_tm")
@@ -27,50 +24,51 @@ zoom = Vector2(1, 1)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 1280.0
-offset_bottom = 720.0
+offset_right = 1920.0
+offset_bottom = 1080.0
 mouse_filter = 2
+theme = ExtResource("4_theme")
 
 [node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay"]
-offset_left = 20.0
-offset_top = 8.0
-offset_right = 300.0
-offset_bottom = 44.0
+offset_left = 30.0
+offset_top = 12.0
+offset_right = 450.0
+offset_bottom = 60.0
 text = "LOCATION: NIGHT CITY"
 theme_override_colors/font_color = Color(0, 1, 0.85, 1)
 theme_override_colors/font_outline_color = Color(0, 0.3, 0.4, 1)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 24
 
 [node name="ActionsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
-offset_left = 320.0
-offset_top = 8.0
-offset_right = 500.0
-offset_bottom = 44.0
+offset_left = 480.0
+offset_top = 12.0
+offset_right = 750.0
+offset_bottom = 60.0
 text = "ACTIONS: 5/5"
 theme_override_colors/font_color = Color(1, 1, 0.3, 1)
 theme_override_colors/font_outline_color = Color(0.3, 0.3, 0, 1)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 24
 
 [node name="CreditsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
-offset_left = 520.0
-offset_top = 8.0
-offset_right = 720.0
-offset_bottom = 44.0
+offset_left = 780.0
+offset_top = 12.0
+offset_right = 1080.0
+offset_bottom = 60.0
 text = "CREDITS: 1000 eb"
 theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
 theme_override_colors/font_outline_color = Color(0.4, 0.2, 0, 1)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 24
 
 [node name="TraceLabel" type="Label" parent="HUDLayer/HUDOverlay"]
-offset_left = 740.0
-offset_top = 8.0
-offset_right = 900.0
-offset_bottom = 44.0
+offset_left = 1110.0
+offset_top = 12.0
+offset_right = 1350.0
+offset_bottom = 60.0
 text = "TRACE: 0"
 theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
 theme_override_colors/font_outline_color = Color(0.4, 0, 0, 1)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 24

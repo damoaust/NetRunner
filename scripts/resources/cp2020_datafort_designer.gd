@@ -143,7 +143,11 @@ func fill_empty_tiles() -> void:
 	for x in range(grid_columns):
 		for y in range(grid_rows):
 			var coord = Vector2i(x, y)
-			if not current_layout.grid_tiles.has(coord):
+			# Use get_tile so both key forms (Vector2i and "x,y" string) are
+			# checked. Without this, the fill would add an EMPTY Vector2i tile on
+			# top of hand-authored string-key tiles, and get_tile() (which checks
+			# Vector2i first) would return the EMPTY, hiding the authored content.
+			if current_layout.get_tile(coord) == null:
 				var empty_tile = CP2020TileData.new()
 				empty_tile.tile_type = CP2020DatafortLayout.TileType.EMPTY
 				empty_tile.tile_name = "Empty Path"

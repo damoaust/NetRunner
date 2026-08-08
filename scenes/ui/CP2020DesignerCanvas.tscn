@@ -13,11 +13,14 @@ script = ExtResource("1_4q7o0")
 
 [node name="TopPanel" type="VBoxContainer" parent="." unique_id=1642773889]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 1116.0
+offset_bottom = 86.0
 
 [node name="DynamicButtonRow" type="HBoxContainer" parent="TopPanel" unique_id=1560721362]
 layout_mode = 2
+size_flags_vertical = 3
 
 [node name="SettingsRow" type="HBoxContainer" parent="TopPanel" unique_id=1863061141]
 layout_mode = 2

@@ -1,855 +1,1085 @@
 [gd_resource type="Resource" script_class="CP2020DatafortLayout" format=3]
 
+[ext_resource type="Script" path="res://scripts/resources/cp2020_net_file.gd" id="1_psxrp"]
 [ext_resource type="Script" path="res://scripts/resources/CP2020TileData.gd" id="1_t0o2x"]
 [ext_resource type="Script" path="res://scripts/resources/CP2020DatafortLayout.gd" id="2_opbl1"]
-[ext_resource type="Resource" path="res://data/killer6.tres" id="3_k6"]
-[ext_resource type="Resource" path="res://data/hellhound.tres" id="4_hh"]
-[ext_resource type="Resource" path="res://data/flatline.tres" id="5_fl"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="2_w3n7h"]
+[ext_resource type="Resource" path="res://data/killer2.tres" id="4_3vdyg"]
+[ext_resource type="Resource" path="res://data/sword.tres" id="5_yo0hd"]
+
+[sub_resource type="Resource" id="Resource_t0o2x"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_opbl1"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hwkeg"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jnvkj"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_psxrp"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_w3n7h"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3vdyg"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_yo0hd"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_nf6jt"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_dmxxq"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2hnfc"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_afqdw"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_pj1sx"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_pwlux"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_xrob3"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8k1oo"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_o852u"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_52wav"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ihm70"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_52jne"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_iqspb"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_n5pia"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_311fb"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ipip2"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ilwg5"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1dwrj"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_7u5d8"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4ul58"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_lf6wq"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_no284"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_khpng"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_lluyb"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_pg3ro"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wq2yo"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vjnmp"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6k4xm"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vue15"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_e0tf4"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_d8jdl"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wtxbn"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ikmg5"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_61p3p"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_omptc"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ydo65"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ew40u"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2gpo6"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_i70uk"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0s2xb"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ay7s3"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0ard2"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_mkytk"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jmu3k"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1tcen"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vf3dc"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_7q3xl"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t001"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t002"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t003"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t004"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t005"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t006"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t007"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t008"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t009"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t010"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t011"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t012"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t013"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t014"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t015"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t016"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t017"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t018"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t019"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t020"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t021"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t022"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t023"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t024"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t025"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t026"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t027"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t028"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t029"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t030"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t031"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t032"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t033"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t034"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t035"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t036"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t037"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t038"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t039"]
-script = ExtResource("1_t0o2x")
-tile_type = 7
-ice_program = ExtResource("3_k6")
-
-[sub_resource type="Resource" id="Resource_t040"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t041"]
-script = ExtResource("1_t0o2x")
-tile_type = 5
-tile_name = "Memory Unit"
-memory_units_mu = 2
-
-[sub_resource type="Resource" id="Resource_t042"]
-script = ExtResource("1_t0o2x")
-tile_type = 7
-ice_program = ExtResource("4_hh")
-
-[sub_resource type="Resource" id="Resource_t043"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t044"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t045"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t046"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t047"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t048"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t049"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4hqx6"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_71k4m"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6j1kq"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hlqow"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_iylrb"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_eo6wm"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t002"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t014"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t026"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t038"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t050"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t062"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t073"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t084"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_kk1v4"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_epeoc"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_lptpk"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t003"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t015"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t027"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t039"]
+script = ExtResource("1_t0o2x")
+tile_type = 7
+ice_program = ExtResource("4_3vdyg")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t051"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t063"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t074"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t085"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t095"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_10nck"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5t8e5"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t004"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t016"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t028"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t040"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t052"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t064"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t075"]
+script = ExtResource("1_t0o2x")
+tile_type = 7
+ice_program = ExtResource("4_3vdyg")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t086"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t096"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_tqpyi"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5l3sf"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t005"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t017"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t029"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t053"]
 script = ExtResource("1_t0o2x")
 tile_type = 5
 tile_name = "Memory Unit"
 memory_units_mu = 2
+copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_t054"]
+[sub_resource type="Resource" id="Resource_t065"]
 script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t076"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t087"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t097"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5e2mb"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ai8ui"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t006"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t018"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t030"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t077"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t088"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t098"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hc4i4"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_14ak6"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t007"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t019"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t031"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t043"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t055"]
 script = ExtResource("1_t0o2x")
 tile_type = 4
 tile_name = "Code Gate"
 strength_str = 4
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t067"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t078"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t089"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t099"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_trb6u"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_e62h6"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t008"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t020"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t032"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t044"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t056"]
 script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t068"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t079"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t090"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t100"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_an7x5"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_unkci"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t009"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t021"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t033"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t045"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t057"]
 script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t069"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t080"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t091"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t101"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_7e8ie"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hesaa"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t010"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t022"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t034"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t046"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t058"]
 script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t070"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t081"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t092"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t102"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2da6g"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2wevg"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t011"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t023"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t035"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t047"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t059"]
 script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t071"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t082"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t093"]
+script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t103"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_7oibh"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1fd05"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t012"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t024"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t036"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t048"]
+script = ExtResource("1_t0o2x")
+tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t060"]
 script = ExtResource("1_t0o2x")
 tile_type = 4
 tile_name = "Code Gate"
 strength_str = 4
-
-[sub_resource type="Resource" id="Resource_t061"]
-script = ExtResource("1_t0o2x")
-tile_type = 3
-
-[sub_resource type="Resource" id="Resource_t062"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t063"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t064"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t065"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t066"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t067"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t068"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t069"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t070"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t071"]
-script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t072"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t073"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t074"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t075"]
-script = ExtResource("1_t0o2x")
-tile_type = 7
-ice_program = ExtResource("5_fl")
-
-[sub_resource type="Resource" id="Resource_t076"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t077"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t078"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t079"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t080"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t081"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t082"]
-script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t083"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t084"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t085"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t086"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t087"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t088"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t089"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t090"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t091"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t092"]
-script = ExtResource("1_t0o2x")
-
-[sub_resource type="Resource" id="Resource_t093"]
-script = ExtResource("1_t0o2x")
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t094"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t095"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t096"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t097"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t098"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t099"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t100"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t101"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t102"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t103"]
-script = ExtResource("1_t0o2x")
-tile_type = 2
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_t104"]
 script = ExtResource("1_t0o2x")
 tile_type = 2
-
-[sub_resource type="Resource" id="Resource_t0o2x"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_opbl1"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_hwkeg"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_jnvkj"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_psxrp"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_w3n7h"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_3vdyg"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_yo0hd"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_nf6jt"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_dmxxq"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_2hnfc"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_afqdw"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_pj1sx"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_145fw"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_pwlux"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_xrob3"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_8k1oo"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_o852u"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_52wav"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ihm70"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_52jne"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_iqspb"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_n5pia"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_311fb"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ipip2"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ilwg5"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_1dwrj"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_7u5d8"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_4ul58"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_lf6wq"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_no284"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_khpng"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_lluyb"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_pg3ro"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_wq2yo"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_vjnmp"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_6k4xm"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_vue15"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_e0tf4"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_d8jdl"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_wtxbn"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ikmg5"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_61p3p"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_omptc"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ydo65"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ew40u"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_2gpo6"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_i70uk"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_0s2xb"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ay7s3"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_0ard2"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_mkytk"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_jmu3k"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_1tcen"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_vf3dc"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_7q3xl"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_4hqx6"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_71k4m"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_6j1kq"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_hlqow"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_iylrb"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_eo6wm"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_kk1v4"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_epeoc"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_lptpk"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_10nck"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_5t8e5"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_tqpyi"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_5l3sf"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_5e2mb"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_ai8ui"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_hc4i4"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_14ak6"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_trb6u"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_e62h6"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_an7x5"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_unkci"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_7e8ie"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_hesaa"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_2da6g"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_2wevg"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_7oibh"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
-
-[sub_resource type="Resource" id="Resource_1fd05"]
-script = ExtResource("1_t0o2x")
-tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_ggb3c"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_smkqj"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_yiivm"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_m8wit"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_j1f3f"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_r7xo7"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_mu7yk"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_ksvx1"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_bj1fg"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_suimt"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_dlrfe"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_hl1aa"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_an8me"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_0sggr"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_8d4ek"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_sl0yf"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_u4lu8"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_xw2as"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_ik80f"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_wmw71"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_bufl8"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_abeup"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_cgahf"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_tpd4l"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_ee2oq"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_d4dhh"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_m1cpk"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_gdhjb"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_1j5o6"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_co7lj"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_s0u5e"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_q1hm0"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_m8chf"]
 script = ExtResource("1_t0o2x")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_145fw"]
+script = ExtResource("1_t0o2x")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_n3dg5"]
+script = ExtResource("1_t0o2x")
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t042"]
+script = ExtResource("1_t0o2x")
+tile_type = 7
+ice_program = ExtResource("4_3vdyg")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t041"]
+script = ExtResource("1_t0o2x")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0hcdw"]
+script = ExtResource("1_t0o2x")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ynyph"]
+script = ExtResource("1_t0o2x")
+tile_type = 6
+tile_name = "CPU"
+loot_programs = Array[ExtResource("2_w3n7h")]([ExtResource("5_yo0hd")])
+loot_credits = 500
+copied_file_paths = PackedStringArray()
 
 [resource]
 script = ExtResource("2_opbl1")
@@ -870,7 +1100,7 @@ Vector2i(0, 9): SubResource("Resource_dmxxq"),
 Vector2i(0, 10): SubResource("Resource_2hnfc"),
 Vector2i(1, 0): SubResource("Resource_afqdw"),
 Vector2i(1, 1): SubResource("Resource_pj1sx"),
-Vector2i(1, 2): SubResource("Resource_145fw"),
+Vector2i(1, 2): SubResource("Resource_n3dg5"),
 Vector2i(1, 3): SubResource("Resource_pwlux"),
 Vector2i(1, 4): SubResource("Resource_xrob3"),
 Vector2i(1, 5): SubResource("Resource_8k1oo"),
@@ -960,7 +1190,7 @@ Vector2i(9, 0): SubResource("Resource_5l3sf"),
 Vector2i(9, 1): SubResource("Resource_t005"),
 Vector2i(9, 2): SubResource("Resource_t017"),
 Vector2i(9, 3): SubResource("Resource_t029"),
-Vector2i(9, 4): SubResource("Resource_t041"),
+Vector2i(9, 4): SubResource("Resource_ynyph"),
 Vector2i(9, 5): SubResource("Resource_t053"),
 Vector2i(9, 6): SubResource("Resource_t065"),
 Vector2i(9, 7): SubResource("Resource_t076"),
@@ -971,9 +1201,9 @@ Vector2i(10, 0): SubResource("Resource_ai8ui"),
 Vector2i(10, 1): SubResource("Resource_t006"),
 Vector2i(10, 2): SubResource("Resource_t018"),
 Vector2i(10, 3): SubResource("Resource_t030"),
-Vector2i(10, 4): SubResource("Resource_t042"),
-Vector2i(10, 5): SubResource("Resource_t054"),
-Vector2i(10, 6): SubResource("Resource_t066"),
+Vector2i(10, 4): SubResource("Resource_0hcdw"),
+Vector2i(10, 5): SubResource("Resource_t041"),
+Vector2i(10, 6): SubResource("Resource_t042"),
 Vector2i(10, 7): SubResource("Resource_t077"),
 Vector2i(10, 8): SubResource("Resource_t088"),
 Vector2i(10, 9): SubResource("Resource_t098"),
@@ -1049,7 +1279,7 @@ Vector2i(17, 1): SubResource("Resource_yiivm"),
 Vector2i(17, 2): SubResource("Resource_m8wit"),
 Vector2i(17, 3): SubResource("Resource_j1f3f"),
 Vector2i(17, 4): SubResource("Resource_r7xo7"),
-Vector2i(17, 5): SubResource("Resource_t061"),
+Vector2i(17, 5): SubResource("Resource_145fw"),
 Vector2i(17, 6): SubResource("Resource_mu7yk"),
 Vector2i(17, 7): SubResource("Resource_ksvx1"),
 Vector2i(17, 8): SubResource("Resource_bj1fg"),
