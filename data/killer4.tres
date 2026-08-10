@@ -8,6 +8,7 @@ program_name = "Killer IV"
 type = 3
 effect_type = 2
 memory_cost = 5
+damage_dice = 6
 price = 1400
 description = "Attacks all types, 1D6 damage to target STR. Mobile"
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

@@ -1,6 +1,16 @@
 class_name CP2020TileData
 extends Resource
 
+# Give each instance its own fresh arrays/dictionaries. Godot shares the
+# default value [] / {} across all new() instances, so without this every
+# tile would share the same files / loot_programs / npc_programs / ldl_links
+# collection — adding a file to one tile would appear on all tiles.
+func _init() -> void:
+	files = []
+	loot_programs = []
+	npc_programs = []
+	ldl_links = {}
+
 @export var tile_type: CP2020DatafortLayout.TileType = CP2020DatafortLayout.TileType.EMPTY
 @export var tile_name: String = ""
 @export var strength_str: int = 0          # Used for Code Gates / Datawalls
@@ -101,3 +111,17 @@ extends Resource
 # every load_subnet (same fog-reset pattern as cpu_crashed_turns / is_looted /
 # copied_file_paths) because ResourceLoader returns a cached instance.
 @export var worm_turns_remaining: int = 0
+# Worm structural integrity (runtime). Set to the Worm program's `strength`
+# when a Worm is deployed on this tile (alongside worm_turns_remaining), and
+# decremented by enemy DEREZ_ICE (Killer) attacks — a Worm is a passive
+# defender that can only damage walls/gates, so only the attacking Killer can
+# deal damage on a winning opposed roll. When integrity reaches 0 the Worm is
+# destroyed (worm_turns_remaining is reset to 0 and the tile stays closed —
+# the intrusion failed). Always 0 in authored .tres layouts — only set during
+# gameplay. Reset to 0 on every load_subnet alongside worm_turns_remaining.
+@export var worm_integrity: int = 0
+# Worm max integrity (runtime). Set alongside worm_integrity when a Worm is
+# deployed — equals the Worm program's `strength`. Used for the board
+# renderer's "current/max" integrity display and the damage log. Reset to 0
+# on load_subnet alongside worm_integrity.
+@export var worm_max_integrity: int = 0

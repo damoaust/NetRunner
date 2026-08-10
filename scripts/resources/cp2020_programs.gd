@@ -9,7 +9,8 @@ enum ProgramType {
 	ANTI_PERSONNEL,  # Attacks runner directly (e.g., Hellhound, Flatline)[cite: 16]
 	ANTI_SYSTEM,     # Crashes CPUs / erases memory[cite: 16]
 	UTILITY,         # Cloak, Stealth, Speed boosters[cite: 16]
-	ICE              # Stationary defense programs running on nodes[cite: 16]
+	ICE,             # Stationary defense programs running on nodes[cite: 16]
+	Protection       # Shield
 }
 
 enum EffectType { 
@@ -23,7 +24,8 @@ enum EffectType {
 	CRASH_CPU,       # Anti-system: crashes a datafort CPU for 1D6+1 turns (Krash)[cite: 16]
 	ARMOR,           # Defense program: absorbs damage point-for-point (Armor STR subtracts from incoming rolled damage; remainder hits HP).
 	WORM,            # Stealth opener: slips behind data walls/code gates, opens from the inside over 2 turns. No alert.
-	DETECTION        # Detection/alarm: Watchdog detects intruders via LoS and trips an alarm activating all attack ICE. As a netrunner utility, deploys a tripwire beacon that alerts when enemies approach.
+	DETECTION,       # Detection/alarm: Watchdog detects intruders via LoS and trips an alarm activating all attack ICE. As a netrunner utility, deploys a tripwire beacon that alerts when enemies approach.
+	INVISIBILITY      # Stealth cloak: overlays a false signal on the runner's cybermodem trace. While active, each dormant adversary's first LoS detection is gated by an opposed roll (1D10+cloak.STR vs 1D10+seeker.STR); ties/holds -> seeker ignores you, seeker wins -> cloak pierced & adversary activates.
 }
 
 @export var program_name: String = "Hammer"
@@ -57,6 +59,15 @@ enum EffectType {
 # turn. Subclasses override to define specialized ICE behavior (e.g. trace-only,
 # ranged, or stationary programs). This is a coroutine (it awaits a Node method).
 func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
+	# DEREZ_ICE (Killer) is a stationary anti-program sentry: it does NOT
+	# pursue or attack the netrunner. Instead it scans for Worm-active tiles
+	# within line of sight and, if one is found, emits attacked_program so the
+	# game session resolves an opposed roll (Killer STR + 1D10 vs Worm
+	# integrity + 1D10). Only the Killer can deal damage on a win — Worms are
+	# passive defenders. No movement, no activation/LoS-to-runner gating.
+	if effect_type == NetProgram.EffectType.DEREZ_ICE:
+		_take_killer_turn(ice, layout)
+		return
 	# First-activation handling. Tracing-type activation (Hellhound/Flatline
 	# must accumulate a trace before attacking) is deferred to program-specific
 	# subclasses — no such subclasses exist yet, so all ICE attacks on LoS.
@@ -82,11 +93,10 @@ func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLa
 			if next_step == target_pos:
 				match effect_type:
 					NetProgram.EffectType.DEREZ_ICE:
-						# Anti-program: damage = STR (rolled here, no runner
-						# defense roll — routes to attacked_program).
-						var derez_dmg := _roll_damage()
-						ice.emit_log("CRITICAL: %s executes DEREZ_ICE attack for %d damage!" % [program_name, derez_dmg])
-						ice.emit_attack_program(derez_dmg)
+						# Unreachable: DEREZ_ICE branches to _take_killer_turn
+						# above and never enters the pursue loop. Kept as a
+						# safety no-op.
+						return
 					_:
 						# Anti-personnel: emit the program's STR for the
 						# interface defense roll. The payload damage is
@@ -101,6 +111,29 @@ func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLa
 				movement_remaining -= 1
 		else:
 			return
+
+# Stationary Killer (DEREZ_ICE) turn: scan every tile in the layout for an
+# active Worm (worm_turns_remaining > 0) within line of sight of this ICE's
+# position. If one is found, emit attacked_program so the game session
+# resolves the opposed roll. The Killer does not move and does not target the
+# netrunner. One attack per turn (first Worm in LoS wins).
+func _take_killer_turn(ice: BlackIce, layout: CP2020DatafortLayout) -> void:
+	for raw_key in layout.grid_tiles.keys():
+		var coord: Vector2i
+		if raw_key is String:
+			var parts = raw_key.split(",")
+			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+		else:
+			coord = raw_key
+		var tile = layout.get_tile(coord)
+		if tile == null or tile.worm_turns_remaining <= 0:
+			continue
+		if not ice.has_los_to(coord, layout):
+			continue
+		ice.emit_log("%s spots a Worm at %s — executing anti-program attack!" % [program_name, coord])
+		ice.emit_attack_program(strength, coord)
+		return
+	# No Worm in LoS — hold position silently.
 
 # Default netrunner-side program behavior. Dispatches to the game session's
 # private execute_* helpers based on `effect_type`. Returns `true` if the
@@ -127,6 +160,8 @@ func execute_runner_action(session: CP2020GameSession, target_coord: Vector2i) -
 		NetProgram.EffectType.DETECTION:
 			session._execute_detection(self, target_coord)
 			return true
+		NetProgram.EffectType.INVISIBILITY:
+			return session._execute_invisibility(self)
 		_:
 			session.log_to_terminal("Program effect not implemented yet.\n")
 			return false

@@ -101,6 +101,12 @@ func _ready() -> void:
 			netrunner.shield_raised.connect(update_deck_info)
 		if not netrunner.shield_consumed.is_connected(update_deck_info):
 			netrunner.shield_consumed.connect(update_deck_info)
+		# Invisibility cloak: refresh the trace/status label on raise/pierce
+		# so the CLOAK indicator appears/disappears promptly.
+		if not netrunner.cloak_raised.is_connected(_update_trace):
+			netrunner.cloak_raised.connect(_update_trace)
+		if not netrunner.cloak_pierced.is_connected(_update_trace):
+			netrunner.cloak_pierced.connect(_update_trace)
 		if not netrunner.health_changed.is_connected(_on_health_changed):
 			netrunner.health_changed.connect(_on_health_changed)
 		if netrunner.position_changed.is_connected(_center_camera_on_runner) == false:
@@ -115,6 +121,9 @@ func _ready() -> void:
 		netrunner.max_memory_units = deck.max_mu
 		netrunner.interface_rank = deck.interface_rank
 		netrunner.installed_programs = deck.installed_programs.duplicate()
+		# installed_programs was assigned directly (bypassing install_program),
+		# so seed the program_integrity HP tracker for every loaded program.
+		netrunner.seed_program_integrity()
 
 	# Load the subnet chosen on the world map (fall back to default)
 	var subnet_path := RunState.selected_subnet_path if RunState.selected_subnet_path != "" else starting_subnet_path
@@ -165,6 +174,8 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 				# fresh dive starts with no worm-active tiles (cached
 				# ResourceLoader instance retains the runtime counter).
 				t.worm_turns_remaining = 0
+				t.worm_integrity = 0
+				t.worm_max_integrity = 0
 
 		# Clear netrunner-deployed Watchdog beacons and deployed-program
 		# tracking for a fresh dive (beacons don't persist across dataforts).
@@ -187,9 +198,12 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		board_renderer.queue_redraw()
 	return true
 
-func _update_trace() -> void:
+func _update_trace(_unused: Variant = null) -> void:
 	if trace_label:
-		trace_label.text = "Trace: %d" % RunState.accumulated_trace
+		var txt := "Trace: %d" % RunState.accumulated_trace
+		if is_instance_valid(netrunner) and netrunner.cloak != null:
+			txt += "  | CLOAK"
+		trace_label.text = txt
 
 func _update_camera_limits() -> void:
 	if not camera or not current_layout or not board_renderer:
@@ -257,6 +271,11 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 			if program is NetProgram and current_layout:
 				if turn_manager and not turn_manager.has_actions():
 					log_to_terminal("No actions remaining. End turn (Space) to let ICE move.\n")
+					return
+				# Crashed (de-rezzed) programs clog MU but can't be used —
+				# their integrity is 0. Block the action before consuming it.
+				if is_instance_valid(netrunner) and netrunner.program_integrity_for(program) <= 0:
+					log_to_terminal("Program '%s' is crashed (de-rezzed) — cannot use. Clear it to free MU.\n" % program.program_name)
 					return
 				# Delegate to the program's virtual execute_runner_action. The
 				# base NetProgram dispatches by effect_type to the private
@@ -439,18 +458,26 @@ func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 
 	log_to_terminal("Executing Anti-ICE Program '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_ice.program.program_name, target_coord])
 
-	# Opposed roll: 1d10 + STR for both attacker and defender (CP2020 anti-program combat)
-	var prog_roll = (randi() % 10) + 1 + program.strength
-	var ice_roll = (randi() % 10) + 1 + target_ice.program.strength
-	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d)\n" % [prog_roll, program.strength, target_ice.program.program_name, ice_roll, target_ice.program.strength])
+	# Opposed roll (CP2020 anti-program combat): Attacker STR + 1D10 vs
+	# Defender STR + 1D10. The loser takes 1D6 damage to STR. Ties → no
+	# damage (standoff). Both sides can lose — if the runner's program loses
+	# and integrity drops to 0, it crashes and clogs MU (see damage_specific_program).
+	var prog_roll := randi_range(1, 10) + program.strength
+	var ice_roll := randi_range(1, 10) + target_ice.program.strength
+	log_to_terminal("Roll: you %d (1D10+%d) vs %s %d (1D10+%d)\n" % [prog_roll, program.strength, target_ice.program.program_name, ice_roll, target_ice.program.strength])
 
 	if prog_roll > ice_roll:
-		var damage = prog_roll - ice_roll
-		log_to_terminal("Hit! %s takes %d damage.\n" % [target_ice.program.program_name, damage])
-		if target_ice.take_damage(damage):
+		var dmg := randi_range(1, 6)
+		log_to_terminal("Hit! %s takes %d damage.\n" % [target_ice.program.program_name, dmg])
+		if target_ice.take_damage(dmg):
 			ice_nodes.erase(target_ice)
+	elif ice_roll > prog_roll:
+		var dmg := randi_range(1, 6)
+		log_to_terminal("%s repels the attack and counterstrikes for %d!\n" % [target_ice.program.program_name, dmg])
+		if is_instance_valid(netrunner):
+			netrunner.damage_specific_program(program, dmg, target_ice.program.program_name)
 	else:
-		log_to_terminal("%s repelled the attack.\n" % target_ice.program.program_name)
+		log_to_terminal("Standoff — both sides hold, no damage.\n")
 
 	if board_renderer:
 		board_renderer.queue_redraw()
@@ -460,6 +487,57 @@ func _execute_shield(program: NetProgram) -> void:
 		return
 	log_to_terminal("Activating Protection Program '%s'...\n" % program.program_name)
 	netrunner.raise_shield(program)
+
+# Activate the Invisibility stealth cloak (UTILITY / INVISIBILITY effect).
+# Consumes 1 action (the caller, NetProgram.execute_runner_action, returns
+# this bool so the session's use_program handler consumes an action on true).
+# While the cloak is up, each dormant adversary (ICE not yet _activated, hostile
+# NPC not yet engaged) that gains LoS must win an opposed roll to detect the
+# runner (see BlackIce.take_turn / CP2020NpcNetrunner.take_turn). A single
+# seeker winning pierces the cloak globally (see _on_cloak_pierced). Already-
+# active adversaries ignore the cloak. Returns false (no action consumed) if a
+# cloak is already active, so the runner doesn't waste the action.
+func _execute_invisibility(program: NetProgram) -> bool:
+	if not netrunner:
+		return false
+	if netrunner.cloak != null:
+		log_to_terminal("Invisibility already active — cloak still holding.\n")
+		return false
+	netrunner.raise_cloak(program)
+	# Push the cloak reference onto every current adversary so their take_turn
+	# can run the opposed roll. New adversaries are not spawned mid-run, so a
+	# single pass at raise-time is sufficient.
+	for ice in ice_nodes:
+		if is_instance_valid(ice):
+			ice.cloak_program = program
+			if not ice.cloak_pierced.is_connected(_on_cloak_pierced):
+				ice.cloak_pierced.connect(_on_cloak_pierced)
+	for npc in npc_nodes:
+		if is_instance_valid(npc):
+			npc.cloak_program = program
+			if not npc.cloak_pierced.is_connected(_on_cloak_pierced):
+				npc.cloak_pierced.connect(_on_cloak_pierced)
+	log_to_terminal("Activating Invisibility '%s' (Cloak STR %d) — overlaying false signal on your trace.\n" % [program.program_name, program.strength])
+	if board_renderer:
+		board_renderer.queue_redraw()
+	return true
+
+# A dormant adversary won the opposed detection roll: the cloak is pierced.
+# Clear the cloak on the netrunner and on every adversary (so subsequent
+# detections proceed normally — Invisibility only prevents initial notice),
+# log the breach, and refresh the HUD.
+func _on_cloak_pierced() -> void:
+	if is_instance_valid(netrunner) and netrunner.cloak != null:
+		netrunner.pierce_cloak()
+	for ice in ice_nodes:
+		if is_instance_valid(ice):
+			ice.cloak_program = null
+	for npc in npc_nodes:
+		if is_instance_valid(npc):
+			npc.cloak_program = null
+	log_to_terminal("Invisibility pierced — you are visible! Cloak burned out.\n")
+	if board_renderer:
+		board_renderer.queue_redraw()
 
 # Deploy a Watchdog beacon at the netrunner's current position. The beacon
 # monitors a 20-space LoS radius each turn and alerts when enemies approach.
@@ -565,11 +643,25 @@ func update_deck_info(_program: Variant = null) -> void:
 		for prog in netrunner.installed_programs:
 			if not prog:
 				continue
-			var active := (netrunner.raised_shield == prog)
-			var status_prefix = "[ACTIVE] " if active else ""
+			var integrity := netrunner.program_integrity_for(prog)
+			var crashed := (integrity <= 0)
+			var active := (netrunner.raised_shield == prog and not crashed)
+			var status_prefix := ""
+			if crashed:
+				status_prefix = "[CRASHED] "
+			elif active:
+				status_prefix = "[ACTIVE] "
 			var label := Label.new()
-			label.text = "%s%s  (STR %d, %d MU)" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
-			if active:
+			# Show cur/max integrity when damaged but not fully crashed.
+			if crashed:
+				label.text = "%s%s  (STR %d, %d MU) — de-rezzed, clogging MU" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
+			elif integrity < prog.strength:
+				label.text = "%s%s  (STR %d/%d, %d MU)" % [status_prefix, prog.program_name, integrity, prog.strength, prog.memory_cost]
+			else:
+				label.text = "%s%s  (STR %d, %d MU)" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
+			if crashed:
+				label.add_theme_color_override("font_color", Color.RED)
+			elif active:
 				label.add_theme_color_override("font_color", Color.GREEN)
 			program_list_container.add_child(label)
 
@@ -623,11 +715,12 @@ func spawn_black_ice() -> void:
 			var prog_ref: NetProgram = ice.program
 			ice.attacked_netrunner.connect(func(strength: int) -> void:
 				_on_ice_attacked(strength, attacker_name, is_anti_personnel, prog_ref))
-			# Anti-program (DEREZ_ICE) ICE attacks an installed program. The
-			# attacker name is captured via a lambda so the runner's log shows
-			# which ICE struck (the shared _on_ice_attacked path can't pass it).
-			ice.attacked_program.connect(func(strength: int) -> void:
-				_on_ice_attacked_program(strength, attacker_name))
+			# Anti-program (DEREZ_ICE) ICE scans for Worms in LoS and emits
+			# attacked_program(attacker_str, tile_coord) when it spots one.
+			# The game session resolves an opposed roll (Killer STR + 1D10 vs
+			# Worm integrity + 1D10); only the Killer can deal damage on a win.
+			ice.attacked_program.connect(func(atk_str: int, worm_coord: Vector2i) -> void:
+				_on_ice_attacked_program(atk_str, worm_coord, ice))
 			# DETECTION ICE (Watchdog) emits alarm_triggered when it detects
 			# the netrunner. The game session activates all other attack ICE.
 			ice.alarm_triggered.connect(_on_ice_alarm_triggered)
@@ -882,6 +975,11 @@ func _end_player_turn() -> void:
 	var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
 	var nr_init := netrunner.reflex + (RunState.selected_deck.speed_bonus if RunState.selected_deck != null else 0)
 	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
+	# DEREZ_ICE (Killer) ICE is stationary — it never moves, so the moved_to
+	# signal never fires and the board wouldn't redraw after a Worm attack.
+	# Force a redraw so worm damage / destruction visuals update immediately.
+	if board_renderer:
+		board_renderer.queue_redraw()
 
 func _on_turn_ended(is_netrunner_turn: bool) -> void:
 	if is_netrunner_turn:
@@ -948,6 +1046,10 @@ func _tick_worm_programs() -> void:
 		else:
 			t.is_unlocked = true
 		log_to_terminal("Worm has opened the %s at %s from the inside!\n" % [label, c])
+		# Worm completed successfully — clear its integrity alongside the
+		# counter so a fresh deployment on the same tile starts at full.
+		t.worm_integrity = 0
+		t.worm_max_integrity = 0
 		opened = true
 	if opened:
 		# Newly opened tiles may reveal previously-occluded grid — recalc fog.
@@ -1064,12 +1166,37 @@ func _on_ice_attacked(strength: int, attacker_name: String, is_anti_personnel: b
 	if netrunner:
 		netrunner.apply_damage(strength, label, is_anti_personnel, prog)
 
-# Anti-program (DEREZ_ICE) Black ICE reached the netrunner: damage an
-# installed program instead of health. Shield does NOT block this.
-func _on_ice_attacked_program(strength: int, attacker_name: String) -> void:
-	log_to_terminal("WARNING: %s executes DEREZ_ICE for %d!\n" % [attacker_name, strength])
-	if netrunner:
-		netrunner.damage_program(strength, attacker_name)
+# Anti-program (DEREZ_ICE) Killer spotted a Worm-active tile in LoS. Resolve
+# an opposed roll (CP2020 anti-program combat): Killer STR + 1D10 vs Worm
+# integrity + 1D10. Only the Killer can deal damage on a win — Worms are
+# passive defenders that can only damage walls/gates, not ICE. If the Worm
+# wins or ties, no damage to either side (the Worm merely survives the round).
+# If the Killer wins, the Worm takes 1D6 damage; at 0 integrity the Worm is
+# destroyed (worm_turns_remaining reset to 0, tile stays closed — intrusion
+# failed). Shield does NOT block this.
+func _on_ice_attacked_program(attacker_str: int, tile_coord: Vector2i, ice: BlackIce) -> void:
+	if current_layout == null:
+		return
+	var tile: CP2020TileData = current_layout.get_tile(tile_coord)
+	if tile == null or tile.worm_turns_remaining <= 0:
+		log_to_terminal("%s's anti-program attack finds no Worm at %s.\n" % [ice.program.program_name, tile_coord])
+		return
+	var attacker_name := ice.program.program_name
+	var atk_roll := randi_range(1, 10) + attacker_str
+	var def_roll := randi_range(1, 10) + tile.worm_integrity
+	log_to_terminal("WARNING: %s attacks the Worm at %s — opposed roll: Killer %d (1D10+%d) vs Worm %d (1D10+%d).\n" % [attacker_name, tile_coord, atk_roll, attacker_str, def_roll, tile.worm_integrity])
+	if atk_roll > def_roll:
+		var dmg := randi_range(1, 6)
+		tile.worm_integrity = max(0, tile.worm_integrity - dmg)
+		log_to_terminal("Killer wins! Worm takes %d damage (Integrity %d/%d).\n" % [dmg, tile.worm_integrity, tile.worm_max_integrity])
+		if tile.worm_integrity <= 0:
+			tile.worm_turns_remaining = 0
+			tile.worm_max_integrity = 0
+			log_to_terminal("Worm DESTROYED at %s — intrusion failed, tile stays closed.\n" % tile_coord)
+	else:
+		log_to_terminal("Worm holds — no damage dealt (passive defender).\n")
+	if board_renderer:
+		board_renderer.queue_redraw()
 
 # Anti-system (CRASH_CPU / Krash) resident program from the datafort hit the
 # runner's cyberdeck: crash it for 1D6+1 turns (mirroring crash_cpu's CPU

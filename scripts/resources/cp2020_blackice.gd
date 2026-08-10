@@ -4,11 +4,18 @@ extends Node2D
 signal message_logged(msg: String)
 signal moved_to(new_pos: Vector2i)
 signal attacked_netrunner(strength: int)
-# Emitted by anti-program (DEREZ_ICE) ICE when it reaches the netrunner. The
-# runner handles it by damaging an installed program (STR = max integrity).
-signal attacked_program(strength: int)
+# Emitted by anti-program (DEREZ_ICE) ICE when it has line of sight to a
+# Worm-active tile. Carries the attacker's STR (for the opposed roll) and the
+# grid coord of the Worm being attacked. The runner handles it with an opposed
+# roll (Killer STR + 1D10 vs Worm integrity + 1D10); only the Killer can deal
+# damage on a win — Worms are passive defenders.
+signal attacked_program(attacker_str: int, tile_coord: Vector2i)
 signal alarm_triggered
 signal destroyed
+# Emitted when a dormant ICE's opposed roll pierces the netrunner's active
+# Invisibility cloak. The game session clears the cloak globally (on all
+# adversaries) so subsequent detections proceed normally.
+signal cloak_pierced
 
 enum State { IDLE, PURSUE }
 
@@ -37,6 +44,14 @@ var _activated: bool = false
 # Tracks the previous turn's LoS state so transition (seen<->lost) messages
 # log only on the change, not every turn.
 var _had_los: bool = false
+# The netrunner's active Invisibility cloak, or null. Set by the game session
+# on every ice_nodes entry when the runner raises the cloak, and cleared (on
+# all entries) when a seeker pierces it. While set, a dormant ICE (not yet
+# _activated) that gains LoS must win an opposed roll (1D10+cloak.strength vs
+# 1D10+this.program.strength) to detect the runner; on a hold the ICE stays
+# dormant this turn (re-tests next LoS turn), on a pierce the ICE activates and
+# the cloak is broken globally. Already-active ICE ignore the cloak.
+var cloak_program: NetProgram = null
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -72,6 +87,13 @@ func update_visual_position() -> void:
 	position = Vector2(center_x, center_y)
 
 func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
+	# DEREZ_ICE (Killer) is a stationary anti-program sentry that scans for
+	# Worms in LoS — it does not care about the netrunner, so skip the runner
+	# LoS check, _had_los tracking, and Invisibility cloak gate entirely.
+	# program.take_ice_turn branches to _take_killer_turn for DEREZ_ICE.
+	if program and program.effect_type == NetProgram.EffectType.DEREZ_ICE:
+		program.take_ice_turn(self, target_pos, layout)
+		return
 	# LoS gating is shared infrastructure for ALL ICE (including Watchdog):
 	# a program can only act when it has line of sight within sight_range,
 	# blocked by Datawalls / locked Code Gates. The program-specific
@@ -85,6 +107,26 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 	if not _had_los and _activated:
 		emit_log("%s reacquires the netrunner!" % program.program_name)
 	_had_los = true
+	# Invisibility cloak gate: a dormant ICE (not yet _activated) that just
+	# gained LoS must beat the cloak in an opposed roll to detect the runner.
+	# Already-active ICE (already hunting) bypass the cloak — Invisibility only
+	# prevents initial notice, not ongoing attacks. Hold -> stay dormant this
+	# turn (re-roll next LoS turn); pierce -> activate normally and break the
+	# cloak globally (emit cloak_pierced so the session clears it on all foes).
+	if cloak_program != null and not _activated:
+		var hider_roll := randi_range(1, 10) + cloak_program.strength
+		var seeker_roll := randi_range(1, 10) + program.strength
+		emit_log("Invisibility check: you %d (1D10+%d) vs %s %d (1D10+%d)." % [hider_roll, cloak_program.strength, program.program_name, seeker_roll, program.strength])
+		if seeker_roll <= hider_roll:
+			emit_log("Invisibility holds — %s registers you as static and ignores you." % program.program_name)
+			# Did not acquire the runner this turn: keep _had_los false so the
+			# lose/reacquire transition messages stay consistent next turn.
+			_had_los = false
+			return
+		emit_log("Invisibility pierced by %s! Cloak burned out." % program.program_name)
+		cloak_program = null
+		cloak_pierced.emit()
+		# Fall through: this ICE now activates normally.
 	program.take_ice_turn(self, target_pos, layout)
 
 # Next grid step toward `target_pos` via the astar grid, or `current_position`
@@ -108,8 +150,8 @@ func move_to_step(coord: Vector2i) -> void:
 func emit_attack_netrunner(dmg: int) -> void:
 	attacked_netrunner.emit(dmg)
 
-func emit_attack_program(dmg: int) -> void:
-	attacked_program.emit(dmg)
+func emit_attack_program(atk_str: int, coord: Vector2i) -> void:
+	attacked_program.emit(atk_str, coord)
 
 func emit_alarm() -> void:
 	alarm_triggered.emit()

@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="NetProgram" format=3]
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://dt3gwefaesqv7"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_aegis"]
 
 [resource]
 script = ExtResource("1_aegis")
 program_name = "Aegis 2.0"
-type = 6
+type = 8
 effect_type = 6
 memory_cost = 4
 strength = 6

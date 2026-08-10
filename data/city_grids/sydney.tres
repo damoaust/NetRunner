@@ -22,6 +22,7 @@ ldl_cost = 60
 script = ExtResource("1_lmceq")
 name = "Outback Relay"
 pos = Vector2i(11, 2)
+subnet_path = "res://scenes/forts/p1.tres"
 security_tier = 0
 ldl_cost = 70
 security_code = 5

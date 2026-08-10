@@ -9,6 +9,7 @@ type = 3
 effect_type = 2
 memory_cost = 5
 strength = 6
+damage_dice = 6
 price = 1480
 description = "Attacks all types, 1D6 damage to target STR. Mobile"
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

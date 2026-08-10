@@ -1,4 +1,4 @@
-[gd_resource type="Theme" format=3]
+[gd_resource type="Theme" format=3 uid="uid://c2myk4yt270q6"]
 
 [sub_resource type="SystemFont" id="SystemFont_c5ll2"]
 font_names = PackedStringArray("Consolas", "Courier New", "DejaVu Sans Mono", "Menlo")

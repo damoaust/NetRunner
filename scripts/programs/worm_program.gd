@@ -20,6 +20,12 @@ func execute_runner_action(session: CP2020GameSession, target_coord: Vector2i) -
 		session.log_to_terminal("A Worm is already working on this tile (%d turns remaining).\n" % tile.worm_turns_remaining)
 		return false
 	tile.worm_turns_remaining = 2
+	# Seed the Worm's structural integrity from its strength — enemy DEREZ_ICE
+	# (Killer) ICE attacks the Worm via an opposed roll; only the Killer can
+	# deal damage on a win (Worms are passive defenders). At 0 integrity the
+	# Worm is destroyed and the tile stays closed.
+	tile.worm_integrity = strength
+	tile.worm_max_integrity = strength
 	var label := "data wall" if is_wall else "code gate"
 	session.log_to_terminal("Worm '%s' deployed behind the %s at %s — opening from the inside in 2 turns. No alert triggered.\n" % [program_name, label, target_coord])
 	if session.board_renderer:

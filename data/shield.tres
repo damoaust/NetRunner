@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_kksb7")
 program_name = "Shield"
-type = 6
+type = 8
 effect_type = 6
 memory_cost = 1
 strength = 3

@@ -11,6 +11,13 @@ signal shield_consumed
 signal armor_raised(program: NetProgram)
 signal armor_consumed
 signal flatlined
+# Invisibility stealth cloak. While `cloak` is non-null, each dormant
+# adversary's first LoS detection is gated by an opposed roll (see the
+# INVISIBILITY effect in the game session). `cloak_raised` is emitted on
+# activation; `cloak_pierced` is emitted when a seeker wins the opposed roll
+# and the cloak breaks (the runner is visible again).
+signal cloak_raised(program: NetProgram)
+signal cloak_pierced
 # Anti-system (CRASH_CPU / Krash) attack hit the runner's cyberdeck: the deck
 # crashes for `duration` turns, dropping the runner's action economy to 0
 # (movement only) until it reboots. See crash_deck / tick_deck_crash.
@@ -45,6 +52,11 @@ signal stunned
 var current_health: int = 20
 var raised_shield: NetProgram = null
 var active_armor: NetProgram = null
+# Active Invisibility cloak program, or null when uncloaked. Set by the game
+# session's _execute_invisibility (consumes 1 action) and cleared by
+# pierce_cloak when a seeker wins the opposed detection roll. Transient per
+# run — not persisted across sessions (like raised_shield / active_armor).
+var cloak: NetProgram = null
 var interface_rank: int = 6  # Netrunner's INT for initiative (set from cyberdeck)
 
 # Anti-system crash state. While > 0 the runner's cyberdeck is crashed: the
@@ -85,8 +97,10 @@ var intelligence_lost: int = 0
 # so anti-program (DEREZ_ICE) ICE can damage and destroy installed programs.
 # NetProgram is a shared cached Resource, so we can't mutate `strength` on it
 # directly; this Dictionary maps each installed program instance -> its
-# current integrity. Seeded on install, erased on uninstall. Destroyed
-# programs (integrity reaches 0) are uninstalled, freeing their MU.
+# current integrity. Seeded on install, erased on clear_crashed_program.
+# De-rezzed programs (integrity reaches 0) CRASH and CLOG MU: they stay in
+# installed_programs (still count toward get_used_memory()) but can't be used
+# until the runner clears them with clear_crashed_program.
 var program_integrity: Dictionary = {}
 
 var current_position: Vector2i = Vector2i.ZERO
@@ -158,6 +172,13 @@ func _draw() -> void:
 	var ring_alpha := 0.5 + 0.3 * pulse
 	draw_arc(center, cell_size * 0.48, -_pulse_time * 3.0, -_pulse_time * 3.0 + TAU * 0.9, 32, Color(Color.CYAN.r, Color.CYAN.g, Color.CYAN.b, ring_alpha), 2.0)
 
+	# Invisibility cloak active: a faint translucent halo rings the avatar so
+	# the player can see the cloak is up. Drawn before the neon layers so the
+	# diamond stays crisp on top.
+	if cloak != null:
+		var cloak_alpha := 0.35 + 0.2 * pulse
+		draw_arc(center, cell_size * 0.42, 0.0, TAU, 48, Color(0.7, 0.85, 1.0, cloak_alpha), 1.5)
+
 	# Neon glow layers.
 	for i in range(3):
 		var glow_size := size + i * 4.0
@@ -208,13 +229,25 @@ func program_integrity_for(prog: NetProgram) -> int:
 		return int(program_integrity[prog])
 	return 0
 
+# Re-seed program_integrity from the current installed_programs list. Use this
+# after any code path that assigns installed_programs directly (bypassing
+# install_program), e.g. when the game session loads a deck's programs at the
+# start of a run. Each program's integrity is set to its strength (max HP).
+func seed_program_integrity() -> void:
+	program_integrity.clear()
+	for prog in installed_programs:
+		if prog:
+			program_integrity[prog] = prog.strength
+
 # Anti-program (DEREZ_ICE) attack. The raised shield does NOT block
 # anti-program attacks (shields protect the runner's persona/health, not
 # programs), so this bypasses the shield entirely. Picks a random installed
-# program with integrity > 0, reduces it by `amount`, and destroys
-# (uninstalls) it at 0 integrity. Logs a "no programs to target" message and
-# does nothing if the runner has no installed programs (no fallback to health
-# damage).
+# program with integrity > 0, reduces it by `amount`. At 0 integrity the
+# program is DEREZZED — it crashes in the deck and CLOGS MU: it stays in
+# installed_programs (still counts toward get_used_memory()) but can't be
+# used (integrity 0). The runner must clear_crashed_program to free the MU.
+# Logs a "no programs to target" message and does nothing if the runner has
+# no installed programs (no fallback to health damage).
 func damage_program(amount: int, attacker_name: String) -> void:
 	var candidates: Array[NetProgram] = []
 	for prog in installed_programs:
@@ -229,8 +262,41 @@ func damage_program(amount: int, attacker_name: String) -> void:
 	program_integrity[target] = new_int
 	message_logged.emit("%s's DEREZ_ICE hits %s for %d (Integrity %d/%d)." % [attacker_name, target.program_name, amount, new_int, target.strength])
 	if new_int <= 0:
-		message_logged.emit("%s DEREZED! Program destroyed." % target.program_name)
-		uninstall_program(target)
+		message_logged.emit("%s DEREZZED! Program crashed — clogging MU (clear it to free memory)." % target.program_name)
+		deck_updated.emit()
+
+# Directly damage a specific program (used by the runner's anti-IC opposed
+# roll when the runner loses). Same crash-clogs-MU behaviour as damage_program
+# but targets the exact program rather than a random one.
+func damage_specific_program(prog: NetProgram, amount: int, attacker_name: String) -> void:
+	if prog == null or not program_integrity.has(prog):
+		message_logged.emit("%s's attack finds no program to target." % attacker_name)
+		return
+	var cur: int = int(program_integrity[prog])
+	var new_int: int = max(0, cur - amount)
+	program_integrity[prog] = new_int
+	message_logged.emit("%s hits %s for %d (Integrity %d/%d)." % [attacker_name, prog.program_name, amount, new_int, prog.strength])
+	if new_int <= 0:
+		message_logged.emit("%s DEREZZED! Program crashed — clogging MU (clear it to free memory)." % prog.program_name)
+		deck_updated.emit()
+
+# Clear a crashed (integrity 0) program from the deck, freeing its MU. Called
+# when the runner chooses to dump a de-rezzed program. No-op if the program
+# is not crashed (integrity > 0) or not installed.
+func clear_crashed_program(prog: NetProgram) -> void:
+	if prog in installed_programs and int(program_integrity.get(prog, 0)) <= 0:
+		installed_programs.erase(prog)
+		program_integrity.erase(prog)
+		message_logged.emit("Cleared crashed program: %s — MU freed." % prog.program_name)
+		deck_updated.emit()
+
+# Returns true if any installed program has been de-rezzed (integrity 0) and
+# is clogging MU. Used by the HUD / deck panel to prompt the runner to clear.
+func has_crashed_programs() -> bool:
+	for prog in installed_programs:
+		if prog and int(program_integrity.get(prog, 0)) <= 0:
+			return true
+	return false
 
 func move(direction: Vector2i) -> bool:
 	if not current_layout:
@@ -470,6 +536,20 @@ func raise_armor(program: NetProgram) -> void:
 	active_armor = program
 	message_logged.emit("Armor activated (absorb STR %d)." % program.strength)
 	armor_raised.emit(program)
+
+# --- Invisibility stealth cloak -------------------------------------------
+# Activated by the game session's _execute_invisibility (consumes 1 action).
+# While `cloak` is set, dormant adversaries (ICE not yet _activated, hostile
+# NPCs not yet engaged) that gain LoS must win an opposed roll against the
+# cloak's STR to detect the runner. A single seeker winning breaks the cloak
+# for everyone (pierce_cloak). Already-active adversaries ignore the cloak.
+func raise_cloak(program: NetProgram) -> void:
+	cloak = program
+	cloak_raised.emit(program)
+
+func pierce_cloak() -> void:
+	cloak = null
+	cloak_pierced.emit()
 
 # --- Anti-system (Krash / CRASH_CPU) runner-deck crash ----------------------
 # An anti-system attack that targets the runner's cyberdeck instead of a

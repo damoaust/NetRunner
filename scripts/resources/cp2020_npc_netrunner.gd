@@ -15,6 +15,9 @@ signal moved_to(new_pos: Vector2i)
 signal attacked_netrunner(strength: int)
 signal destroyed
 signal took_damage(amount: int)
+# Emitted when a dormant hostile NPC's opposed roll pierces the netrunner's
+# active Invisibility cloak. The game session clears the cloak globally.
+signal cloak_pierced
 
 enum Faction { NETWATCH, NETRUNNER }
 enum Disposition { HOSTILE, NEUTRAL }
@@ -55,6 +58,14 @@ var _activated: bool = false
 # Tracks the previous turn's LoS state so transition messages log only on
 # the seen<->lost change.
 var _had_los: bool = false
+# The netrunner's active Invisibility cloak, or null. Set by the game session
+# on every npc_nodes entry when the runner raises the cloak, and cleared (on
+# all entries) when a seeker pierces it. While set, a hostile NPC that just
+# gained LoS (not yet engaged, _had_los == false) must win an opposed roll
+# (1D10+cloak.strength vs 1D10+this.strength) to detect the runner; hold ->
+# hold position this turn, pierce -> pursue/attack and break the cloak
+# globally. An NPC already engaged (_had_los == true) ignores the cloak.
+var cloak_program: NetProgram = null
 # Raised shield program (consumed on the next inbound hit), mirroring the
 # player netrunner's raised_shield mechanic.
 var raised_shield: NetProgram = null
@@ -128,9 +139,29 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 			message_logged.emit("%s loses sight of the netrunner — holding position." % npc_name)
 		_had_los = false
 		return
+
+	# Invisibility cloak gate: a hostile NPC that just gained LoS (not yet
+	# engaged) must beat the cloak in an opposed roll to detect the runner.
+	# An NPC that already has the runner (was engaged before this turn) bypasses
+	# the cloak — Invisibility only prevents initial notice. Hold -> hold
+	# position this turn (re-roll next LoS turn); pierce -> pursue/attack and
+	# break the cloak globally.
+	var was_engaged := _had_los
 	if not _had_los and _activated:
 		message_logged.emit("%s reacquires the netrunner!" % npc_name)
 	_had_los = true
+	if cloak_program != null and not was_engaged:
+		var hider_roll := randi_range(1, 10) + cloak_program.strength
+		var seeker_roll := randi_range(1, 10) + strength
+		message_logged.emit("Invisibility check: runner %d (1D10+%d) vs %s %d (1D10+%d)." % [hider_roll, cloak_program.strength, npc_name, seeker_roll, strength])
+		if seeker_roll <= hider_roll:
+			message_logged.emit("Invisibility holds — %s registers you as static and ignores you." % npc_name)
+			_had_los = false
+			return
+		message_logged.emit("Invisibility pierced by %s! Cloak burned out." % npc_name)
+		cloak_program = null
+		cloak_pierced.emit()
+		# Fall through: this NPC now pursues/attacks normally.
 
 	# HOSTILE: pursue + use programs.
 	_update_obstacles(layout)

@@ -11,6 +11,16 @@ var current_layout: CP2020DatafortLayout
 # session; the renderer draws a pulsing amber "W" glyph at each beacon.
 var watchdog_beacons: Array[Vector2i] = []
 
+# Cached default theme font for runtime text overlays (e.g. worm integrity).
+var _default_font: Font = null
+
+func _get_default_font() -> Font:
+	if _default_font == null:
+		var label := Label.new()
+		_default_font = label.get_theme_default_font()
+		label.free()
+	return _default_font
+
 func _draw() -> void:
 	if current_layout:
 		draw_grid(self, current_layout)
@@ -156,10 +166,20 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 
 	# Worm-in-progress overlay: when a Worm program is working on a DATAWALL
 	# or locked CODE_GATE (worm_turns_remaining > 0), draw a small purple "W"
-	# glyph in the tile center so the player can see the worm at work.
+	# glyph in the tile center so the player can see the worm at work. When
+	# the Worm has taken damage from a Killer (DEREZ_ICE), shift the color
+	# toward yellow/orange and draw a "cur/max" integrity readout below the W.
 	if tile_data.worm_turns_remaining > 0:
 		var center = cell_rect.get_center()
+		# Color shifts from purple (full) → orange (damaged) → red (near 0).
 		var worm_color = Color(0.7, 0.3, 0.9, 1.0 * alpha_mult)
+		var max_int: int = tile_data.worm_max_integrity if tile_data.worm_max_integrity > 0 else 1
+		var integrity_ratio: float = float(tile_data.worm_integrity) / float(max_int)
+		if integrity_ratio < 1.0:
+			# Blend purple → orange as integrity drops.
+			worm_color = Color(0.9, 0.5, 0.2, 1.0 * alpha_mult).lerp(Color(0.7, 0.3, 0.9, 1.0 * alpha_mult), integrity_ratio)
+		if integrity_ratio <= 0.34:
+			worm_color = Color(0.9, 0.2, 0.2, 1.0 * alpha_mult)
 		# Pulsing background circle to draw attention.
 		var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
 		canvas.draw_circle(center, pulse_radius, Color(0.5, 0.2, 0.7, 0.35 * alpha_mult))
@@ -168,3 +188,8 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 		canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), worm_color, 2.0)
 		canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), worm_color, 2.0)
 		canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), worm_color, 2.0)
+		# Integrity readout (only when the Worm has been damaged).
+		if tile_data.worm_max_integrity > 0 and tile_data.worm_integrity < tile_data.worm_max_integrity:
+			var txt := "%d/%d" % [tile_data.worm_integrity, tile_data.worm_max_integrity]
+			var font := _get_default_font()
+			canvas.draw_string(font, center + Vector2(-10, s + 12.0), txt, HORIZONTAL_ALIGNMENT_CENTER, 20, 8, worm_color)

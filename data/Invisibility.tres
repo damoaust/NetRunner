@@ -6,9 +6,9 @@
 script = ExtResource("1_4g827")
 program_name = "Invisibility"
 type = 6
+effect_type = 11
 memory_cost = 1
 strength = 3
 price = 300
 description = "Invisibility overlays a false signal on your cybermodemtrace, making it appear to be harmless static. When activated, Invisibility will allow the Netrunner to pass unnoticed through the Net."
-damage_dice_count = 0
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

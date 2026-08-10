@@ -25,6 +25,7 @@ MetaState="*res://scripts/autoload/meta_state.gd"
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/size/mode=3
+window/hdr/request_hdr_output=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/size/fullscreen=true
@@ -63,4 +64,5 @@ move_right={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+viewport/hdr_2d=true
 anti_aliasing/quality/msaa_2d=1
