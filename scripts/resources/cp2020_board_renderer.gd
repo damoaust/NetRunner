@@ -92,6 +92,12 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 		CP2020DatafortLayout.TileType.ENTRY:
 			canvas.draw_rect(cell_rect, Color(0.0, 0.4, 0.8, 0.3 * alpha_mult), true)
 			canvas.draw_rect(cell_rect, Color(Color.CYAN, 1.0 * alpha_mult), false, 2.0)
+			# Primary-entry marker: a small white inset square marks this
+			# ENTRY as the map's designated arrival point (initial dive +
+			# inbound LDL fallback). Only one ENTRY per map should carry this.
+			if tile_data.is_primary_entry:
+				var mark := Rect2(cell_rect.position + Vector2(4, 4), Vector2(8, 8))
+				canvas.draw_rect(mark, Color(1.0, 1.0, 1.0, 1.0 * alpha_mult), true)
 
 		CP2020DatafortLayout.TileType.DATAWALL:
 			canvas.draw_rect(cell_rect, Color(0.8, 0.1, 0.1, 0.6 * alpha_mult), true)

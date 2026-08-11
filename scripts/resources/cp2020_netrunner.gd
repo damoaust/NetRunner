@@ -134,20 +134,33 @@ func initialize(layout: CP2020DatafortLayout, entry_coord: Vector2i = Vector2i(-
 				and current_layout.get_tile(entry_coord) != null:
 			current_position = entry_coord
 		else:
+			# No explicit entry coord: pick an arrival point with a deterministic
+			# ordering so the initial city-grid dive never lands on an outbound
+			# LDL link by accident. Priority: (1) the map's primary entry, then
+			# (2) any plain (non-LDL) ENTRY tile, then (3) any ENTRY tile at all.
+			var primary: Vector2i = Vector2i(-1, -1)
+			var plain: Vector2i = Vector2i(-1, -1)
+			var any_entry: Vector2i = Vector2i(-1, -1)
 			for raw_key in current_layout.grid_tiles.keys():
-				# 1. Safely parse the key
 				var coord: Vector2i
 				if raw_key is String:
 					var parts = raw_key.split(",")
 					coord = Vector2i(parts[0].to_int(), parts[1].to_int())
 				else:
 					coord = raw_key
-
-				# 2. Use our safe helper
 				var tile = current_layout.get_tile(coord)
 				if tile and tile.tile_type == CP2020DatafortLayout.TileType.ENTRY:
-					current_position = coord
-					break
+					if tile.is_primary_entry and primary.x < 0:
+						primary = coord
+					if not tile.is_ldl_link and plain.x < 0:
+						plain = coord
+					if any_entry.x < 0:
+						any_entry = coord
+			var chosen := primary if primary.x >= 0 else (plain if plain.x >= 0 else any_entry)
+			if chosen.x >= 0:
+				current_position = chosen
+			else:
+				push_warning("netrunner.initialize: no ENTRY tile found in layout; staying at %s." % current_position)
 
 	update_visual_position()
 	queue_redraw()

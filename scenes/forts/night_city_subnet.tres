@@ -7,6 +7,14 @@
 [ext_resource type="Resource" path="res://data/watchdog.tres" id="4_2bqhh"]
 [ext_resource type="Resource" path="res://data/killer2.tres" id="5_pnu68"]
 
+[sub_resource type="Resource" id="Resource_qm521"]
+script = ExtResource("1_sk5yr")
+tile_type = 1
+is_unlocked = true
+is_visible = true
+is_explored = true
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_dmmqx"]
 script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
@@ -167,8 +175,6 @@ script = ExtResource("1_sk5yr")
 tile_type = 3
 tile_name = "Netrunner Entry / LDL Node"
 is_ldl_link = true
-target_subnet_path = "res://scenes/forts/fort2.tres"
-target_entry_coord = Vector2i(17, 5)
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_3q007"]
@@ -1875,15 +1881,6 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_htblt"]
 script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_04lr4"]
-script = ExtResource("1_sk5yr")
-tile_type = 3
-tile_name = "Netrunner Entry / LDL Node"
-is_ldl_link = true
-target_subnet_path = "res://scenes/forts/fort2.tres"
-target_entry_coord = Vector2i(17, 5)
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_aqip2"]
@@ -3884,11 +3881,6 @@ script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_cb8wm"]
-script = ExtResource("1_sk5yr")
-tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
 [sub_resource type="Resource" id="Resource_laant"]
 script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
@@ -4594,32 +4586,40 @@ script = ExtResource("1_sk5yr")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_i7c2s"]
+script = ExtResource("1_sk5yr")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_kjmoj"]
+script = ExtResource("1_sk5yr")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_xp5ba"]
+script = ExtResource("1_sk5yr")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_04lr4"]
+script = ExtResource("1_sk5yr")
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+target_subnet_path = "res://scenes/forts/fort2.tres"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_cb8wm"]
+script = ExtResource("1_sk5yr")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
 [resource]
 script = ExtResource("1_layout")
 rows = 30
 columns = 30
 grid_tiles = {
-"3,1": {
-"is_explored": false,
-"is_visible": false,
-"tile_type": 4
-},
-"3,3": {
-"is_explored": true,
-"is_unlocked": false,
-"is_visible": true,
-"tile_type": 3
-},
-"3,5": {
-"is_explored": true,
-"is_visible": true,
-"tile_type": 2
-},
-"3,7": {
-"is_explored": true,
-"is_visible": true,
-"tile_type": 1
-},
+"3,7": SubResource("Resource_qm521"),
 Vector2i(0, 0): SubResource("Resource_dmmqx"),
 Vector2i(0, 1): SubResource("Resource_q2wfl"),
 Vector2i(0, 2): SubResource("Resource_1xbiy"),
@@ -4711,8 +4711,11 @@ Vector2i(2, 27): SubResource("Resource_mk6fu"),
 Vector2i(2, 28): SubResource("Resource_776gt"),
 Vector2i(2, 29): SubResource("Resource_33gfk"),
 Vector2i(3, 0): SubResource("Resource_c3nsy"),
+Vector2i(3, 1): SubResource("Resource_i7c2s"),
 Vector2i(3, 2): SubResource("Resource_isksh"),
+Vector2i(3, 3): SubResource("Resource_kjmoj"),
 Vector2i(3, 4): SubResource("Resource_btb33"),
+Vector2i(3, 5): SubResource("Resource_xp5ba"),
 Vector2i(3, 6): SubResource("Resource_2biw2"),
 Vector2i(3, 8): SubResource("Resource_lglp2"),
 Vector2i(3, 9): SubResource("Resource_be5a8"),

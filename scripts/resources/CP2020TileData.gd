@@ -26,6 +26,14 @@ func _init() -> void:
 @export var is_ldl_link: bool = false      # Marks this tile as a Long Distance Line connection point
 @export var target_subnet_path: String = "" # Resource path (.tres) to the linked remote subnet/datafort
 @export var target_entry_coord: Vector2i = Vector2i(-1, -1) # Arrival coordinate in the remote subnet
+# Marks this ENTRY tile as the map's primary arrival point. The initial
+# city-grid dive and inbound LDL travel (when no target_entry_coord is set)
+# arrive here. At most one ENTRY tile per map should have this set; the
+# datafort designer enforces one-primary-at-most on toggle and auto-sets it
+# on the first plain (non-LDL) Entry painted. Defaults false so existing
+# .tres files keep the previous first-ENTRY fallback (now preferring non-LDL
+# entry tiles). See netrunner.initialize for the full arrival ordering.
+@export var is_primary_entry: bool = false
 
 # --- Per-tile ICE config (BLACK_ICE tiles). A program .tres is REQUIRED —
 # every BLACK_ICE tile must have an assigned ice_program. The program

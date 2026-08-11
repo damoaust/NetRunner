@@ -297,7 +297,14 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					log_to_terminal("LDL link has no target subnet set.\n")
 					return
 				if load_subnet(dest_path, dest_coord):
-					log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, dest_coord])
+					# If a target_entry_coord was requested but the remote map
+					# had no valid tile there, netrunner.initialize fell back to
+					# the remote's primary/first entry. Surface that so the
+					# player/designer isn't silently dropped somewhere unexpected.
+					if dest_coord.x >= 0 and dest_coord.y >= 0 and netrunner and netrunner.current_position != dest_coord:
+						log_to_terminal("LDL target entry %s invalid — arrived at remote entry %s instead.\n" % [dest_coord, netrunner.current_position])
+					else:
+						log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, netrunner.current_position if netrunner else dest_coord])
 					update_deck_info()
 					_update_trace()
 				else:

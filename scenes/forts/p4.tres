@@ -175,6 +175,21 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_fvhq0"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_tre4j"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3x75l"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_dwrlm"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
@@ -230,6 +245,11 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_hnn13"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_foast"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
@@ -243,6 +263,11 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_ytkpo"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_f2jwj"]
+script = ExtResource("3_q36i5")
+tile_type = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_qgr6e"]
@@ -290,9 +315,16 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_4fjg5"]
+[sub_resource type="Resource" id="Resource_bcbos"]
 script = ExtResource("3_q36i5")
-tile_name = "Empty Path"
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hlefv"]
+script = ExtResource("3_q36i5")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_5n0wo"]
@@ -313,6 +345,11 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_cibjb"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_x473j"]
+script = ExtResource("3_q36i5")
+tile_type = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_788p7"]
@@ -355,9 +392,15 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_3x68l"]
+[sub_resource type="Resource" id="Resource_ydv4s"]
 script = ExtResource("3_q36i5")
-tile_name = "Empty Path"
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4besg"]
+script = ExtResource("3_q36i5")
+tile_type = 6
+tile_name = "CPU"
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_afson"]
@@ -365,9 +408,13 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_6x7md"]
+[sub_resource type="Resource" id="Resource_kx6y4"]
 script = ExtResource("3_q36i5")
-tile_name = "Empty Path"
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+target_subnet_path = "res://scenes/forts/p5.tres"
+is_primary_entry = true
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_cxd7a"]
@@ -380,7 +427,17 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_2k5or"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_a72qg"]
+script = ExtResource("3_q36i5")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_n5vox"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
@@ -415,9 +472,16 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_jj67o"]
+[sub_resource type="Resource" id="Resource_7lwse"]
 script = ExtResource("3_q36i5")
-tile_name = "Empty Path"
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_25twj"]
+script = ExtResource("3_q36i5")
+tile_type = 5
+tile_name = "Memory Unit"
+memory_units_mu = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_rkh71"]
@@ -438,6 +502,11 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_5tsws"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0gwke"]
+script = ExtResource("3_q36i5")
+tile_type = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_51oqn"]
@@ -485,6 +554,11 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_axf7e"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_wwu7u"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
@@ -498,6 +572,11 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_46sbl"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5r6mi"]
+script = ExtResource("3_q36i5")
+tile_type = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_wh1oe"]
@@ -553,6 +632,21 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_pdbho"]
 script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4uwx6"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6yrji"]
+script = ExtResource("3_q36i5")
+tile_type = 2
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3x3bf"]
+script = ExtResource("3_q36i5")
+tile_type = 2
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_iudbl"]
@@ -1045,93 +1139,6 @@ script = ExtResource("3_q36i5")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_bcbos"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_ydv4s"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_7lwse"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_hnn13"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_axf7e"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_fvhq0"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_tre4j"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_3x75l"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_4uwx6"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_6yrji"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_3x3bf"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_f2jwj"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_5r6mi"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_x473j"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_2k5or"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_0gwke"]
-script = ExtResource("3_q36i5")
-tile_type = 2
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_x20xj"]
-script = ExtResource("3_q36i5")
-tile_type = 3
-tile_name = "LDL Link"
-is_ldl_link = true
-copied_file_paths = PackedStringArray()
-
 [resource]
 script = ExtResource("4_six30")
 fort_name = "New Datafort"
@@ -1199,7 +1206,7 @@ Vector2i(3, 14): SubResource("Resource_mpmvo"),
 Vector2i(4, 0): SubResource("Resource_di4x1"),
 Vector2i(4, 1): SubResource("Resource_yw1vp"),
 Vector2i(4, 2): SubResource("Resource_bcbos"),
-Vector2i(4, 3): SubResource("Resource_4fjg5"),
+Vector2i(4, 3): SubResource("Resource_hlefv"),
 Vector2i(4, 4): SubResource("Resource_5n0wo"),
 Vector2i(4, 5): SubResource("Resource_5rdar"),
 Vector2i(4, 6): SubResource("Resource_it062"),
@@ -1214,14 +1221,14 @@ Vector2i(4, 14): SubResource("Resource_hhpn4"),
 Vector2i(5, 0): SubResource("Resource_6pwpu"),
 Vector2i(5, 1): SubResource("Resource_as6ho"),
 Vector2i(5, 2): SubResource("Resource_ydv4s"),
-Vector2i(5, 3): SubResource("Resource_3x68l"),
+Vector2i(5, 3): SubResource("Resource_4besg"),
 Vector2i(5, 4): SubResource("Resource_afson"),
-Vector2i(5, 5): SubResource("Resource_6x7md"),
+Vector2i(5, 5): SubResource("Resource_kx6y4"),
 Vector2i(5, 6): SubResource("Resource_cxd7a"),
 Vector2i(5, 7): SubResource("Resource_587af"),
 Vector2i(5, 8): SubResource("Resource_2k5or"),
 Vector2i(5, 9): SubResource("Resource_a72qg"),
-Vector2i(5, 10): SubResource("Resource_x20xj"),
+Vector2i(5, 10): SubResource("Resource_n5vox"),
 Vector2i(5, 11): SubResource("Resource_07mx8"),
 Vector2i(5, 12): SubResource("Resource_atkj0"),
 Vector2i(5, 13): SubResource("Resource_0gtfj"),
@@ -1229,7 +1236,7 @@ Vector2i(5, 14): SubResource("Resource_avcfe"),
 Vector2i(6, 0): SubResource("Resource_bbw6n"),
 Vector2i(6, 1): SubResource("Resource_53kyl"),
 Vector2i(6, 2): SubResource("Resource_7lwse"),
-Vector2i(6, 3): SubResource("Resource_jj67o"),
+Vector2i(6, 3): SubResource("Resource_25twj"),
 Vector2i(6, 4): SubResource("Resource_rkh71"),
 Vector2i(6, 5): SubResource("Resource_cqjbl"),
 Vector2i(6, 6): SubResource("Resource_p5238"),

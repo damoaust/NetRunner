@@ -400,6 +400,14 @@ script = ExtResource("3_adbxy")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_31bky"]
+script = ExtResource("3_adbxy")
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+target_subnet_path = "res://scenes/forts/p2.tres"
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_6x7md"]
 script = ExtResource("3_adbxy")
 tile_name = "Empty Path"
@@ -432,6 +440,7 @@ script = ExtResource("3_adbxy")
 tile_type = 3
 tile_name = "LDL Link"
 is_ldl_link = true
+is_primary_entry = true
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_07mx8"]
@@ -1127,14 +1136,6 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_0jmw4"]
 script = ExtResource("3_adbxy")
 tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_31bky"]
-script = ExtResource("3_adbxy")
-tile_type = 3
-tile_name = "LDL Link"
-is_ldl_link = true
-target_subnet_path = "res://scenes/forts/p2.tres"
 copied_file_paths = PackedStringArray()
 
 [resource]
