@@ -43,6 +43,15 @@ var rezzed_program_nodes: Array[RezzedProgram] = []
 # (NetProgram.ATTACK_VISUALS / get_attack_visual()); this node only renders.
 var combat_animator: CombatEffectAnimator = null
 
+# One-shot guard for end-of-run scene transitions (flatline / busted). An
+# adversary coroutine (notably the datafort's multi-action take_turn loop)
+# can emit a fatal attack AFTER a prior action already flatlined the runner
+# and queued the GameOver scene change — the deferred scene swap tears the
+# session out of the tree between the datafort's `await` iterations, so a
+# second flatline fires on a detached node (get_tree() == null). This flag
+# makes _on_flatlined / _on_jack_out_pressed idempotent and null-safe.
+var _game_over_queued: bool = false
+
 # Default visual for enemy attacks that don't carry a NetProgram reference
 # (NPC netrunners, datafort resident programs). See NetProgram.ATTACK_VISUALS
 # for the per-effect-type config used by rezzed programs + ICE.
@@ -1664,6 +1673,14 @@ func _on_stunned() -> void:
 	update_deck_info()
 
 func _on_flatlined() -> void:
+	# Idempotent + null-safe: a deferred adversary attack (e.g. the datafort's
+	# multi-action take_turn loop resuming after a 0.3s await that crossed the
+	# GameOver scene swap) can re-emit flatlined once the session is detached
+	# from the tree. Bail once the scene change is queued, and never touch
+	# get_tree() when we're no longer in the scene tree.
+	if _game_over_queued:
+		return
+	_game_over_queued = true
 	log_to_terminal("=== GAME OVER: Netrunner flatlined. Jack out. ===\n")
 	# Permadeath on flatline — record the run, route to the GameOver scene.
 	# The GameOver scene's "New Life" button calls start_new_life().
@@ -1679,7 +1696,8 @@ func _on_flatlined() -> void:
 	MetaState.record_run(summary)
 	RunState.last_death_cause = "Flatlined"
 	RunState.last_run_summary = summary
-	get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
+	if is_inside_tree():
+		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
 
 func _on_jack_out_pressed() -> void:
 	# CP2020 Death Trap: a stunned (unconscious) runner cannot jack out.
@@ -1703,7 +1721,9 @@ func _on_jack_out_pressed() -> void:
 		MetaState.record_run(summary)
 		RunState.last_death_cause = "Busted"
 		RunState.last_run_summary = summary
-		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
+		_game_over_queued = true
+		if is_inside_tree():
+			get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
 		return
 	# Successful jack-out — escape with loot intact to fence at the hub.
 	# Ends the run: trace + run context cleared, back to the Workbench.

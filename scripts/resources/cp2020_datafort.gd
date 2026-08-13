@@ -214,4 +214,10 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 		# Pace the turn like ICE movement so the player can follow the log.
 		if is_inside_tree():
 			await get_tree().create_timer(0.3).timeout
+		# The scene may have been torn down during the await (e.g. a prior
+		# action flatlined the netrunner and the deferred GameOver scene
+		# swap completed). Bail before the next action attacks a freed
+		# runner / session.
+		if not is_inside_tree():
+			return
 
