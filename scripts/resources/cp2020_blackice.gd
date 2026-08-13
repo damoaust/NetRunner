@@ -38,6 +38,10 @@ var program: NetProgram = null
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_state: State = State.IDLE
+# Floor this ICE was spawned on. Adversaries stay on their floor — they do
+# not follow the runner up/down. The game session gates take_turn by
+# `home_floor == layout.current_floor`. See docs/multi-floor-travel-plan.md §2b.
+var home_floor: int = 0
 var astar_grid: AStarGrid2D
 var current_integrity: int = 4
 var _activated: bool = false
@@ -98,7 +102,7 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 	# a program can only act when it has line of sight within sight_range,
 	# blocked by Datawalls / locked Code Gates. The program-specific
 	# behavior (hunt, alarm, etc.) is delegated to program.take_ice_turn.
-	var los := layout.line_of_sight(current_position, target_pos, sight_range)
+	var los := layout.line_of_sight(current_position, target_pos, sight_range, home_floor)
 	if not los:
 		if _had_los:
 			emit_log("%s loses sight of the netrunner — holding position." % program.program_name)
@@ -161,21 +165,21 @@ func emit_log(msg: String) -> void:
 
 # Line-of-sight from this ICE's position to `target_pos` within sight_range.
 func has_los_to(target_pos: Vector2i, layout: CP2020DatafortLayout) -> bool:
-	return layout.line_of_sight(current_position, target_pos, sight_range)
+	return layout.line_of_sight(current_position, target_pos, sight_range, home_floor)
 
 # Rebuild the astar solid region from Datawalls and locked Code Gates. Called
 # by the program's behavior each turn before pathing.
 func refresh_pathfinding(layout: CP2020DatafortLayout) -> void:
 	astar_grid.fill_solid_region(astar_grid.region, false)
 
-	for raw_key in layout.grid_tiles.keys():
+	for raw_key in layout.get_floor_tiles(home_floor).keys():
 		var coord: Vector2i
 		if raw_key is String:
 			var parts = raw_key.split(",")
 			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
 		else:
 			coord = raw_key
-		var tile = layout.get_tile(coord)
+		var tile = layout.get_tile(coord, home_floor)
 		if tile:
 			if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL or (tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked):
 				astar_grid.set_point_solid(coord, true)

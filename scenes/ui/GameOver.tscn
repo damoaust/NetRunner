@@ -1,158 +1,142 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://duyt1gf2jc72q"]
 
-[ext_resource type="Script" path="res://scripts/ui/game_over.gd" id="1_gameover"]
-[ext_resource type="Theme" path="res://themes/cyberpunk_theme.tres" id="2_theme"]
+[ext_resource type="Script" uid="uid://w7e762ksg6u2" path="res://scripts/ui/game_over.gd" id="1_gameover"]
+[ext_resource type="Texture2D" uid="uid://cqy2kicjbrgpd" path="res://themes/dead-copy2.png" id="2_57v1k"]
+[ext_resource type="FontFile" uid="uid://bw6p07wapar7s" path="res://whitrabt.ttf" id="3_05upv"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_newlife_normal"]
-content_margin_left = 12.0
-content_margin_top = 8.0
-content_margin_right = 12.0
-content_margin_bottom = 8.0
-bg_color = Color(0.024, 0.12, 0.048, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 1, 0.4, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+[sub_resource type="Environment" id="Environment_pxa5g"]
+background_mode = 3
+glow_enabled = true
+glow_blend_mode = 0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_newlife_hover"]
-content_margin_left = 12.0
-content_margin_top = 8.0
-content_margin_right = 12.0
-content_margin_bottom = 8.0
-bg_color = Color(0.048, 0.12, 0.072, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.4, 1, 0.6, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+[sub_resource type="CameraAttributesPhysical" id="CameraAttributesPhysical_tnwko"]
 
-[node name="GameOver" type="Control"]
+[sub_resource type="Compositor" id="Compositor_fb0mb"]
+
+[node name="GameOver" type="Control" unique_id=1748264791]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("2_theme")
 script = ExtResource("1_gameover")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=268204298]
+environment = SubResource("Environment_pxa5g")
+camera_attributes = SubResource("CameraAttributesPhysical_tnwko")
+compositor = SubResource("Compositor_fb0mb")
+
+[node name="Background" type="TextureRect" parent="." unique_id=581040307]
+show_behind_parent = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = -47.0
+offset_right = 47.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0.07, 0.04, 1)
-show_behind_parent = true
+texture = ExtResource("2_57v1k")
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="ColorRect" type="ColorRect" parent="." unique_id=845504065]
+self_modulate = Color(1, 1, 1, 0.9607843)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 80
-theme_override_constants/margin_top = 60
-theme_override_constants/margin_right = 80
-theme_override_constants/margin_bottom = 60
+color = Color(0.007843138, 0, 0, 1)
 
-[node name="RootVBox" type="VBoxContainer" parent="Margin"]
+[node name="Margin" type="MarginContainer" parent="." unique_id=499345550]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RootVBox" type="VBoxContainer" parent="Margin" unique_id=1528640907]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="Header" type="Label" parent="Margin/RootVBox"]
+[node name="Header" type="Label" parent="Margin/RootVBox" unique_id=1389934533]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
-theme_override_font_sizes/font_size = 56
+theme_override_colors/font_color = Color(1.7087997, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.105882354)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 15
+theme_override_constants/shadow_outline_size = 17
+theme_override_fonts/font = ExtResource("3_05upv")
+theme_override_font_sizes/font_size = 92
+text = "GAME OVER"
 horizontal_alignment = 1
-text = "◢ GAME OVER ◣"
+vertical_alignment = 1
 
-[node name="Rule" type="ColorRect" parent="Margin/RootVBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 1)
-color = Color(0, 0.55, 0.3, 0.5)
-
-[node name="FlavourLabel" type="Label" parent="Margin/RootVBox"]
+[node name="FlavourLabel" type="Label" parent="Margin/RootVBox" unique_id=1020228249]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-theme_override_font_sizes/font_size = 16
-horizontal_alignment = 1
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 15
+theme_override_constants/shadow_outline_size = 6
+theme_override_font_sizes/font_size = 33
 text = "The run ended."
+horizontal_alignment = 1
 
-[node name="SummaryCard" type="PanelContainer" parent="Margin/RootVBox"]
+[node name="SummaryCard" type="PanelContainer" parent="Margin/RootVBox" unique_id=94596879]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="CardVBox" type="VBoxContainer" parent="Margin/RootVBox/SummaryCard" unique_id=2055600676]
 layout_mode = 2
 
-[node name="CardVBox" type="VBoxContainer" parent="Margin/RootVBox/SummaryCard"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="RunSummaryHeader" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox"]
+[node name="RunSummaryHeader" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox" unique_id=219099873]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 27
 text = "RUN SUMMARY"
 
-[node name="TraceLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox"]
+[node name="TraceLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox" unique_id=278359383]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Trace reached: 0"
 
-[node name="CreditsLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox"]
+[node name="CreditsLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox" unique_id=1920890782]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Credits lost: 0 eb"
 
-[node name="LootLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox"]
+[node name="LootLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox" unique_id=50198830]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Loot lost: 0 program(s)"
 
-[node name="DatafortLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox"]
+[node name="DatafortLabel" type="Label" parent="Margin/RootVBox/SummaryCard/CardVBox" unique_id=1385594296]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 text = "Datafort: —"
 
-[node name="CatalogueNote" type="Label" parent="Margin/RootVBox"]
+[node name="CatalogueNote" type="Label" parent="Margin/RootVBox" unique_id=621403783]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 14
-horizontal_alignment = 1
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 7
+theme_override_constants/shadow_outline_size = 5
+theme_override_font_sizes/font_size = 17
 text = "Your contacts keep your discovered software in the catalogue. Next life, you can rebuy it at the hub."
+horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="Margin/RootVBox"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ButtonRow" type="HBoxContainer" parent="Margin/RootVBox"]
+[node name="ButtonRow" type="HBoxContainer" parent="Margin/RootVBox" unique_id=1522882266]
 layout_mode = 2
 alignment = 1
 
-[node name="NewLifeButton" type="Button" parent="Margin/RootVBox/ButtonRow"]
+[node name="NewLifeButton" type="Button" parent="Margin/RootVBox/ButtonRow" unique_id=741169273]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.05, 0.02, 1)
-theme_override_colors/font_hover_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 30
-theme_override_styles/normal = SubResource("StyleBoxFlat_newlife_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_newlife_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_newlife_normal")
 text = "[ NEW LIFE ]"
 
 [connection signal="pressed" from="Margin/RootVBox/ButtonRow/NewLifeButton" to="." method="_on_new_life_pressed"]

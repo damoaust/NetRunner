@@ -33,17 +33,56 @@ enum TileType {
 
 # Dictionary mapping Vector2i grid coordinates to a custom TileData structure or dictionary properties
 # Example: { Vector2i(5, 5): { "type": TileType.CODE_GATE, "str": 4, "name": "Wall V1" } }
+# DEPRECATED: kept for backward compat with pre-multi-floor .tres files. On
+# first access the layout migrates grid_tiles into floors[0].tiles (see
+# _ensure_floors_migrated). New layouts author floors directly.
 @export var grid_tiles: Dictionary = {}
 
-# Helper function to safely fetch and auto-instantiate tile data objects
-func get_tile(coord: Vector2i) -> CP2020TileData:
+# Multi-floor storage: one CP2020Floor per floor. Floor 0 = floors[0],
+# floor 1 = floors[1], etc. Array index IS the floor index. See
+# docs/multi-floor-travel-plan.md §1.
+@export var floors: Array[CP2020Floor] = []
+
+# Runtime-only: which floor the runner / designer is currently viewing.
+# Set by the game session and the designer before any floor-scoped read/write.
+var current_floor: int = 0
+
+# Lazily migrates legacy grid_tiles into floors[0] on first access. Safe to
+# call repeatedly — short-circuits once floors is populated. Handles both
+# truly-new layouts (empty grid_tiles, empty floors) and legacy .tres files
+# (populated grid_tiles, empty floors).
+func _ensure_floors_migrated() -> void:
+	if floors.size() > 0:
+		return
+	if grid_tiles.is_empty():
+		# New layout with no tiles yet — seed a single empty floor so the
+		# designer has something to paint on.
+		var f := CP2020Floor.new()
+		f.floor_index = 0
+		floors = [f]
+		return
+	# Legacy .tres: wrap grid_tiles into a single CP2020Floor (floor 0).
+	var f0 := CP2020Floor.new()
+	f0.tiles = grid_tiles
+	f0.floor_index = 0
+	floors = [f0]
+
+# Helper function to safely fetch and auto-instantiate tile data objects.
+# `floor` is REQUIRED (no default) — callers must pass the floor index
+# explicitly (usually `layout.current_floor`). This makes floor awareness
+# impossible to silently forget. See docs/multi-floor-travel-plan.md §1.
+func get_tile(coord: Vector2i, floor: int) -> CP2020TileData:
+	_ensure_floors_migrated()
+	if floor < 0 or floor >= floors.size():
+		return null
+	var tile_dict: Dictionary = floors[floor].tiles
 	var key = coord
-	if not grid_tiles.has(key):
+	if not tile_dict.has(key):
 		key = "%d,%d" % [coord.x, coord.y] # Fallback for string keys
-		if not grid_tiles.has(key):
+		if not tile_dict.has(key):
 			return null
 
-	var raw_data = grid_tiles[key]
+	var raw_data = tile_dict[key]
 	
 	# If it's already a CP2020TileData object, return it directly
 	if raw_data is CP2020TileData:
@@ -58,7 +97,7 @@ func get_tile(coord: Vector2i) -> CP2020TileData:
 		tile_obj.is_unlocked = raw_data.get("is_unlocked", true)
 		
 		# Replace the raw dictionary with the proper object so we only convert once
-		grid_tiles[key] = tile_obj
+		tile_dict[key] = tile_obj
 		return tile_obj
 		
 	return null
@@ -68,16 +107,41 @@ func get_tile(coord: Vector2i) -> CP2020TileData:
 # files can store keys as strings; runtime paint/drag uses Vector2i. Without
 # this, repainting a string-keyed tile left a dangling string entry alongside
 # the new Vector2i one (duplicate keys). Use this instead of writing
-# grid_tiles[coord] directly.
-func set_tile(coord: Vector2i, tile: CP2020TileData) -> void:
-	erase_tile(coord)
-	grid_tiles[coord] = tile
+# floors[floor].tiles[coord] directly. `floor` is REQUIRED.
+func set_tile(coord: Vector2i, tile: CP2020TileData, floor: int) -> void:
+	_ensure_floors_migrated()
+	if floor < 0 or floor >= floors.size():
+		return
+	erase_tile(coord, floor)
+	floors[floor].tiles[coord] = tile
 
 # Removes the tile at coord, clearing both possible key forms (Vector2i and
-# "x,y" string). Safe to call even if no tile exists at the coord.
-func erase_tile(coord: Vector2i) -> void:
-	grid_tiles.erase(coord)
-	grid_tiles.erase("%d,%d" % [coord.x, coord.y])
+# "x,y" string). Safe to call even if no tile exists at the coord. `floor` is
+# REQUIRED.
+func erase_tile(coord: Vector2i, floor: int) -> void:
+	_ensure_floors_migrated()
+	if floor < 0 or floor >= floors.size():
+		return
+	floors[floor].tiles.erase(coord)
+	floors[floor].tiles.erase("%d,%d" % [coord.x, coord.y])
+
+# Returns the raw tiles Dictionary for the given floor. `floor` is REQUIRED.
+func get_floor_tiles(floor: int) -> Dictionary:
+	_ensure_floors_migrated()
+	if floor < 0 or floor >= floors.size():
+		return {}
+	return floors[floor].tiles
+
+# Convenience: returns the tiles dict for the current floor. Use this for the
+# common "current floor" case so call sites read clearly without passing
+# current_floor explicitly.
+func get_current_floor_tiles() -> Dictionary:
+	return get_floor_tiles(current_floor)
+
+# Returns the number of floors (floors.size()). Derived, not stored.
+func get_floor_count() -> int:
+	_ensure_floors_migrated()
+	return floors.size()
 
 
 # Shared line-of-sight helper used by both the netrunner's fog-of-war vision
@@ -92,7 +156,7 @@ func erase_tile(coord: Vector2i) -> void:
 #
 # The target tile itself is never treated as a blocker (the netrunner's tile
 # is the target), even if the target sits on a wall/gate.
-func line_of_sight(from: Vector2i, to: Vector2i, max_range: int) -> bool:
+func line_of_sight(from: Vector2i, to: Vector2i, max_range: int, floor: int) -> bool:
 	if from == to:
 		return true
 	if from.distance_to(Vector2(to)) > max_range:
@@ -129,7 +193,7 @@ func line_of_sight(from: Vector2i, to: Vector2i, max_range: int) -> bool:
 
 		# Intermediate tiles block sight on Datawalls or locked Code Gates.
 		var intermediate_coord := Vector2i(x, y)
-		var tile = get_tile(intermediate_coord)
+		var tile = get_tile(intermediate_coord, floor)
 		if tile:
 			if tile.tile_type == TileType.DATAWALL:
 				return false

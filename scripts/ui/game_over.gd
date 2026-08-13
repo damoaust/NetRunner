@@ -36,7 +36,6 @@ func _ready() -> void:
 
 	if _header:
 		_header.text = "◢ %s ◣" % header_text
-		_header.add_theme_color_override("font_color", THEME.COL_RED if cause != "" else THEME.COL_WARN)
 	if _flavour_label:
 		_flavour_label.text = flavour_text
 

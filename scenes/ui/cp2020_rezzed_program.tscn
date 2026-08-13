@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://br00dpr0gmr01"]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_rezzed_program.gd" id="1_rez"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_rez"]
+font_size = 26
+font_color = Color(0.2, 0.9, 1, 1)
+
+[node name="RezzedProgram" type="Node2D"]
+script = ExtResource("1_rez")
+label_visual_offset = Vector2(-1, -2)
+
+[node name="GlyphLabel" type="Label" parent="."]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "◆"
+label_settings = SubResource("LabelSettings_rez")
+horizontal_alignment = 1
+vertical_alignment = 1

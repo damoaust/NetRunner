@@ -28,6 +28,15 @@ enum EffectType {
 	INVISIBILITY      # Stealth cloak: overlays a false signal on the runner's cybermodem trace. While active, each dormant adversary's first LoS detection is gated by an opposed roll (1D10+cloak.STR vs 1D10+seeker.STR); ties/holds -> seeker ignores you, seeker wins -> cloak pierced & adversary activates.
 }
 
+# Attack/defense visual config per effect type. Each entry describes the beam
+# rendered when a program of that effect_type fires. Adding/customizing a
+# program's attack visual is a one-file change here.
+const ATTACK_VISUALS: Dictionary = {
+	EffectType.DEREZ_ICE: {"color": Color(1.0, 0.15, 0.15), "width": 3.0, "duration": 0.5, "style": "beam"},
+	EffectType.DAMAGE_RUNNER: {"color": Color(1.0, 0.3, 0.1), "width": 3.0, "duration": 0.5, "style": "beam"},
+	EffectType.CRASH_CPU: {"color": Color(1.0, 0.5, 0.0), "width": 3.0, "duration": 0.5, "style": "beam"},
+}
+
 @export var program_name: String = "Hammer"
 @export var type: ProgramType = ProgramType.INTRUSION
 @export var effect_type: EffectType = EffectType.BREACH_WALL
@@ -118,14 +127,14 @@ func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLa
 # resolves the opposed roll. The Killer does not move and does not target the
 # netrunner. One attack per turn (first Worm in LoS wins).
 func _take_killer_turn(ice: BlackIce, layout: CP2020DatafortLayout) -> void:
-	for raw_key in layout.grid_tiles.keys():
+	for raw_key in layout.get_current_floor_tiles().keys():
 		var coord: Vector2i
 		if raw_key is String:
 			var parts = raw_key.split(",")
 			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
 		else:
 			coord = raw_key
-		var tile = layout.get_tile(coord)
+		var tile = layout.get_tile(coord, layout.current_floor)
 		if tile == null or tile.worm_turns_remaining <= 0:
 			continue
 		if not ice.has_los_to(coord, layout):
@@ -176,3 +185,9 @@ func _roll_damage() -> int:
 	for _i in range(max(1, damage_dice_count)):
 		total += randi_range(1, damage_dice)
 	return total
+
+# Returns the visual config for this program's effect_type, or a default red beam.
+func get_attack_visual() -> Dictionary:
+	if ATTACK_VISUALS.has(effect_type):
+		return ATTACK_VISUALS[effect_type]
+	return {"color": Color(1.0, 0.2, 0.2), "width": 3.0, "duration": 0.5, "style": "beam"}

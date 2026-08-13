@@ -29,12 +29,16 @@ var _npc_target: CP2020NpcNetrunner = null
 # action-consuming program use).
 var _netrunner_node: CP2020Netrunner = null
 
-func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null) -> void:
+# Rezzed attack-program nodes active on the net (set per popup so the attack
+# and de-rez menus can reference them by index).
+var _current_rezzed_nodes: Array[RezzedProgram] = []
+
+func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null, rezzed_program_nodes: Array = []) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
-		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes, netrunner_pos, npc_nodes, netrunner_node)
+		handle_right_click(event as InputEventMouseButton, current_mouse_pos, layout, available_programs, cell_size, grid_offset_y, ice_nodes, netrunner_pos, npc_nodes, netrunner_node, rezzed_program_nodes)
 
-func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null) -> void:
+func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null, rezzed_program_nodes: Array = []) -> void:
 	if not layout:
 		print("DEBUG: Layout is missing!")
 		return
@@ -61,7 +65,7 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	# Get the specific tile data we clicked on
 	# MUST use get_tile() — .tres files store keys as strings ("x,y"), so a direct
 	# grid_tiles.get(Vector2i) always returns null. get_tile() handles both formats.
-	var tile_data = layout.get_tile(target_coord)
+	var tile_data = layout.get_tile(target_coord, layout.current_floor)
 	if not tile_data:
 		print("DEBUG: No tile data found at coordinate: ", target_coord)
 		return
@@ -83,6 +87,12 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	# Remember the netrunner node for the Armor-raise callback (set whether or
 	# not the runner-tile branch runs this click; cleared each popup).
 	_netrunner_node = netrunner_node
+	# Store the rezzed-program nodes for this popup (attack / de-rez menus
+	# reference them by index). Filter to the current floor.
+	_current_rezzed_nodes.clear()
+	for rez in rezzed_program_nodes:
+		if is_instance_valid(rez) and rez.home_floor == layout.current_floor:
+			_current_rezzed_nodes.append(rez)
 	
 	print("DEBUG: handle_right_click tile=", target_coord, " type=", tile_data.tile_type, " explored=", tile_data.is_explored, " visible=", tile_data.is_visible)
 	
@@ -92,18 +102,33 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 
 	_dynamic_menu.id_pressed.connect(_menu_id_pressed_fn)
 
-	# Check if a BlackICE node is currently occupying this tile — target the ICE itself
+	# Check if a BlackICE node is currently occupying this tile — target the ICE itself.
+	# MUST match on home_floor too: ice_nodes is the FULL unfiltered list across
+	# every floor, so without the floor check an ICE on the floor below (same
+	# coord) would match here and — because this is the first branch of the
+	# elif chain below — suppress every other menu (e.g. copy files from a
+	# MEMORY_UNIT on this floor). Entities never leave their home floor.
 	var ice_here: BlackIce = null
 	for ice in ice_nodes:
-		if is_instance_valid(ice) and ice.current_position == target_coord:
+		if is_instance_valid(ice) and ice.home_floor == layout.current_floor and ice.current_position == target_coord:
 			ice_here = ice
 			break
 
 	# Check if an NPC netrunner (NetWatch / random runner) occupies this tile.
+	# Same home_floor gate as ice_here — npc_nodes spans all floors.
 	var npc_here: CP2020NpcNetrunner = null
 	for npc in npc_nodes:
-		if is_instance_valid(npc) and npc.current_position == target_coord:
+		if is_instance_valid(npc) and npc.home_floor == layout.current_floor and npc.current_position == target_coord:
 			npc_here = npc
+			break
+
+	# Check if a rezzed attack-program node occupies this tile (for the de-rez
+	# menu). Same current-floor gate — _current_rezzed_nodes is already
+	# floor-filtered, but this guards against stale entries.
+	var rezzed_here: RezzedProgram = null
+	for rez in _current_rezzed_nodes:
+		if is_instance_valid(rez) and rez.current_position == target_coord:
+			rezzed_here = rez
 			break
 
 	# LDL-link tiles offer matrix travel to another datafort or back to the
@@ -120,50 +145,99 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 		_dynamic_menu.add_item("Return to City Grid", 3001)
 		options_added = true
 
+	# Vertical-travel menu items (ids 3002/3003). Checked BEFORE the 4000
+	# NPC-talk / 1000+i program ranges to avoid id collision, immediately
+	# after the 3000/3001 LDL items. Each is greyed out (disabled) when its
+	# destination floor is missing or blocked by a Datawall / locked Code
+	# Gate — the player sees at a glance whether up/down is available.
+	# See docs/multi-floor-travel-plan.md §4.
+	if tile_data.can_go_up:
+		_ldl_tile = tile_data
+		var up_ok := _can_travel_vertical(layout, tile_data.up_target_entry_coord, layout.current_floor + 1)
+		var idx := _dynamic_menu.get_item_count()
+		_dynamic_menu.add_item("Go Up", 3002)
+		_dynamic_menu.set_item_disabled(idx, not up_ok)
+		options_added = true
+	if tile_data.can_go_down:
+		_ldl_tile = tile_data
+		var down_ok := _can_travel_vertical(layout, tile_data.down_target_entry_coord, layout.current_floor - 1)
+		var idx := _dynamic_menu.get_item_count()
+		_dynamic_menu.add_item("Go Down", 3003)
+		_dynamic_menu.set_item_disabled(idx, not down_ok)
+		options_added = true
+
+	# Rezzed attack-program node on this tile — offer de-rez (id 8100+i over
+	# _current_rezzed_nodes). Checked before ice_here/npc_here so a rezzed
+	# program sitting on an entity tile still gets its own menu.
+	if rezzed_here and tile_data.is_visible:
+		var rez_idx := _current_rezzed_nodes.find(rezzed_here)
+		if rez_idx >= 0:
+			var rez_name := rezzed_here.program.program_name if rezzed_here.program else "program"
+			_dynamic_menu.add_item("De-rez %s" % rez_name, 8100 + rez_idx)
+			options_added = true
+
 	if ice_here and tile_data.is_visible:
-		# Black ICE present and visible — offer anti-ICE (DEREZ) programs
-		for i in range(available_programs.size()):
-			var prog = available_programs[i] as NetProgram
-			if prog and prog.effect_type == NetProgram.EffectType.DEREZ_ICE:
-				var menu_label = "%s (STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
-				var prog_id = 1000 + i
-				_dynamic_menu.add_item(menu_label, prog_id)
-				options_added = true
+		# Black ICE present and visible — offer REZZED anti-ICE (DEREZ)
+		# programs to attack it. Attack programs must be rezzed onto the net
+		# before they can strike (Phase 1). id range 8200+i over
+		# _current_rezzed_nodes. If none are rezzed, show a hint.
+		var added_rezzed = false
+		for i in range(_current_rezzed_nodes.size()):
+			var rez = _current_rezzed_nodes[i]
+			if is_instance_valid(rez) and rez.program and rez.program.effect_type == NetProgram.EffectType.DEREZ_ICE:
+				var menu_label = "Attack %s: %s (STR %d)" % [ice_here.program.program_name, rez.program.program_name, rez.program.strength]
+				_dynamic_menu.add_item(menu_label, 8200 + i)
+				added_rezzed = true
+		if not added_rezzed:
+			_dynamic_menu.add_item("Rez an anti-ICE program first", 0)
+			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
+		options_added = true
 
 	elif npc_here and tile_data.is_visible:
 		# NPC netrunner (NetWatch / random runner) present and visible — offer
-		# attack programs (anti-personnel DAMAGE_RUNNER or anti-ICE DEREZ) in
-		# the 2000+i id range, plus a Talk option for neutral runners.
+		# REZZED attack programs (anti-personnel DAMAGE_RUNNER or anti-ICE
+		# DEREZ) in the 8300+i id range over _current_rezzed_nodes, plus a
+		# Talk option for neutral runners.
 		_npc_target = npc_here
 		var added_attack = false
-		for i in range(available_programs.size()):
-			var prog = available_programs[i] as NetProgram
-			if prog and prog.effect_type in [NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE]:
-				var menu_label = "Attack %s: %s (STR %d, %d MU)" % [npc_here.npc_name, prog.program_name, prog.strength, prog.memory_cost]
-				var prog_id = 2000 + i
-				_dynamic_menu.add_item(menu_label, prog_id)
+		for i in range(_current_rezzed_nodes.size()):
+			var rez = _current_rezzed_nodes[i]
+			if is_instance_valid(rez) and rez.program and rez.program.effect_type in [NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE]:
+				var menu_label = "Attack %s: %s (STR %d)" % [npc_here.npc_name, rez.program.program_name, rez.program.strength]
+				_dynamic_menu.add_item(menu_label, 8300 + i)
 				added_attack = true
-		if added_attack:
-			options_added = true
+		if not added_attack:
+			_dynamic_menu.add_item("Rez an attack program first", 0)
+			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
+		options_added = true
 		# Neutral runners can be talked to (id 4000).
 		if npc_here.disposition == CP2020NpcNetrunner.Disposition.NEUTRAL:
 			_dynamic_menu.add_item("Talk to %s" % npc_here.npc_name, 4000)
-			options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE and tile_data.is_visible:
-		# CPU tile visible — offer anti-system (CRASH_CPU) programs to crash the
-		# datafort's CPU. id range 5000+i (checked before the 1000+i program
-		# range in _on_menu_action_selected).
-		for i in range(available_programs.size()):
-			var prog = available_programs[i] as NetProgram
-			if prog and prog.effect_type == NetProgram.EffectType.CRASH_CPU:
-				var menu_label = "Krash CPU: %s (STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
-				var prog_id = 5000 + i
-				_dynamic_menu.add_item(menu_label, prog_id)
-				options_added = true
+		# CPU tile visible — offer REZZED anti-system (CRASH_CPU) programs to
+		# crash the datafort's CPU. id range 8400+i over _current_rezzed_nodes
+		# (checked before the 1000+i program range in _on_menu_action_selected).
+		var added_cpu = false
+		for i in range(_current_rezzed_nodes.size()):
+			var rez = _current_rezzed_nodes[i]
+			if is_instance_valid(rez) and rez.program and rez.program.effect_type == NetProgram.EffectType.CRASH_CPU:
+				var menu_label = "Krash CPU: %s (STR %d)" % [rez.program.program_name, rez.program.strength]
+				_dynamic_menu.add_item(menu_label, 8400 + i)
+				added_cpu = true
+		if not added_cpu:
+			_dynamic_menu.add_item("Rez an anti-system program first", 0)
+			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
+		options_added = true
 
 	elif target_coord == netrunner_pos and tile_data.is_visible:
-		# Right-click on the Netrunner's own tile — offer protection programs.
+		# Right-click on the Netrunner's own tile — offer:
+		#  - Rez attack programs (DEREZ_ICE / DAMAGE_RUNNER / CRASH_CPU) that
+		#    are installed but not yet rezzed (id 8000+i over available_programs).
+		#  - De-rez any currently rezzed program (id 8100+i over
+		#    _current_rezzed_nodes).
+		#  - Defense/utility programs (SHIELD/ARMOR/DETECTION/INVISIBILITY) which
+		#    keep their direct-from-deck behavior (Phase 1).
 		# SHIELD programs use the 1000+i program-use range (dispatched via the
 		# "use_program" action to the game session, which consumes an action).
 		# ARMOR programs use the 7000+i range and call netrunner.raise_armor
@@ -191,6 +265,19 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var cloak_label = "%s (Cloak STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
 				var cloak_id = 1000 + i
 				_dynamic_menu.add_item(cloak_label, cloak_id)
+				options_added = true
+			elif prog and prog.effect_type in [NetProgram.EffectType.DEREZ_ICE, NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.CRASH_CPU]:
+				# Attack program — offer to rez it onto the net (id 8000+i).
+				var rez_label = "Rez %s (STR %d, %d MU)" % [prog.program_name, prog.strength, prog.memory_cost]
+				var rez_id = 8000 + i
+				_dynamic_menu.add_item(rez_label, rez_id)
+				options_added = true
+		# De-rez any currently rezzed program (id 8100+i).
+		for j in range(_current_rezzed_nodes.size()):
+			var rez = _current_rezzed_nodes[j]
+			if is_instance_valid(rez) and rez.program:
+				var derez_label = "De-rez %s (STR %d)" % [rez.program.program_name, rez.program.strength]
+				_dynamic_menu.add_item(derez_label, 8100 + j)
 				options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile_data.is_unlocked:
@@ -295,10 +382,11 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 
 func _on_menu_action_selected(id: int, target_coord: Vector2i, available_programs: Array[NetProgram]) -> void:
 	# Special-id ordering (checked BEFORE the 1000+i program range to avoid
-	# collision): LDL travel (3000/3001) → NPC talk (4000) → NPC attack
-	# (2000+i) → CPU crash (5000+i) → copy file (6000+i) / copy all (6999)
-	# → Armor-raise (7000+i) → program use (1000+i). The old single 6000
-	# loot_tile id is removed.
+	# collision): LDL travel (3000/3001) → vertical travel (3002/3003) → NPC
+	# talk (4000) → copy file (6000+i) / copy all (6999) → Armor-raise
+	# (7000+i) → rez program (8000+i) → de-rez (8100+i) → rezzed anti-ICE
+	# attack (8200+i) → rezzed NPC attack (8300+i) → rezzed CPU crash
+	# (8400+i) → program use (1000+i).
 	# LDL travel actions take priority (their ids collide with the program
 	# id range 1000+, so check them explicitly first).
 	if id == 3000:
@@ -307,24 +395,18 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 	if id == 3001:
 		action_triggered.emit("return_world_map", target_coord, null)
 		return
+	# Vertical travel within the same datafort (ids 3002/3003). Checked right
+	# after the LDL items and before the 4000/2000+i ranges. The game session
+	# re-validates the destination before switching floors.
+	if id == 3002:
+		action_triggered.emit("travel_up", target_coord, _ldl_tile)
+		return
+	if id == 3003:
+		action_triggered.emit("travel_down", target_coord, _ldl_tile)
+		return
 	# NPC talk (neutral runners) — id 4000.
 	if id == 4000:
 		action_triggered.emit("talk_npc", target_coord, _npc_target)
-		return
-	# NPC attack programs — id range 2000+i (checked before the 1000+i program
-	# range to avoid collision).
-	if id >= 2000 and id < 3000:
-		var idx = id - 2000
-		if idx >= 0 and idx < available_programs.size():
-			var prog = available_programs[idx] as NetProgram
-			action_triggered.emit("attack_npc", target_coord, prog)
-		return
-	# CPU crash (Krash anti-system) — id range 5000+i.
-	if id >= 5000 and id < 6000:
-		var idx = id - 5000
-		if idx >= 0 and idx < available_programs.size():
-			var prog = available_programs[idx] as NetProgram
-			action_triggered.emit("crash_cpu", target_coord, prog)
 		return
 	# Armor-raise (defensive program) — id range 7000+i. Calls
 	# netrunner.raise_armor directly (Armor is a persistent passive absorber,
@@ -351,6 +433,45 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 			var file = _current_files[idx] as NetFile
 			action_triggered.emit("copy_file", target_coord, file)
 		return
+	# Rez an attack program onto the net — id range 8000+i over
+	# available_programs (installed, not yet rezzed). The game session spawns
+	# a RezzedProgram node and consumes 1 action.
+	if id >= 8000 and id < 8100:
+		var idx = id - 8000
+		if idx >= 0 and idx < available_programs.size():
+			var prog = available_programs[idx] as NetProgram
+			action_triggered.emit("rez_program", target_coord, prog)
+		return
+	# De-rez a rezzed program — id range 8100+i over _current_rezzed_nodes.
+	# Free (no action cost). The program is passed as the RezzedProgram node.
+	if id >= 8100 and id < 8200:
+		var idx = id - 8100
+		if idx >= 0 and idx < _current_rezzed_nodes.size():
+			var rez = _current_rezzed_nodes[idx]
+			action_triggered.emit("derez_program", target_coord, rez)
+		return
+	# Command a rezzed anti-ICE program to attack Black ICE — id range
+	# 8200+i over _current_rezzed_nodes.
+	if id >= 8200 and id < 8300:
+		var idx = id - 8200
+		if idx >= 0 and idx < _current_rezzed_nodes.size():
+			var rez = _current_rezzed_nodes[idx]
+			action_triggered.emit("attack_with_rezzed", target_coord, rez)
+		return
+	# Command a rezzed attack program to attack an NPC — id range 8300+i.
+	if id >= 8300 and id < 8400:
+		var idx = id - 8300
+		if idx >= 0 and idx < _current_rezzed_nodes.size():
+			var rez = _current_rezzed_nodes[idx]
+			action_triggered.emit("attack_with_rezzed", target_coord, rez)
+		return
+	# Command a rezzed anti-system program to crash a CPU — id range 8400+i.
+	if id >= 8400 and id < 8500:
+		var idx = id - 8400
+		if idx >= 0 and idx < _current_rezzed_nodes.size():
+			var rez = _current_rezzed_nodes[idx]
+			action_triggered.emit("attack_with_rezzed", target_coord, rez)
+		return
 	if id >= 1000:
 		var idx = id - 1000
 		if idx >= 0 and idx < available_programs.size():
@@ -364,3 +485,24 @@ func _ldl_target_name(path: String) -> String:
 		return "target datafort"
 	var fname := path.get_file().get_basename()
 	return fname if fname != "" else "target datafort"
+
+# Pre-check for vertical travel: returns true if `target_floor` exists and the
+# arrival coord on it is a non-blocking tile (not a Datawall, not a locked Code
+# Gate). Mirrors the game session's authoritative _can_travel_vertical so the
+# menu can grey out a blocked Go Up / Go Down. See
+# docs/multi-floor-travel-plan.md §2 blocking check.
+func _can_travel_vertical(layout: CP2020DatafortLayout, target_coord: Vector2i, target_floor: int) -> bool:
+	if target_floor < 0 or target_floor >= layout.get_floor_count():
+		return false
+	if target_coord.x < 0 or target_coord.x >= layout.columns \
+			or target_coord.y < 0 or target_coord.y >= layout.rows:
+		return false
+	var tile := layout.get_tile(target_coord, target_floor)
+	# Empty / no-tile = open floor (allowed). Only walls / locked gates block.
+	if tile == null:
+		return true
+	if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL:
+		return false
+	if tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked:
+		return false
+	return true

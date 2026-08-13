@@ -15,6 +15,11 @@ var current_layout: CP2020DatafortLayout
 @onready var columns_spinbox: SpinBox = $TopPanel/SettingsRow/ColumnsSpinBox
 @onready var rows_spinbox: SpinBox = $TopPanel/SettingsRow/RowsSpinBox
 @onready var apply_size_button: Button = $TopPanel/SettingsRow/ApplyButton
+# --- Floor management (multi-floor datafort authoring) ---
+@onready var floor_spinbox: SpinBox = $TopPanel/SettingsRow/FloorSpinBox
+@onready var add_floor_button: Button = $TopPanel/SettingsRow/AddFloorButton
+@onready var remove_floor_button: Button = $TopPanel/SettingsRow/RemoveFloorButton
+@onready var floor_name_edit: LineEdit = $TopPanel/SettingsRow/FloorNameEdit
 
 # --- File dialogs (scene-tree nodes) ---
 @onready var save_dialog: FileDialog = $SaveDialog
@@ -36,6 +41,12 @@ var selected_ldl_coord: Vector2i = Vector2i(-1, -1)
 @onready var entry_panel: PanelContainer = $EntryEditorPanel
 @onready var entry_coord_label: Label = $EntryEditorPanel/VBox/CoordLabel
 @onready var entry_primary_check: CheckBox = $EntryEditorPanel/VBox/PrimaryCheck
+@onready var up_check: CheckBox = $EntryEditorPanel/VBox/UpCheck
+@onready var up_x_spinbox: SpinBox = $EntryEditorPanel/VBox/UpXSpinBox
+@onready var up_y_spinbox: SpinBox = $EntryEditorPanel/VBox/UpYSpinBox
+@onready var down_check: CheckBox = $EntryEditorPanel/VBox/DownCheck
+@onready var down_x_spinbox: SpinBox = $EntryEditorPanel/VBox/DownXSpinBox
+@onready var down_y_spinbox: SpinBox = $EntryEditorPanel/VBox/DownYSpinBox
 var selected_entry_coord: Vector2i = Vector2i(-1, -1)
 # Shared coord for the "Primary entry" checkbox in either the LDL or Entry
 # panel. Set by _open_ldl_editor / _open_entry_editor; read by
@@ -91,6 +102,7 @@ func _ready() -> void:
 	_connect_toolbar_signals()
 	_connect_panel_signals()
 	_connect_grid_signals()
+	_refresh_floor_controls()
 	grid_canvas.queue_redraw()
 
 
@@ -163,6 +175,16 @@ func _connect_toolbar_signals() -> void:
 	if programs_toggle_button and not programs_toggle_button.pressed.is_connected(_toggle_programs_panel):
 		programs_toggle_button.pressed.connect(_toggle_programs_panel)
 
+	# Floor management controls.
+	if floor_spinbox and not floor_spinbox.value_changed.is_connected(_on_floor_spinbox_changed):
+		floor_spinbox.value_changed.connect(_on_floor_spinbox_changed)
+	if add_floor_button and not add_floor_button.pressed.is_connected(_on_add_floor):
+		add_floor_button.pressed.connect(_on_add_floor)
+	if remove_floor_button and not remove_floor_button.pressed.is_connected(_on_remove_floor):
+		remove_floor_button.pressed.connect(_on_remove_floor)
+	if floor_name_edit and not floor_name_edit.text_changed.is_connected(_on_floor_name_changed):
+		floor_name_edit.text_changed.connect(_on_floor_name_changed)
+
 
 func _connect_panel_signals() -> void:
 	# LDL panel
@@ -186,6 +208,19 @@ func _connect_panel_signals() -> void:
 	# Entry panel
 	if entry_primary_check and not entry_primary_check.toggled.is_connected(_on_primary_entry_toggled):
 		entry_primary_check.toggled.connect(_on_primary_entry_toggled)
+	# Entry up/down (vertical travel) controls.
+	if up_check and not up_check.toggled.is_connected(_on_up_toggled):
+		up_check.toggled.connect(_on_up_toggled)
+	if up_x_spinbox and not up_x_spinbox.value_changed.is_connected(_on_up_coord_changed):
+		up_x_spinbox.value_changed.connect(_on_up_coord_changed)
+	if up_y_spinbox and not up_y_spinbox.value_changed.is_connected(_on_up_coord_changed):
+		up_y_spinbox.value_changed.connect(_on_up_coord_changed)
+	if down_check and not down_check.toggled.is_connected(_on_down_toggled):
+		down_check.toggled.connect(_on_down_toggled)
+	if down_x_spinbox and not down_x_spinbox.value_changed.is_connected(_on_down_coord_changed):
+		down_x_spinbox.value_changed.connect(_on_down_coord_changed)
+	if down_y_spinbox and not down_y_spinbox.value_changed.is_connected(_on_down_coord_changed):
+		down_y_spinbox.value_changed.connect(_on_down_coord_changed)
 
 	# ICE panel
 	var ice_browse_btn = ice_panel.get_node_or_null("VBox/BrowseButton")
@@ -409,8 +444,29 @@ func _on_resize_pressed() -> void:
 	current_layout.columns = grid_columns
 	grid_canvas.grid_rows = grid_rows
 	grid_canvas.grid_columns = grid_columns
+	_trim_out_of_bounds_tiles()
 	grid_canvas.fill_empty_tiles()
 	grid_canvas.queue_redraw()
+
+# Removes tiles outside the current grid bounds from every floor. A shrink
+# discards out-of-bounds tiles so they don't keep rendering beyond the new
+# grid edge while the coord markers correctly shrink to the new range.
+func _trim_out_of_bounds_tiles() -> void:
+	if not current_layout:
+		return
+	for f in range(current_layout.get_floor_count()):
+		var floor_tiles: Dictionary = current_layout.get_floor_tiles(f)
+		# Snapshot keys before mutating so erasing is safe.
+		var keys: Array = floor_tiles.keys()
+		for raw_key in keys:
+			var coord: Vector2i
+			if raw_key is String:
+				var parts = raw_key.split(",")
+				coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+			else:
+				coord = raw_key
+			if coord.x < 0 or coord.x >= grid_columns or coord.y < 0 or coord.y >= grid_rows:
+				current_layout.erase_tile(coord, f)
 
 func _on_save_pressed() -> void:
 	if save_dialog:
@@ -430,6 +486,7 @@ func _on_file_loaded(path: String) -> void:
 	var loaded = ResourceLoader.load(path)
 	if loaded is CP2020DatafortLayout:
 		current_layout = loaded
+		current_layout.current_floor = 0
 		grid_rows = current_layout.rows
 		grid_columns = current_layout.columns
 		grid_canvas.current_layout = current_layout
@@ -437,6 +494,7 @@ func _on_file_loaded(path: String) -> void:
 		grid_canvas.grid_columns = grid_columns
 		grid_canvas.fill_empty_tiles()
 		grid_canvas.queue_redraw()
+		_refresh_floor_controls()
 		print("Map loaded from: ", path)
 	else:
 		print("Failed to load layout from: ", path)
@@ -486,7 +544,7 @@ func _open_editor_for_tile(coord: Vector2i, tile: CP2020TileData) -> void:
 func _open_ldl_editor(coord: Vector2i) -> void:
 	if not current_layout:
 		return
-	var tile = current_layout.get_tile(coord)
+	var tile = current_layout.get_tile(coord, current_layout.current_floor)
 	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.ENTRY:
 		return
 	selected_ldl_coord = coord
@@ -513,7 +571,7 @@ func _hide_ldl_panel() -> void:
 func _write_ldl_field() -> void:
 	if not current_layout or selected_ldl_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_ldl_coord)
+	var tile = current_layout.get_tile(selected_ldl_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	tile.target_subnet_path = ldl_target_edit.text.strip_edges()
@@ -537,7 +595,7 @@ func _on_ldl_target_selected(path: String) -> void:
 func _clear_ldl_target() -> void:
 	if not current_layout or selected_ldl_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_ldl_coord)
+	var tile = current_layout.get_tile(selected_ldl_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	tile.target_subnet_path = ""
@@ -555,7 +613,7 @@ func _clear_ldl_target() -> void:
 func _open_entry_editor(coord: Vector2i) -> void:
 	if not current_layout:
 		return
-	var tile = current_layout.get_tile(coord)
+	var tile = current_layout.get_tile(coord, current_layout.current_floor)
 	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.ENTRY:
 		return
 	selected_entry_coord = coord
@@ -565,6 +623,31 @@ func _open_entry_editor(coord: Vector2i) -> void:
 		entry_primary_check.set_block_signals(true)
 		entry_primary_check.set_pressed_no_signal(tile.is_primary_entry)
 		entry_primary_check.set_block_signals(false)
+	# Up/down vertical-travel fields.
+	if up_check:
+		up_check.set_block_signals(true)
+		up_check.set_pressed_no_signal(tile.can_go_up)
+		up_check.set_block_signals(false)
+	if up_x_spinbox:
+		up_x_spinbox.set_block_signals(true)
+		up_x_spinbox.value = tile.up_target_entry_coord.x
+		up_x_spinbox.set_block_signals(false)
+	if up_y_spinbox:
+		up_y_spinbox.set_block_signals(true)
+		up_y_spinbox.value = tile.up_target_entry_coord.y
+		up_y_spinbox.set_block_signals(false)
+	if down_check:
+		down_check.set_block_signals(true)
+		down_check.set_pressed_no_signal(tile.can_go_down)
+		down_check.set_block_signals(false)
+	if down_x_spinbox:
+		down_x_spinbox.set_block_signals(true)
+		down_x_spinbox.value = tile.down_target_entry_coord.x
+		down_x_spinbox.set_block_signals(false)
+	if down_y_spinbox:
+		down_y_spinbox.set_block_signals(true)
+		down_y_spinbox.value = tile.down_target_entry_coord.y
+		down_y_spinbox.set_block_signals(false)
 	selected_primary_coord = coord
 	entry_panel.visible = true
 
@@ -581,14 +664,21 @@ func _hide_entry_panel() -> void:
 func _on_primary_entry_toggled(button_pressed: bool) -> void:
 	if not current_layout or selected_primary_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_primary_coord)
+	var tile = current_layout.get_tile(selected_primary_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	if button_pressed:
-		for raw_key in current_layout.grid_tiles.keys():
-			if raw_key == selected_primary_coord:
+		var f := current_layout.current_floor
+		for raw_key in current_layout.get_floor_tiles(f).keys():
+			var other_coord: Vector2i
+			if raw_key is String:
+				var parts = raw_key.split(",")
+				other_coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+			else:
+				other_coord = raw_key
+			if other_coord == selected_primary_coord:
 				continue
-			var other = current_layout.grid_tiles[raw_key] as CP2020TileData
+			var other = current_layout.get_tile(other_coord, f)
 			if other and other.tile_type == CP2020DatafortLayout.TileType.ENTRY and other.is_primary_entry:
 				other.is_primary_entry = false
 		tile.is_primary_entry = true
@@ -598,13 +688,123 @@ func _on_primary_entry_toggled(button_pressed: bool) -> void:
 
 
 # ---------------------------------------------------------------------------
+# Vertical travel (up/down) — Entry panel controls
+# ---------------------------------------------------------------------------
+
+func _on_up_toggled(button_pressed: bool) -> void:
+	if not current_layout or selected_entry_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_entry_coord, current_layout.current_floor)
+	if tile:
+		tile.can_go_up = button_pressed
+		grid_canvas.queue_redraw()
+
+func _on_up_coord_changed(_v: float) -> void:
+	if not current_layout or selected_entry_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_entry_coord, current_layout.current_floor)
+	if tile:
+		tile.up_target_entry_coord = Vector2i(int(up_x_spinbox.value), int(up_y_spinbox.value))
+
+func _on_down_toggled(button_pressed: bool) -> void:
+	if not current_layout or selected_entry_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_entry_coord, current_layout.current_floor)
+	if tile:
+		tile.can_go_down = button_pressed
+		grid_canvas.queue_redraw()
+
+func _on_down_coord_changed(_v: float) -> void:
+	if not current_layout or selected_entry_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_entry_coord, current_layout.current_floor)
+	if tile:
+		tile.down_target_entry_coord = Vector2i(int(down_x_spinbox.value), int(down_y_spinbox.value))
+
+
+# ---------------------------------------------------------------------------
+# Floor management (multi-floor authoring)
+# ---------------------------------------------------------------------------
+
+func _refresh_floor_controls() -> void:
+	if not current_layout or not floor_spinbox:
+		return
+	var count := current_layout.get_floor_count()
+	floor_spinbox.set_block_signals(true)
+	floor_spinbox.min_value = 1 if count > 0 else 1
+	floor_spinbox.max_value = count if count > 0 else 1
+	floor_spinbox.value = current_layout.current_floor + 1
+	floor_spinbox.set_block_signals(false)
+	if remove_floor_button:
+		# Don't allow removing the last floor.
+		remove_floor_button.disabled = count <= 1
+	if floor_name_edit:
+		floor_name_edit.set_block_signals(true)
+		var fname := ""
+		if current_layout.current_floor >= 0 and current_layout.current_floor < current_layout.floors.size():
+			fname = current_layout.floors[current_layout.current_floor].floor_name
+		floor_name_edit.text = fname
+		floor_name_edit.set_block_signals(false)
+
+func _on_floor_spinbox_changed(value: float) -> void:
+	if not current_layout:
+		return
+	var f := int(value) - 1
+	if f < 0 or f >= current_layout.get_floor_count():
+		return
+	current_layout.current_floor = f
+	grid_canvas.current_layout = current_layout
+	_hide_all_panels()
+	grid_canvas.fill_empty_tiles()
+	_refresh_floor_controls()
+	grid_canvas.queue_redraw()
+
+func _on_add_floor() -> void:
+	if not current_layout:
+		return
+	var nf := CP2020Floor.new()
+	nf.floor_index = current_layout.get_floor_count()
+	nf.floor_name = "Floor %d" % nf.floor_index
+	current_layout.floors.append(nf)
+	# Switch to the new floor.
+	current_layout.current_floor = current_layout.floors.size() - 1
+	grid_canvas.current_layout = current_layout
+	_hide_all_panels()
+	grid_canvas.fill_empty_tiles()
+	_refresh_floor_controls()
+	grid_canvas.queue_redraw()
+
+func _on_remove_floor() -> void:
+	if not current_layout or current_layout.get_floor_count() <= 1:
+		return
+	var f := current_layout.current_floor
+	# Don't remove floor 0 if it's the only one with tiles — but allow
+	# removing any non-last floor. Clamp selection to a valid floor after.
+	current_layout.floors.remove_at(f)
+	# Re-index remaining floors.
+	for i in range(current_layout.floors.size()):
+		current_layout.floors[i].floor_index = i
+	current_layout.current_floor = clampi(f, 0, current_layout.floors.size() - 1)
+	grid_canvas.current_layout = current_layout
+	_hide_all_panels()
+	_refresh_floor_controls()
+	grid_canvas.queue_redraw()
+
+func _on_floor_name_changed(new_text: String) -> void:
+	if not current_layout:
+		return
+	if current_layout.current_floor >= 0 and current_layout.current_floor < current_layout.floors.size():
+		current_layout.floors[current_layout.current_floor].floor_name = new_text
+
+
+# ---------------------------------------------------------------------------
 # ICE editor
 # ---------------------------------------------------------------------------
 
 func _open_ice_editor(coord: Vector2i) -> void:
 	if not current_layout:
 		return
-	var tile = current_layout.get_tile(coord)
+	var tile = current_layout.get_tile(coord, current_layout.current_floor)
 	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.BLACK_ICE:
 		return
 	selected_ice_coord = coord
@@ -639,7 +839,7 @@ func _open_ice_program_dialog() -> void:
 func _on_ice_program_picked(path: String) -> void:
 	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_ice_coord)
+	var tile = current_layout.get_tile(selected_ice_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	var prog = ResourceLoader.load(path)
@@ -651,7 +851,7 @@ func _on_ice_program_picked(path: String) -> void:
 func _clear_ice_program() -> void:
 	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_ice_coord)
+	var tile = current_layout.get_tile(selected_ice_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	tile.ice_program = null
@@ -671,7 +871,7 @@ func _hide_ice_panel() -> void:
 func _open_npc_editor(coord: Vector2i) -> void:
 	if not current_layout:
 		return
-	var tile = current_layout.get_tile(coord)
+	var tile = current_layout.get_tile(coord, current_layout.current_floor)
 	if tile == null or (tile.tile_type != CP2020DatafortLayout.TileType.NETWATCH and tile.tile_type != CP2020DatafortLayout.TileType.NETRUNNER):
 		return
 	selected_npc_coord = coord
@@ -709,7 +909,7 @@ func _hide_npc_panel() -> void:
 func _write_npc_field() -> void:
 	if not current_layout or selected_npc_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_npc_coord)
+	var tile = current_layout.get_tile(selected_npc_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	tile.npc_name = npc_name_edit.text.strip_edges()
@@ -745,7 +945,7 @@ func _clear_npc_override() -> void:
 func _open_cpu_editor(coord: Vector2i) -> void:
 	if not current_layout:
 		return
-	var tile = current_layout.get_tile(coord)
+	var tile = current_layout.get_tile(coord, current_layout.current_floor)
 	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.CONTROL_NODE:
 		return
 	selected_cpu_coord = coord
@@ -764,7 +964,7 @@ func _hide_cpu_panel() -> void:
 func _open_loot_editor(coord: Vector2i) -> void:
 	if not current_layout:
 		return
-	var tile = current_layout.get_tile(coord)
+	var tile = current_layout.get_tile(coord, current_layout.current_floor)
 	if tile == null:
 		return
 	if tile.tile_type != CP2020DatafortLayout.TileType.CONTROL_NODE:
@@ -789,7 +989,7 @@ func _on_loot_credits_changed(_value: float) -> void:
 func _write_loot_credits() -> void:
 	if not current_layout or selected_loot_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_loot_coord)
+	var tile = current_layout.get_tile(selected_loot_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	tile.loot_credits = int(loot_credits_spinbox.value)
@@ -799,7 +999,7 @@ func _refresh_loot_programs_list() -> void:
 	if not loot_programs_list or not current_layout or selected_loot_coord == Vector2i(-1, -1):
 		return
 	loot_programs_list.clear()
-	var tile = current_layout.get_tile(selected_loot_coord)
+	var tile = current_layout.get_tile(selected_loot_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	for p in tile.loot_programs:
@@ -815,7 +1015,7 @@ func _open_loot_add_dialog() -> void:
 func _on_loot_program_added(path: String) -> void:
 	if not current_layout or selected_loot_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_loot_coord)
+	var tile = current_layout.get_tile(selected_loot_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	if ResourceLoader.exists(path):
@@ -830,7 +1030,7 @@ func _on_loot_program_added(path: String) -> void:
 func _remove_selected_loot_program() -> void:
 	if not current_layout or not loot_programs_list or selected_loot_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_loot_coord)
+	var tile = current_layout.get_tile(selected_loot_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	var idxs = loot_programs_list.get_selected_items()
@@ -846,7 +1046,7 @@ func _remove_selected_loot_program() -> void:
 func _clear_loot_list() -> void:
 	if not current_layout or selected_loot_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_loot_coord)
+	var tile = current_layout.get_tile(selected_loot_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	tile.loot_programs.clear()
@@ -861,7 +1061,7 @@ func _clear_loot_list() -> void:
 func _open_files_editor(coord: Vector2i) -> void:
 	if not current_layout:
 		return
-	var tile = current_layout.get_tile(coord)
+	var tile = current_layout.get_tile(coord, current_layout.current_floor)
 	if tile == null or tile.tile_type != CP2020DatafortLayout.TileType.MEMORY_UNIT:
 		return
 	_hide_loot_panel()
@@ -879,7 +1079,7 @@ func _refresh_files_list() -> void:
 	if not files_list or not current_layout or selected_files_coord == Vector2i(-1, -1):
 		return
 	files_list.clear()
-	var tile = current_layout.get_tile(selected_files_coord)
+	var tile = current_layout.get_tile(selected_files_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	var i := 0
@@ -904,7 +1104,7 @@ func _read_file_fields_from_inputs() -> NetFile:
 func _add_file() -> void:
 	if not current_layout or selected_files_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_files_coord)
+	var tile = current_layout.get_tile(selected_files_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	var f := _read_file_fields_from_inputs()
@@ -915,7 +1115,7 @@ func _add_file() -> void:
 func _update_selected_file() -> void:
 	if not current_layout or not files_list or selected_files_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_files_coord)
+	var tile = current_layout.get_tile(selected_files_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	var idxs: PackedInt32Array = files_list.get_selected_items()
@@ -939,7 +1139,7 @@ func _update_selected_file() -> void:
 func _remove_selected_file() -> void:
 	if not current_layout or not files_list or selected_files_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_files_coord)
+	var tile = current_layout.get_tile(selected_files_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	var idxs: PackedInt32Array = files_list.get_selected_items()
@@ -955,7 +1155,7 @@ func _remove_selected_file() -> void:
 func _clear_files() -> void:
 	if not current_layout or selected_files_coord == Vector2i(-1, -1):
 		return
-	var tile = current_layout.get_tile(selected_files_coord)
+	var tile = current_layout.get_tile(selected_files_coord, current_layout.current_floor)
 	if tile == null:
 		return
 	tile.files.clear()
@@ -995,16 +1195,18 @@ func _count_cpus() -> int:
 	if not current_layout:
 		return 0
 	var count := 0
-	for raw_key in current_layout.grid_tiles.keys():
-		var coord: Vector2i
-		if raw_key is String:
-			var parts = raw_key.split(",")
-			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-		else:
-			coord = raw_key
-		var tile = current_layout.get_tile(coord)
-		if tile and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
-			count += 1
+	# CPUs live across all floors of the datafort — count them all.
+	for f in range(current_layout.get_floor_count()):
+		for raw_key in current_layout.get_floor_tiles(f).keys():
+			var coord: Vector2i
+			if raw_key is String:
+				var parts = raw_key.split(",")
+				coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+			else:
+				coord = raw_key
+			var tile = current_layout.get_tile(coord, f)
+			if tile and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+				count += 1
 	return count
 
 func _open_programs_add_dialog() -> void:

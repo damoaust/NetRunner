@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://c07tyyhy7e2rv"]
+
+[ext_resource type="Shader" uid="uid://d5kng4a6oi4p" path="res://scripts/ui/crt_overlay.gdshader" id="1_ds8he"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_su5n1"]
+shader = ExtResource("1_ds8he")
+shader_parameter/scanline_density = 480.0
+shader_parameter/scanline_strength = 0.08
+shader_parameter/vignette_strength = 0.28
+shader_parameter/vignette_softness = 2.2
+shader_parameter/flicker_amplitude = 0.15
+shader_parameter/flicker_speed = 6.0
+
+[node name="CrtOverlay" type="CanvasLayer" unique_id=1976993518]
+layer = 128
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=695380180]
+material = SubResource("ShaderMaterial_su5n1")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)

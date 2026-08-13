@@ -105,6 +105,10 @@ var program_integrity: Dictionary = {}
 
 var current_position: Vector2i = Vector2i.ZERO
 var current_layout: CP2020DatafortLayout
+# Floor the runner is currently on. Set by the game session on dive / up /
+# down travel. All get_tile / line_of_sight reads the runner initiates use
+# this floor. See docs/multi-floor-travel-plan.md §1.
+var current_floor: int = 0
 
 # Animation state for the cyberpunk diamond avatar (matches world-map runner).
 var _pulse_time: float = 0.0
@@ -127,11 +131,12 @@ func _ready() -> void:
 func initialize(layout: CP2020DatafortLayout, entry_coord: Vector2i = Vector2i(-1, -1)) -> void:
 	current_layout = layout
 	if current_layout:
+		current_floor = 0
 		# Spawn at a specific entry coord if one was supplied and is valid
 		# (used by mid-run LDL travel to arrive at a designated tile).
 		if entry_coord.x >= 0 and entry_coord.y >= 0 \
 				and entry_coord.x < current_layout.columns and entry_coord.y < current_layout.rows \
-				and current_layout.get_tile(entry_coord) != null:
+				and current_layout.get_tile(entry_coord, current_floor) != null:
 			current_position = entry_coord
 		else:
 			# No explicit entry coord: pick an arrival point with a deterministic
@@ -141,14 +146,14 @@ func initialize(layout: CP2020DatafortLayout, entry_coord: Vector2i = Vector2i(-
 			var primary: Vector2i = Vector2i(-1, -1)
 			var plain: Vector2i = Vector2i(-1, -1)
 			var any_entry: Vector2i = Vector2i(-1, -1)
-			for raw_key in current_layout.grid_tiles.keys():
+			for raw_key in current_layout.get_current_floor_tiles().keys():
 				var coord: Vector2i
 				if raw_key is String:
 					var parts = raw_key.split(",")
 					coord = Vector2i(parts[0].to_int(), parts[1].to_int())
 				else:
 					coord = raw_key
-				var tile = current_layout.get_tile(coord)
+				var tile = current_layout.get_tile(coord, current_floor)
 				if tile and tile.tile_type == CP2020DatafortLayout.TileType.ENTRY:
 					if tile.is_primary_entry and primary.x < 0:
 						primary = coord
@@ -323,7 +328,7 @@ func move(direction: Vector2i) -> bool:
 		return false
 		
 	# Safely get the tile
-	var tile_data = current_layout.get_tile(target_pos)
+	var tile_data = current_layout.get_tile(target_pos, current_floor)
 	
 	if tile_data:
 		if tile_data.tile_type == CP2020DatafortLayout.TileType.DATAWALL:

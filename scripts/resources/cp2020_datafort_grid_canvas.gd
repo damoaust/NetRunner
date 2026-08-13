@@ -8,13 +8,15 @@ class_name CP2020DatafortGridCanvas
 ##
 ## This node is placed in the scene tree below the top toolbar; its own
 ## position replaces the old hardcoded 90px top-panel offset, so
-## grid_offset_y is only ~16 (room for column tick labels).
+## grid_offset_y is only ~16 (room for column tick labels above the grid).
+## grid_offset_x is ~22 (room for row tick labels left of the grid).
 
 @export var grid_rows: int = 15
 @export var grid_columns: int = 15
 
 var cell_size: int = 40
 var grid_offset_y: int = 16
+var grid_offset_x: int = 22
 
 var current_layout: CP2020DatafortLayout
 var selected_tile_type: CP2020DatafortLayout.TileType = CP2020DatafortLayout.TileType.CODE_GATE
@@ -51,14 +53,15 @@ func _ready() -> void:
 func fill_empty_tiles() -> void:
 	if not current_layout:
 		return
+	var f := current_layout.current_floor
 	for x in range(grid_columns):
 		for y in range(grid_rows):
 			var coord = Vector2i(x, y)
-			if current_layout.get_tile(coord) == null:
+			if current_layout.get_tile(coord, f) == null:
 				var empty_tile = CP2020TileData.new()
 				empty_tile.tile_type = CP2020DatafortLayout.TileType.EMPTY
 				empty_tile.tile_name = "Empty Path"
-				current_layout.grid_tiles[coord] = empty_tile
+				current_layout.set_tile(coord, empty_tile, f)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -75,17 +78,18 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var local_pos = event.position
 	var adjusted_y = local_pos.y - grid_offset_y
-	var grid_x = floori(local_pos.x / cell_size)
+	var grid_x = floori((local_pos.x - grid_offset_x) / cell_size)
 	var grid_y = floori(adjusted_y / cell_size)
 	var in_bounds = grid_x >= 0 and grid_x < grid_columns and grid_y >= 0 and grid_y < grid_rows
 	var coord := Vector2i(grid_x, grid_y)
+	var f := current_layout.current_floor if current_layout else 0
 	if event.pressed:
 		if not in_bounds:
 			return
 		# Select mode: pick up a non-empty tile to drag (editor opens on
 		# release); clicking an empty cell clears the selection.
 		if select_mode:
-			var existing = current_layout.get_tile(coord) if current_layout else null
+			var existing = current_layout.get_tile(coord, f) if current_layout else null
 			if existing != null and existing.tile_type != CP2020DatafortLayout.TileType.EMPTY:
 				dragging = true
 				drag_source_coord = coord
@@ -100,7 +104,7 @@ func _gui_input(event: InputEvent) -> void:
 		# editing rather than overwriting it. Clicking anything else
 		# paints a fresh LDL link and opens the editor on it.
 		if ldl_link_mode:
-			var existing = current_layout.get_tile(coord) if current_layout else null
+			var existing = current_layout.get_tile(coord, f) if current_layout else null
 			if existing and existing.tile_type == CP2020DatafortLayout.TileType.ENTRY and existing.is_ldl_link:
 				ldl_link_selected.emit(coord)
 			else:
@@ -108,7 +112,7 @@ func _gui_input(event: InputEvent) -> void:
 				ldl_link_painted.emit(coord)
 			return
 		paint_tile(coord)
-		var painted = current_layout.get_tile(coord) if current_layout else null
+		var painted = current_layout.get_tile(coord, f) if current_layout else null
 		tile_painted.emit(coord, painted)
 	else:
 		# Release: finish a drag-to-move (Select mode only).
@@ -132,7 +136,7 @@ func _gui_input(event: InputEvent) -> void:
 			tile_selected.emit(source, tile)
 			queue_redraw()
 			return
-		var target_tile = current_layout.get_tile(coord) if current_layout else null
+		var target_tile = current_layout.get_tile(coord, f) if current_layout else null
 		if target_tile != null and target_tile.tile_type != CP2020DatafortLayout.TileType.EMPTY:
 			# Occupied: reject the drop, keep the tile at its source.
 			print("Drag rejected — target %s is occupied." % coord)
@@ -141,12 +145,12 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		# Move the tile: erase source, place at target, fill source with a
 		# fresh EMPTY so the grid stays a walkable floor.
-		current_layout.erase_tile(source)
-		current_layout.set_tile(coord, tile)
+		current_layout.erase_tile(source, f)
+		current_layout.set_tile(coord, tile, f)
 		var empty := CP2020TileData.new()
 		empty.tile_type = CP2020DatafortLayout.TileType.EMPTY
 		empty.tile_name = "Empty Path"
-		current_layout.set_tile(source, empty)
+		current_layout.set_tile(source, empty, f)
 		tile_moved.emit(source, coord, tile)
 		queue_redraw()
 
@@ -187,33 +191,42 @@ func paint_tile(coord: Vector2i) -> void:
 			tile_data.tile_name = "Netrunner"
 			tile_data.npc_has_override = false
 
-	current_layout.set_tile(coord, tile_data)
+	current_layout.set_tile(coord, tile_data, current_layout.current_floor)
 	queue_redraw()
 
 
 func _has_primary_entry() -> bool:
 	if not current_layout:
 		return false
-	for raw_key in current_layout.grid_tiles.keys():
-		var other = current_layout.grid_tiles[raw_key] as CP2020TileData
+	var f := current_layout.current_floor
+	for raw_key in current_layout.get_floor_tiles(f).keys():
+		var other = current_layout.get_tile(_key_to_coord(raw_key), f)
 		if other and other.tile_type == CP2020DatafortLayout.TileType.ENTRY and other.is_primary_entry:
 			return true
 	return false
+
+# Convert a Dictionary key (Vector2i or "x,y" String) back to a Vector2i.
+static func _key_to_coord(raw_key) -> Vector2i:
+	if raw_key is String:
+		var parts = raw_key.split(",")
+		return Vector2i(parts[0].to_int(), parts[1].to_int())
+	return raw_key
 
 
 func _draw() -> void:
 	var total_width = grid_columns * cell_size
 	var total_height = grid_rows * cell_size
 
-	draw_rect(Rect2(0, grid_offset_y, total_width, total_height), Color(0.1, 0.1, 0.1))
+	draw_rect(Rect2(grid_offset_x, grid_offset_y, total_width, total_height), Color(0.1, 0.1, 0.1))
 
 	for x in range(grid_columns + 1):
-		draw_line(Vector2(x * cell_size, grid_offset_y), Vector2(x * cell_size, grid_offset_y + total_height), Color(0.4, 0.4, 0.4, 1.0))
+		draw_line(Vector2(grid_offset_x + x * cell_size, grid_offset_y), Vector2(grid_offset_x + x * cell_size, grid_offset_y + total_height), Color(0.4, 0.4, 0.4, 1.0))
 	for y in range(grid_rows + 1):
-		draw_line(Vector2(0, grid_offset_y + (y * cell_size)), Vector2(total_width, grid_offset_y + (y * cell_size)), Color(0.4, 0.4, 0.4, 1.0))
+		draw_line(Vector2(grid_offset_x, grid_offset_y + (y * cell_size)), Vector2(grid_offset_x + total_width, grid_offset_y + (y * cell_size)), Color(0.4, 0.4, 0.4, 1.0))
 
 	if current_layout:
-		for raw_key in current_layout.grid_tiles.keys():
+		var f := current_layout.current_floor
+		for raw_key in current_layout.get_current_floor_tiles().keys():
 			var coord: Vector2i
 			if raw_key is String:
 				var parts = raw_key.split(",")
@@ -221,14 +234,15 @@ func _draw() -> void:
 			else:
 				coord = raw_key
 
-			var tile_data = null
-			if current_layout.has_method("get_tile"):
-				tile_data = current_layout.get_tile(coord)
-			else:
-				tile_data = current_layout.grid_tiles.get(raw_key)
+			var tile_data = current_layout.get_tile(coord, f)
 
 			if tile_data:
-				var cell_rect = Rect2(coord.x * cell_size, grid_offset_y + (coord.y * cell_size), cell_size, cell_size)
+				# Defensive: skip tiles stored outside the current grid bounds
+				# (e.g. left over from a shrink or a hand-edited .tres) so they
+				# never render beyond the drawn grid / coord markers.
+				if coord.x < 0 or coord.x >= grid_columns or coord.y < 0 or coord.y >= grid_rows:
+					continue
+				var cell_rect = Rect2(grid_offset_x + coord.x * cell_size, grid_offset_y + (coord.y * cell_size), cell_size, cell_size)
 				var inner_rect = Rect2(cell_rect.position + Vector2(4, 4), Vector2(cell_size - 8, cell_size - 8))
 
 				draw_rect(cell_rect, Color(0.05, 0.05, 0.05))
@@ -239,22 +253,44 @@ func _draw() -> void:
 						draw_rect(cell_rect, Color(0.3, 0.3, 0.3), false)
 
 					CP2020DatafortLayout.TileType.ENTRY:
-						draw_rect(inner_rect, Color(0.1, 0.2, 0.1), true)
-						draw_rect(inner_rect, Color.WEB_GREEN, false)
 						var center = cell_rect.get_center()
+						var has_up: bool = tile_data.can_go_up
+						var has_down: bool = tile_data.can_go_down
 						if tile_data.is_ldl_link:
 							draw_rect(inner_rect, Color(0.05, 0.1, 0.25), true)
 							draw_rect(inner_rect, Color.DEEP_SKY_BLUE, false, 2)
 							draw_string(get_theme_default_font(), cell_rect.position + Vector2(12, 27), "L", HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color.DEEP_SKY_BLUE)
+						elif has_up and has_down:
+							# Both: split teal (top) / purple (bottom) frame.
+							var half := Rect2(cell_rect.position, Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
+							var half2 := Rect2(cell_rect.position + Vector2(0, cell_rect.size.y * 0.5), Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
+							draw_rect(inner_rect, Color(0.05, 0.12, 0.12), true)
+							draw_rect(half, Color(0.0, 0.9, 0.9), false, 2)
+							draw_rect(half2, Color(0.8, 0.4, 1.0), false, 2)
+						elif has_up:
+							draw_rect(inner_rect, Color(0.05, 0.12, 0.12), true)
+							draw_rect(inner_rect, Color(0.0, 0.9, 0.9), false, 2)
+						elif has_down:
+							draw_rect(inner_rect, Color(0.06, 0.03, 0.12), true)
+							draw_rect(inner_rect, Color(0.8, 0.4, 1.0), false, 2)
 						else:
+							draw_rect(inner_rect, Color(0.1, 0.2, 0.1), true)
+							draw_rect(inner_rect, Color.WEB_GREEN, false)
 							var points = PackedVector2Array([
 								center + Vector2(0, -10),
 								center + Vector2(-10, 8),
 								center + Vector2(10, 8)
 							])
 							draw_polygon(points, PackedColorArray([Color.WEB_GREEN]))
+						# Up/down glyphs in the top-left / bottom-left corners.
+						var _ef := get_theme_default_font()
+						if has_up:
+							draw_string(_ef, cell_rect.position + Vector2(3, 11), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.0, 0.9, 0.9))
+						if has_down:
+							draw_string(_ef, cell_rect.position + Vector2(3, cell_rect.size.y - 3), "↓", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.8, 0.4, 1.0))
 						if tile_data.is_primary_entry:
-							var mark := Rect2(cell_rect.position + Vector2(3, 3), Vector2(7, 7))
+							# Top-right corner so it doesn't clash with the glyphs.
+							var mark := Rect2(cell_rect.position + Vector2(cell_rect.size.x - 12, 4), Vector2(8, 8))
 							draw_rect(mark, Color.WHITE, true)
 							draw_rect(mark, Color.BLACK, false, 1)
 
@@ -317,11 +353,11 @@ func _draw() -> void:
 
 	# Highlight the selected tile (select mode).
 	if select_mode and selected_coord != Vector2i(-1, -1) and not dragging:
-		var sel_rect = Rect2(selected_coord.x * cell_size, grid_offset_y + (selected_coord.y * cell_size), cell_size, cell_size)
+		var sel_rect = Rect2(grid_offset_x + selected_coord.x * cell_size, grid_offset_y + (selected_coord.y * cell_size), cell_size, cell_size)
 		draw_rect(sel_rect, Color(1.0, 0.85, 0.2), false, 2)
 	# Drag-to-move: dim the source cell and draw a ghost under the cursor.
 	if dragging and drag_tile != null:
-		var src_rect = Rect2(drag_source_coord.x * cell_size, grid_offset_y + (drag_source_coord.y * cell_size), cell_size, cell_size)
+		var src_rect = Rect2(grid_offset_x + drag_source_coord.x * cell_size, grid_offset_y + (drag_source_coord.y * cell_size), cell_size, cell_size)
 		draw_rect(src_rect, Color(0.0, 0.0, 0.0, 0.55), true)
 		var ghost_rect = Rect2(drag_ghost_pos.x - cell_size * 0.5, drag_ghost_pos.y - cell_size * 0.5, cell_size, cell_size)
 		draw_rect(ghost_rect, Color(1.0, 0.85, 0.2, 0.35), true)
@@ -337,17 +373,17 @@ func _draw_coord_display() -> void:
 	# Column (x) tick labels: centred above each column, in the strip just
 	# above the grid (between the top panel and the first row).
 	for x in range(grid_columns):
-		var cx = x * cell_size + cell_size * 0.5
-		draw_string(font, Vector2(cx - 5, grid_offset_y - 4), str(x), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, tick_color)
-	# Row (y) tick labels: placed at the left edge of each row, in the first
-	# few pixels inside the grid (faint, small).
+		var cx = grid_offset_x + x * cell_size + cell_size * 0.5
+		draw_string(font, Vector2(cx - 5, grid_offset_y - 10), str(x), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, tick_color)
+	# Row (y) tick labels: placed outside the grid, to the left of each row
+	# (right-aligned in the strip left of the first column).
 	for y in range(grid_rows):
 		var ry = grid_offset_y + y * cell_size + cell_size * 0.5 + 4
-		draw_string(font, Vector2(2, ry), str(y), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.6, 0.65, 0.7, 0.55))
+		draw_string(font, Vector2(grid_offset_x - 18, ry), str(y), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, tick_color)
 	# Floating mouse tooltip: show the grid coord under the cursor.
 	var mp := get_local_mouse_position()
 	var ctrl_size := get_rect().size
-	var mx = floori(mp.x / cell_size)
+	var mx = floori((mp.x - grid_offset_x) / cell_size)
 	var my = floori((mp.y - grid_offset_y) / cell_size)
 	if mx >= 0 and mx < grid_columns and my >= 0 and my < grid_rows:
 		var tip := "(%d, %d)" % [mx, my]

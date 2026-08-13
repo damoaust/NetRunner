@@ -7,7 +7,7 @@ extends NetProgram
 # activation). Only used by the netrunner (not rezzed as ICE).
 
 func execute_runner_action(session: CP2020GameSession, target_coord: Vector2i) -> bool:
-	var tile: CP2020TileData = session.current_layout.get_tile(target_coord)
+	var tile: CP2020TileData = session.current_layout.get_tile(target_coord, session.current_floor)
 	if tile == null:
 		session.log_to_terminal("No tile at %s for Worm.\n" % target_coord)
 		return false

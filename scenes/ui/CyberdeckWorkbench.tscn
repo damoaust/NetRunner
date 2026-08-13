@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://xi7762rglqiw" path="res://scripts/ui/cyberdeck_workbench.gd" id="1_ih6ts"]
 [ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_gys0u"]
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="3_prog"]
-[ext_resource type="Resource" path="res://data/aegis.tres" id="4_aegis"]
+[ext_resource type="Resource" uid="uid://dt3gwefaesqv7" path="res://data/aegis.tres" id="4_aegis"]
 [ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="5_codecracker"]
 [ext_resource type="Resource" uid="uid://cswmssw4eot6i" path="res://data/flatline.tres" id="6_flatline"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="7_hammer"]
@@ -17,251 +17,7 @@
 [ext_resource type="Resource" uid="uid://ycvcc1ghp56k" path="res://data/ziggurat.tres" id="15_ziggurat"]
 [ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="16_killer4"]
 [ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="17_killer6"]
-[ext_resource type="Theme" uid="uid://c2myk4yt270q6" path="res://themes/cyberpunk_theme.tres" id="18_theme"]
-[ext_resource type="Shader" uid="uid://d5kng4a6oi4p" path="res://scripts/ui/crt_overlay.gdshader" id="19_crt"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_va62j"]
-content_margin_left = 5.0
-content_margin_top = 5.0
-content_margin_right = 5.0
-content_margin_bottom = 5.0
-bg_color = Color(0, 0, 0, 0.4)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0, 0.55, 0.3, 0.5)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ldt4r"]
-content_margin_left = 5.0
-content_margin_top = 5.0
-content_margin_right = 5.0
-content_margin_bottom = 5.0
-bg_color = Color(0, 0.12, 0.042, 0.6)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0, 1, 0.35, 0.65)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4btsc"]
-content_margin_left = 5.0
-content_margin_top = 5.0
-content_margin_right = 5.0
-content_margin_bottom = 5.0
-bg_color = Color(0.036000002, 0.18, 0.072000004, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 3
-border_color = Color(0.2, 1, 0.4, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2c18i"]
-content_margin_left = 5.0
-content_margin_top = 5.0
-content_margin_right = 5.0
-content_margin_bottom = 5.0
-bg_color = Color(0.036000002, 0.18, 0.072000004, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 3
-border_color = Color(0.2, 1, 0.4, 1)
-
-[sub_resource type="StyleBoxFlat" id="SbMuFill"]
-bg_color = Color(0.2, 1, 0.4, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-
-[sub_resource type="StyleBoxFlat" id="SbAmberN"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.12, 0.09, 0.024, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.75, 0.2, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbAmberH"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.12, 0.108, 0.0288, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.9, 0.24, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbWarnN"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.12, 0.036, 0.036, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.3, 0.3, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbWarnH"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.12, 0.0432, 0.0432, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.36, 0.36, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbDetail"]
-content_margin_left = 12.0
-content_margin_top = 10.0
-content_margin_right = 12.0
-content_margin_bottom = 10.0
-bg_color = Color(0.02, 0.06, 0.04, 0.96)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="SbPortrait"]
-bg_color = Color(0, 0.02, 0.01, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0, 0.55, 0.3, 0.5)
-
-[sub_resource type="StyleBoxFlat" id="SbHeaderN"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.03, 0.12, 0.072, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.25, 1, 0.6, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbHeaderH"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.036, 0.12, 0.0864, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3, 1, 0.72, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbRedN"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.12, 0.03, 0.03, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.25, 0.25, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbRedH"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.12, 0.036, 0.036, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.3, 0.3, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="SbJackN"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.024, 0.12, 0.048, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 1, 0.4, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="SbJackH"]
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 10.0
-content_margin_bottom = 6.0
-bg_color = Color(0.048, 0.12, 0.072, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.4, 1, 0.6, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="ShaderMaterial" id="MatCRT"]
-shader = ExtResource("19_crt")
-shader_parameter/scanline_density = 480.0
-shader_parameter/scanline_strength = 0.08
-shader_parameter/vignette_strength = 0.28
-shader_parameter/vignette_softness = 2.2
-shader_parameter/flicker_amplitude = 0.015
-shader_parameter/flicker_speed = 6.0
+[ext_resource type="FontFile" uid="uid://bf8ebwffw1byl" path="res://Sddystopiandemo-GO7xa.otf" id="20_ldt4r"]
 
 [node name="CyberdeckWorkbench" type="Control" unique_id=997511488]
 layout_mode = 3
@@ -270,7 +26,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("18_theme")
 script = ExtResource("1_ih6ts")
 available_decks = Array[ExtResource("2_gys0u")]([ExtResource("13_startdeck"), ExtResource("14_kendachi"), ExtResource("15_ziggurat")])
 available_programs = Array[ExtResource("3_prog")]([ExtResource("4_aegis"), ExtResource("5_codecracker"), ExtResource("6_flatline"), ExtResource("7_hammer"), ExtResource("8_jackhammer"), ExtResource("9_killer"), ExtResource("16_killer4"), ExtResource("17_killer6"), ExtResource("10_shield"), ExtResource("11_wizbook"), ExtResource("12_worm")])
@@ -302,18 +57,16 @@ theme_override_constants/margin_bottom = 14
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 10
 
 [node name="TitleRow" type="HBoxContainer" parent="Margin/RootVBox" unique_id=15853545]
 layout_mode = 2
-theme_override_constants/separation = 12
 
 [node name="TitleLabel" type="Label" parent="Margin/RootVBox/TitleRow" unique_id=968007708]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 30
-text = "◢ CYBERDECK WORKBENCH ◣"
+theme_override_fonts/font = ExtResource("20_ldt4r")
+theme_override_font_sizes/font_size = 87
+text = "CYBERDECK WORKBENCH"
 
 [node name="CreditsLabel" type="Label" parent="Margin/RootVBox/TitleRow" unique_id=691350370]
 unique_name_in_owner = true
@@ -330,18 +83,13 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/side_margin = 10
-theme_override_styles/tab_unselected = SubResource("StyleBoxFlat_va62j")
-theme_override_styles/tab_hovered = SubResource("StyleBoxFlat_ldt4r")
-theme_override_styles/tab_selected = SubResource("StyleBoxFlat_4btsc")
-theme_override_styles/tab_focus = SubResource("StyleBoxFlat_2c18i")
-current_tab = 0
+current_tab = 1
 
 [node name="Loadout" type="HBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=702334731]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 8
 metadata/_tab_index = 0
 
 [node name="DeckCol" type="PanelContainer" parent="Margin/RootVBox/Tabs/Loadout" unique_id=1208143550]
@@ -351,12 +99,10 @@ size_flags_horizontal = 3
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/DeckCol" unique_id=472907286]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=1844442944]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"MyHeader"
 text = "DECK STATS"
 
 [node name="DeckSelector" type="OptionButton" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=637633783]
@@ -367,7 +113,7 @@ tooltip_text = "Switch between owned cyberdecks this life"
 [node name="Rule1" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=536016663]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="ModelLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=616636346]
 unique_name_in_owner = true
@@ -399,7 +145,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
-theme_override_styles/fill = SubResource("SbMuFill")
 show_percentage = false
 
 [node name="MuOverlayLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox/BarOverlay" unique_id=586757504]
@@ -410,8 +155,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.95, 1, 0.95, 1)
-theme_override_font_sizes/font_size = 20
 text = "0 / 0"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -421,6 +164,7 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 tooltip_text = "You have more programs loaded than the active deck's MU allows."
+mouse_filter = 0
 theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 18
 
@@ -437,31 +181,28 @@ text = "Interface Rank: 0"
 [node name="Rule2" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=1241685301]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="LoadoutSummaryHeader" type="Label" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=125790646]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"MyHeader"
 text = "LOADOUT SUMMARY"
 
 [node name="LoadedSummaryLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=408066116]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 text = "No programs loaded."
-autowrap_mode = 3
 
 [node name="Rule3" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=793995134]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="MetaLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/DeckCol/VBox" unique_id=348488265]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-theme_override_font_sizes/font_size = 18
 text = "// TOTAL KILLS: 0
 // DATAJACK: OFFLINE
 // SUBNETS CLEARED: 0"
@@ -475,12 +216,10 @@ size_flags_horizontal = 3
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol" unique_id=1635788293]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox" unique_id=420882592]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"MyHeader"
 text = "LOADED INTO MEMORY"
 
 [node name="LoadedList" type="ItemList" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox" unique_id=1174872493]
@@ -490,29 +229,23 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 tooltip_text = "Programs currently loaded into the deck's MU. Double-click or [U] to unload."
-theme_override_font_sizes/font_size = 18
 
 [node name="Btns" type="HBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox" unique_id=533977885]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
 alignment = 1
 
 [node name="UnloadButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=1909914907]
 unique_name_in_owner = true
+propagate_maximum_size = true
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Unload the selected program from the deck [U]"
-theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.75, 0.2, 1)
-theme_override_colors/font_hover_color = Color(1, 0.975, 0.26, 1)
-theme_override_styles/normal = SubResource("SbAmberN")
-theme_override_styles/pressed = SubResource("SbAmberN")
-theme_override_styles/hover = SubResource("SbAmberH")
 text = "[U] ▶"
 
 [node name="LoadButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=929522467]
 unique_name_in_owner = true
+propagate_maximum_size = true
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Load the highlighted library program into the deck [L]"
@@ -523,12 +256,6 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Clear ALL loaded programs from the deck [C]"
-theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.3, 0.3, 1)
-theme_override_colors/font_hover_color = Color(1, 0.39, 0.39, 1)
-theme_override_styles/normal = SubResource("SbWarnN")
-theme_override_styles/pressed = SubResource("SbWarnN")
-theme_override_styles/hover = SubResource("SbWarnH")
 text = "[C] CLR"
 
 [node name="LibraryCol" type="PanelContainer" parent="Margin/RootVBox/Tabs/Loadout" unique_id=1078315762]
@@ -548,8 +275,7 @@ theme_override_constants/separation = 8
 [node name="Title" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/HeaderRow" unique_id=620241815]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"MyHeader"
 text = "PROGRAM LIBRARY"
 
 [node name="FilterInline" type="HBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox" unique_id=596226803]
@@ -559,7 +285,6 @@ theme_override_constants/separation = 6
 
 [node name="FilterLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/FilterInline" unique_id=1044281949]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 text = "Filter:"
 
 [node name="FilterOption" type="OptionButton" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/FilterInline" unique_id=1034166449]
@@ -579,21 +304,18 @@ theme_override_font_sizes/font_size = 18
 [node name="DetailCard" type="PanelContainer" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox" unique_id=978031218]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_styles/panel = SubResource("SbDetail")
 
 [node name="DetailVBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard" unique_id=1092008068]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 4
 
 [node name="DetailName" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1622555440]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
 theme_override_font_sizes/font_size = 24
 text = "— select a program —"
-autowrap_mode = 3
 
 [node name="DetailCursorLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1937939128]
 unique_name_in_owner = true
@@ -606,31 +328,26 @@ text = "_"
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-autowrap_mode = 3
 
 [node name="DetailEffect" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=487755847]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-autowrap_mode = 3
 
 [node name="DetailStr" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1306083617]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-autowrap_mode = 3
 
 [node name="DetailMu" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=77934205]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-autowrap_mode = 3
 
 [node name="DetailPrice" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=576253301]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-autowrap_mode = 3
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1363610318]
 custom_minimum_size = Vector2(0, 1)
@@ -642,7 +359,6 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 size_flags_vertical = 3
-autowrap_mode = 3
 
 [node name="RunnerCol" type="PanelContainer" parent="Margin/RootVBox/Tabs/Loadout" unique_id=1190838670]
 custom_minimum_size = Vector2(280, 0)
@@ -652,43 +368,36 @@ size_flags_horizontal = 3
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol" unique_id=1000912946]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=1533275106]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"MyHeader"
 text = "NETRUNNER"
 
 [node name="PortraitBox" type="PanelContainer" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=1438564963]
 layout_mode = 2
-theme_override_styles/panel = SubResource("SbPortrait")
 
 [node name="RunnerPortraitLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox/PortraitBox" unique_id=1904667378]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 16
+size_flags_horizontal = 4
 horizontal_alignment = 1
 
 [node name="CallsignLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=1704441172]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
 text = "// CALLSIGN: ----"
-autowrap_mode = 3
 
 [node name="RoleLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=20325105]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 text = "// ROLE: NETRUNNER"
-autowrap_mode = 3
 
 [node name="Rule1" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=330951562]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="StatRefLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=1356002956]
 unique_name_in_owner = true
@@ -713,7 +422,7 @@ text = "WOUNDS: NONE"
 [node name="Rule2" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=983545591]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="TraceLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=2033861608]
 unique_name_in_owner = true
@@ -723,25 +432,21 @@ text = "TRACE: 0%"
 [node name="NetCredLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=13747020]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
 text = "EBANK: 0 eb"
 
 [node name="RunLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=181488939]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 text = "LAST RUN: —"
-autowrap_mode = 3
 
 [node name="Rule3" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=731762727]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="TipsHeader" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=2016488071]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"MyHeader"
 text = "TIPS"
 
 [node name="TipsLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=1756483504]
@@ -749,8 +454,6 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-theme_override_font_sizes/font_size = 16
 text = "[1] Pick programs that match target.
 [2] Shields block; Armor eats hits.
 [3] Over-cap MU = crash."
@@ -761,38 +464,29 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="SHOP" type="VBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=940278441]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 10
 metadata/_tab_index = 1
 
 [node name="UnlockRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP" unique_id=295451701]
 layout_mode = 2
-theme_override_constants/separation = 12
 
 [node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/UnlockRow" unique_id=47215546]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_colors/font_pressed_color = Color(0.25, 1, 0.6, 1)
-theme_override_colors/font_hover_color = Color(0.325, 1, 0.78, 1)
-theme_override_styles/normal = SubResource("SbHeaderN")
-theme_override_styles/pressed = SubResource("SbHeaderN")
-theme_override_styles/hover = SubResource("SbHeaderH")
 text = "PURCHASE UNLOCKS"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP" unique_id=646615436]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="Grid" type="GridContainer" parent="Margin/RootVBox/Tabs/SHOP" unique_id=1220882878]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 20
 columns = 2
 
 [node name="BuyDecksPanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid" unique_id=757877783]
@@ -802,24 +496,20 @@ size_flags_vertical = 3
 
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel" unique_id=56703443]
 layout_mode = 2
-theme_override_constants/separation = 6
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=345052212]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
 text = "BUY DECKS"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=1183754792]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="ShopBuyDecksList" type="ItemList" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=788606126]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 18
 
 [node name="BuyDeckButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=1818837854]
 unique_name_in_owner = true
@@ -833,24 +523,20 @@ size_flags_vertical = 3
 
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel" unique_id=910054125]
 layout_mode = 2
-theme_override_constants/separation = 6
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=2093200420]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
 text = "BUY PROGRAMS"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=538742000]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="ShopBuyProgramsList" type="ItemList" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=1027445850]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 18
 
 [node name="BuyProgramButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=212743116]
 unique_name_in_owner = true
@@ -864,34 +550,24 @@ size_flags_vertical = 3
 
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel" unique_id=160222416]
 layout_mode = 2
-theme_override_constants/separation = 6
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=1311415865]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
 text = "SELL LOOT"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=1005877067]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="ShopSellLootList" type="ItemList" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=901408726]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 18
 
 [node name="SellLootButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=190411751]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.75, 0.2, 1)
-theme_override_colors/font_hover_color = Color(1, 0.975, 0.26, 1)
-theme_override_styles/normal = SubResource("SbAmberN")
-theme_override_styles/pressed = SubResource("SbAmberN")
-theme_override_styles/hover = SubResource("SbAmberH")
 text = "SELL"
 
 [node name="SellFilesPanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid" unique_id=343719598]
@@ -901,85 +577,47 @@ size_flags_vertical = 3
 
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel" unique_id=468768892]
 layout_mode = 2
-theme_override_constants/separation = 6
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=453665639]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 24
 text = "SELL FILES"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=1141296297]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
+color = Color(0, 0.45490196, 1, 0.5764706)
 
 [node name="ShopSellFilesList" type="ItemList" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=1338718772]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 18
 
 [node name="SellFileButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=1037721656]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.75, 0.2, 1)
-theme_override_colors/font_hover_color = Color(1, 0.975, 0.26, 1)
-theme_override_styles/normal = SubResource("SbAmberN")
-theme_override_styles/pressed = SubResource("SbAmberN")
-theme_override_styles/hover = SubResource("SbAmberH")
 text = "SELL FILE"
 
 [node name="SellAllFilesButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=1768899918]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.25, 0.25, 1)
-theme_override_colors/font_hover_color = Color(1, 0.325, 0.325, 1)
-theme_override_styles/normal = SubResource("SbRedN")
-theme_override_styles/pressed = SubResource("SbRedN")
-theme_override_styles/hover = SubResource("SbRedH")
 text = "SELL ALL"
 
 [node name="Footer" type="HBoxContainer" parent="Margin/RootVBox" unique_id=1610942416]
 layout_mode = 2
-theme_override_constants/separation = 16
 
 [node name="MuMessage" type="Label" parent="Margin/RootVBox/Footer" unique_id=388860603]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
 
 [node name="DestinationLabel" type="Label" parent="Margin/RootVBox/Footer" unique_id=464051844]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
-theme_override_font_sizes/font_size = 18
 text = "→ Last subnet: —"
 
 [node name="JackButton" type="Button" parent="Margin/RootVBox/Footer" unique_id=1899427227]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Jack into the Net using the selected deck and loaded programs (Shortcut: J)"
-theme_override_colors/font_color = Color(0.2, 1, 0.4, 1)
-theme_override_colors/font_pressed_color = Color(0.2, 1, 0.4, 1)
-theme_override_colors/font_hover_color = Color(0.6, 1, 0.7, 1)
-theme_override_font_sizes/font_size = 27
-theme_override_styles/normal = SubResource("SbJackN")
-theme_override_styles/pressed = SubResource("SbJackN")
-theme_override_styles/hover = SubResource("SbJackH")
 text = "[ J ]  JACK IN"
-
-[node name="CRTOverlay" type="ColorRect" parent="." unique_id=1167766869]
-visible = false
-material = SubResource("MatCRT")
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2

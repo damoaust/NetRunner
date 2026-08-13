@@ -1,7 +1,18 @@
 [gd_scene format=3 uid="uid://bh3haiox7nrx3"]
 
 [ext_resource type="Script" uid="uid://c5bhyhegsspuo" path="res://scripts/resources/cp2020_datafort_designer.gd" id="1_4q7o0"]
+[ext_resource type="Texture2D" uid="uid://cqy2kicjbrgpd" path="res://themes/dead-copy2.png" id="2_feun2"]
 [ext_resource type="Script" uid="uid://5hwxt0jx342i" path="res://scripts/resources/cp2020_datafort_grid_canvas.gd" id="2_grid"]
+[ext_resource type="Theme" uid="uid://c2myk4yt270q6" path="res://themes/cyberpunk_theme.tres" id="3_n21rt"]
+
+[sub_resource type="Environment" id="Environment_gmksv"]
+background_mode = 3
+glow_enabled = true
+glow_blend_mode = 0
+
+[sub_resource type="CameraAttributesPhysical" id="CameraAttributesPhysical_c5ll2"]
+
+[sub_resource type="Compositor" id="Compositor_4tp70"]
 
 [node name="Cp2020DesignerCanvas" type="Control" unique_id=76929892]
 layout_mode = 3
@@ -12,69 +23,98 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_4q7o0")
 
+[node name="ColorRect" type="ColorRect" parent="." unique_id=911319068]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1028384309]
+self_modulate = Color(1, 1, 1, 0.047058824)
+texture_filter = 6
+texture_repeat = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -215.7406
+offset_right = 215.74072
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_feun2")
+expand_mode = 3
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1697854544]
+environment = SubResource("Environment_gmksv")
+camera_attributes = SubResource("CameraAttributesPhysical_c5ll2")
+compositor = SubResource("Compositor_4tp70")
+
 [node name="TopPanel" type="VBoxContainer" parent="." unique_id=1642773889]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 20.0
-offset_right = 1116.0
+offset_right = 1122.0
 offset_bottom = 86.0
 
 [node name="DynamicButtonRow" type="HBoxContainer" parent="TopPanel" unique_id=1560721362]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="SelectButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="SelectButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=701072679]
 layout_mode = 2
 text = "Select"
 
-[node name="EntryButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="EntryButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1197000539]
 layout_mode = 2
 text = "Entry"
 
-[node name="DatawallButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="DatawallButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=476126121]
 layout_mode = 2
 text = "Datawall"
 
-[node name="CodeGateButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="CodeGateButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=882736822]
 layout_mode = 2
 text = "Code Gate"
 
-[node name="MemoryUnitButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="MemoryUnitButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1860610956]
 layout_mode = 2
 text = "Memory Unit"
 
-[node name="ControlNodeButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="ControlNodeButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=268445121]
 layout_mode = 2
 text = "Control Node"
 
-[node name="BlackIceButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="BlackIceButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=95510724]
 layout_mode = 2
 text = "Black ICE"
 
-[node name="NetWatchButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="NetWatchButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1361008382]
 layout_mode = 2
 text = "NetWatch"
 
-[node name="NetrunnerButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="NetrunnerButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=330772354]
 layout_mode = 2
 text = "Netrunner"
 
-[node name="LdlLinkButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="LdlLinkButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=600844701]
 layout_mode = 2
 text = "LDL Link"
 
-[node name="EraserButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="EraserButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1468648411]
 layout_mode = 2
 text = "Eraser"
 
-[node name="VSeparator" type="VSeparator" parent="TopPanel/DynamicButtonRow"]
+[node name="VSeparator" type="VSeparator" parent="TopPanel/DynamicButtonRow" unique_id=46559369]
 layout_mode = 2
 
-[node name="SaveButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="SaveButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=509870804]
 layout_mode = 2
 text = "Save Map"
 
-[node name="LoadButton" type="Button" parent="TopPanel/DynamicButtonRow"]
+[node name="LoadButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=2110119155]
 layout_mode = 2
 text = "Load Map"
 
@@ -97,138 +137,252 @@ value = 20.0
 layout_mode = 2
 text = "Apply"
 
-[node name="GridCanvas" type="Control" parent="."]
-layout_mode = 0
+[node name="FloorSep" type="VSeparator" parent="TopPanel/SettingsRow" unique_id=120000001]
+layout_mode = 2
+
+[node name="FloorLabel" type="Label" parent="TopPanel/SettingsRow" unique_id=120000002]
+layout_mode = 2
+text = "Floor:"
+
+[node name="FloorSpinBox" type="SpinBox" parent="TopPanel/SettingsRow" unique_id=120000003]
+layout_mode = 2
+min_value = 1.0
+max_value = 1.0
+value = 1.0
+
+[node name="AddFloorButton" type="Button" parent="TopPanel/SettingsRow" unique_id=120000004]
+layout_mode = 2
+text = "Add Floor"
+
+[node name="RemoveFloorButton" type="Button" parent="TopPanel/SettingsRow" unique_id=120000005]
+layout_mode = 2
+disabled = true
+text = "Remove Floor"
+
+[node name="FloorNameLabel" type="Label" parent="TopPanel/SettingsRow" unique_id=120000006]
+layout_mode = 2
+text = "Name:"
+
+[node name="FloorNameEdit" type="LineEdit" parent="TopPanel/SettingsRow" unique_id=120000007]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Floor name"
+
+[node name="GridCanvas" type="Control" parent="." unique_id=699164242]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 90.0
+offset_left = 20.0
+offset_top = 112.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_grid")
 
-[node name="LDLLinkPanel" type="PanelContainer" parent="."]
+[node name="LDLLinkPanel" type="PanelContainer" parent="." unique_id=1044561562]
 visible = false
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -300.0
-offset_top = 90.0
-offset_right = -10.0
-offset_bottom = -10.0
+offset_left = -347.0
+offset_top = 143.0
+offset_right = -4.0
+offset_bottom = 601.0
 grow_horizontal = 0
 
-[node name="VBox" type="VBoxContainer" parent="LDLLinkPanel"]
+[node name="VBox" type="VBoxContainer" parent="LDLLinkPanel" unique_id=621754348]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="LDLLinkPanel/VBox"]
+[node name="Title" type="Label" parent="LDLLinkPanel/VBox" unique_id=518258979]
 layout_mode = 2
 text = "LDL Link Editor"
 
-[node name="TargetLabel" type="Label" parent="LDLLinkPanel/VBox"]
+[node name="TargetLabel" type="Label" parent="LDLLinkPanel/VBox" unique_id=410395070]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Target subnet (.tres):"
+autowrap_mode = 1
 
-[node name="TargetEdit" type="LineEdit" parent="LDLLinkPanel/VBox"]
+[node name="TargetEdit" type="LineEdit" parent="LDLLinkPanel/VBox" unique_id=808947625]
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "res://scenes/forts/..."
 
-[node name="BrowseButton" type="Button" parent="LDLLinkPanel/VBox"]
+[node name="BrowseButton" type="Button" parent="LDLLinkPanel/VBox" unique_id=1922174316]
 layout_mode = 2
 text = "..."
 
-[node name="CoordLabel" type="Label" parent="LDLLinkPanel/VBox"]
+[node name="CoordLabel" type="Label" parent="LDLLinkPanel/VBox" unique_id=1488932763]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Target entry coord (X, Y):"
+autowrap_mode = 1
 
-[node name="XSpinBox" type="SpinBox" parent="LDLLinkPanel/VBox"]
+[node name="XSpinBox" type="SpinBox" parent="LDLLinkPanel/VBox" unique_id=637162031]
 layout_mode = 2
 min_value = -1.0
 max_value = 999.0
 
-[node name="YSpinBox" type="SpinBox" parent="LDLLinkPanel/VBox"]
+[node name="YSpinBox" type="SpinBox" parent="LDLLinkPanel/VBox" unique_id=1356194959]
 layout_mode = 2
 min_value = -1.0
 max_value = 999.0
 
-[node name="ClearButton" type="Button" parent="LDLLinkPanel/VBox"]
+[node name="ClearButton" type="Button" parent="LDLLinkPanel/VBox" unique_id=737524080]
 layout_mode = 2
 text = "Clear target (world-map return only)"
+autowrap_mode = 1
 
-[node name="Hint" type="Label" parent="LDLLinkPanel/VBox"]
+[node name="Hint" type="Label" parent="LDLLinkPanel/VBox" unique_id=1380267854]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Empty target = 'Return to City Grid' only.
 Set a .tres to also offer 'Travel to <datafort>'."
+autowrap_mode = 1
 
-[node name="PrimaryCheck" type="CheckBox" parent="LDLLinkPanel/VBox"]
+[node name="PrimaryCheck" type="CheckBox" parent="LDLLinkPanel/VBox" unique_id=1436817745]
 layout_mode = 2
 text = "Primary entry"
 
-[node name="EntryEditorPanel" type="PanelContainer" parent="."]
+[node name="EntryEditorPanel" type="PanelContainer" parent="." unique_id=1763860442]
 visible = false
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -300.0
-offset_top = 90.0
-offset_right = -10.0
-offset_bottom = -10.0
+offset_left = -262.0
+offset_top = 118.0
+offset_bottom = 958.0
 grow_horizontal = 0
+theme = ExtResource("3_n21rt")
 
-[node name="VBox" type="VBoxContainer" parent="EntryEditorPanel"]
+[node name="VBox" type="VBoxContainer" parent="EntryEditorPanel" unique_id=1512423077]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="EntryEditorPanel/VBox"]
+[node name="Title" type="Label" parent="EntryEditorPanel/VBox" unique_id=291638862]
 layout_mode = 2
 text = "Entry Editor"
 
-[node name="CoordLabel" type="Label" parent="EntryEditorPanel/VBox"]
+[node name="CoordLabel" type="Label" parent="EntryEditorPanel/VBox" unique_id=1646272453]
 layout_mode = 2
 text = "Tile: (0, 0)"
 
-[node name="PrimaryCheck" type="CheckBox" parent="EntryEditorPanel/VBox"]
+[node name="PrimaryCheck" type="CheckBox" parent="EntryEditorPanel/VBox" unique_id=1570994241]
 layout_mode = 2
+size_flags_vertical = 4
 text = "Primary entry"
 
-[node name="Hint" type="Label" parent="EntryEditorPanel/VBox"]
+[node name="Hint" type="Label" parent="EntryEditorPanel/VBox" unique_id=391815408]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "The primary entry is where the netrunner arrives when diving in from the world map. Only one entry tile per datafort can be primary."
+autowrap_mode = 1
 
-[node name="IceEditorPanel" type="PanelContainer" parent="."]
-visible = false
-layout_mode = 0
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -300.0
-offset_top = 90.0
-offset_right = -10.0
-offset_bottom = -10.0
-grow_horizontal = 0
-
-[node name="VBox" type="VBoxContainer" parent="IceEditorPanel"]
+[node name="UpSep" type="HSeparator" parent="EntryEditorPanel/VBox" unique_id=110000001]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="IceEditorPanel/VBox"]
+[node name="UpTitle" type="Label" parent="EntryEditorPanel/VBox" unique_id=110000002]
+layout_mode = 2
+text = "Vertical: Go Up"
+
+[node name="UpCheck" type="CheckBox" parent="EntryEditorPanel/VBox" unique_id=110000003]
+layout_mode = 2
+text = "Can go up"
+
+[node name="UpCoordLabel" type="Label" parent="EntryEditorPanel/VBox" unique_id=110000004]
+layout_mode = 2
+text = "Arrival coord on floor above (X, Y):"
+autowrap_mode = 1
+
+[node name="UpXSpinBox" type="SpinBox" parent="EntryEditorPanel/VBox" unique_id=110000005]
+layout_mode = 2
+size_flags_vertical = 4
+min_value = -1.0
+max_value = 999.0
+
+[node name="UpYSpinBox" type="SpinBox" parent="EntryEditorPanel/VBox" unique_id=110000006]
+layout_mode = 2
+size_flags_vertical = 4
+min_value = -1.0
+max_value = 999.0
+
+[node name="DownSep" type="HSeparator" parent="EntryEditorPanel/VBox" unique_id=110000007]
+layout_mode = 2
+
+[node name="DownTitle" type="Label" parent="EntryEditorPanel/VBox" unique_id=110000008]
+layout_mode = 2
+text = "Vertical: Go Down"
+
+[node name="DownCheck" type="CheckBox" parent="EntryEditorPanel/VBox" unique_id=110000009]
+layout_mode = 2
+text = "Can go down"
+
+[node name="DownCoordLabel" type="Label" parent="EntryEditorPanel/VBox" unique_id=110000010]
+custom_minimum_size = Vector2(5, 5)
+layout_mode = 2
+text = "Arrival coord on floor below (X, Y):"
+autowrap_mode = 1
+
+[node name="DownXSpinBox" type="SpinBox" parent="EntryEditorPanel/VBox" unique_id=110000011]
+layout_mode = 2
+size_flags_vertical = 4
+min_value = -1.0
+max_value = 999.0
+
+[node name="DownYSpinBox" type="SpinBox" parent="EntryEditorPanel/VBox" unique_id=110000012]
+layout_mode = 2
+size_flags_vertical = 4
+min_value = -1.0
+max_value = 999.0
+
+[node name="DownHint" type="Label" parent="EntryEditorPanel/VBox" unique_id=110000013]
+custom_minimum_size = Vector2(5, 5)
+layout_mode = 2
+text = "Up/down travel stays within this datafort (no .tres needed). The runner arrives at the given coord on the floor above/below."
+autowrap_mode = 3
+
+[node name="IceEditorPanel" type="PanelContainer" parent="." unique_id=1776287980]
+visible = false
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -570.0
+offset_top = -442.5
+offset_bottom = -217.5
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="IceEditorPanel" unique_id=283429837]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="IceEditorPanel/VBox" unique_id=293008644]
 layout_mode = 2
 text = "ICE Editor"
 
-[node name="Hint" type="Label" parent="IceEditorPanel/VBox"]
+[node name="Hint" type="Label" parent="IceEditorPanel/VBox" unique_id=712134616]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
+size_flags_vertical = 1
 text = "Assign a program .tres (REQUIRED). Every BLACK_ICE tile must have an assigned program — tiles without one are skipped at spawn. The program supplies the ICE's name / strength / effect_type / damage; integrity is derived from the program's strength; movement is STR-based."
+autowrap_mode = 3
 
-[node name="ProgramLabel" type="Label" parent="IceEditorPanel/VBox"]
+[node name="ProgramLabel" type="Label" parent="IceEditorPanel/VBox" unique_id=714512458]
 layout_mode = 2
 text = "(none)"
 
-[node name="BrowseButton" type="Button" parent="IceEditorPanel/VBox"]
+[node name="BrowseButton" type="Button" parent="IceEditorPanel/VBox" unique_id=619171881]
 layout_mode = 2
 text = "Assign program .tres..."
 
-[node name="ClearButton" type="Button" parent="IceEditorPanel/VBox"]
+[node name="ClearButton" type="Button" parent="IceEditorPanel/VBox" unique_id=1474811403]
 layout_mode = 2
 text = "Clear assigned program"
 
-[node name="NpcEditorPanel" type="PanelContainer" parent="."]
+[node name="NpcEditorPanel" type="PanelContainer" parent="." unique_id=1719441231]
 visible = false
 layout_mode = 0
 anchor_left = 1.0
@@ -239,92 +393,95 @@ offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 0
 
-[node name="VBox" type="VBoxContainer" parent="NpcEditorPanel"]
+[node name="VBox" type="VBoxContainer" parent="NpcEditorPanel" unique_id=857158766]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="Title" type="Label" parent="NpcEditorPanel/VBox" unique_id=1898455145]
 layout_mode = 2
 text = "NPC Editor"
 
-[node name="Hint" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="Hint" type="Label" parent="NpcEditorPanel/VBox" unique_id=831249677]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Leave fields at 0/empty to use the hub security-tier template. Set any field to override the template for this tile."
+autowrap_mode = 3
 
-[node name="NameLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="NameLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=1550580513]
 layout_mode = 2
 text = "Name:"
 
-[node name="NameEdit" type="LineEdit" parent="NpcEditorPanel/VBox"]
+[node name="NameEdit" type="LineEdit" parent="NpcEditorPanel/VBox" unique_id=613815710]
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "e.g. NetWatch Officer (blank = template)"
 
-[node name="StrLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="StrLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=1576777563]
 layout_mode = 2
 text = "Strength:"
 
-[node name="StrSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox"]
+[node name="StrSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox" unique_id=495179376]
 layout_mode = 2
-min_value = 0.0
 max_value = 20.0
 
-[node name="ApLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="ApLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=659655594]
 layout_mode = 2
 text = "Max AP:"
 
-[node name="ApSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox"]
+[node name="ApSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox" unique_id=864334282]
 layout_mode = 2
-min_value = 0.0
 max_value = 20.0
 
-[node name="IntLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="IntLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=1928306160]
 layout_mode = 2
 text = "Max integrity:"
 
-[node name="IntSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox"]
+[node name="IntSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox" unique_id=1431730023]
 layout_mode = 2
-min_value = 0.0
 max_value = 20.0
 
-[node name="HpLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="HpLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=1643552901]
 layout_mode = 2
 text = "Max health:"
 
-[node name="HealthSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox"]
+[node name="HealthSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox" unique_id=72862386]
 layout_mode = 2
-min_value = 0.0
 max_value = 40.0
 
-[node name="MuLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="MuLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=1326397146]
 layout_mode = 2
 text = "Max MU:"
 
-[node name="MuSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox"]
+[node name="MuSpinBox" type="SpinBox" parent="NpcEditorPanel/VBox" unique_id=585467341]
 layout_mode = 2
-min_value = 0.0
 max_value = 40.0
 
-[node name="DeckLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="DeckLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=437803465]
 layout_mode = 2
 text = "Cyberdeck name:"
 
-[node name="DeckEdit" type="LineEdit" parent="NpcEditorPanel/VBox"]
+[node name="DeckEdit" type="LineEdit" parent="NpcEditorPanel/VBox" unique_id=2052588459]
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "e.g. Cyberdyne (blank = template)"
 
-[node name="DispLabel" type="Label" parent="NpcEditorPanel/VBox"]
+[node name="DispLabel" type="Label" parent="NpcEditorPanel/VBox" unique_id=2128796486]
 layout_mode = 2
 text = "Disposition:"
 
-[node name="DispositionOption" type="OptionButton" parent="NpcEditorPanel/VBox"]
+[node name="DispositionOption" type="OptionButton" parent="NpcEditorPanel/VBox" unique_id=10023338]
 layout_mode = 2
+selected = 0
+item_count = 2
+popup/item_0/text = "Hostile"
+popup/item_0/id = 0
+popup/item_1/text = "Neutral"
+popup/item_1/id = 1
 
-[node name="ClearButton" type="Button" parent="NpcEditorPanel/VBox"]
+[node name="ClearButton" type="Button" parent="NpcEditorPanel/VBox" unique_id=1574936735]
 layout_mode = 2
 text = "Reset to template (clear override)"
 
-[node name="CpuEditorPanel" type="PanelContainer" parent="."]
+[node name="CpuEditorPanel" type="PanelContainer" parent="." unique_id=229650743]
 visible = false
 layout_mode = 0
 anchor_left = 1.0
@@ -335,22 +492,24 @@ offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 0
 
-[node name="VBox" type="VBoxContainer" parent="CpuEditorPanel"]
+[node name="VBox" type="VBoxContainer" parent="CpuEditorPanel" unique_id=950852854]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="CpuEditorPanel/VBox"]
+[node name="Title" type="Label" parent="CpuEditorPanel/VBox" unique_id=1872792834]
 layout_mode = 2
 text = "CPU Editor"
 
-[node name="Hint" type="Label" parent="CpuEditorPanel/VBox"]
+[node name="Hint" type="Label" parent="CpuEditorPanel/VBox" unique_id=420667592]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Per CP2020 PnP rules, each CPU contributes a flat 3 INT, 1 action/turn, and 10 MU of storage capacity. A Krash anti-system program crashes a CPU for 1D6+1 turns."
+autowrap_mode = 3
 
-[node name="Stats" type="Label" parent="CpuEditorPanel/VBox"]
+[node name="Stats" type="Label" parent="CpuEditorPanel/VBox" unique_id=1877007090]
 layout_mode = 2
 text = "Stats per CPU: INT 3 | Actions 1 | MU 10"
 
-[node name="LootEditorPanel" type="PanelContainer" parent="."]
+[node name="LootEditorPanel" type="PanelContainer" parent="." unique_id=32102072]
 visible = false
 layout_mode = 0
 anchor_left = 1.0
@@ -361,54 +520,55 @@ offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 0
 
-[node name="VBox" type="VBoxContainer" parent="LootEditorPanel"]
+[node name="VBox" type="VBoxContainer" parent="LootEditorPanel" unique_id=1944745855]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="LootEditorPanel/VBox"]
+[node name="Title" type="Label" parent="LootEditorPanel/VBox" unique_id=1881810202]
 layout_mode = 2
 text = "Loot Editor"
 
-[node name="Hint" type="Label" parent="LootEditorPanel/VBox"]
+[node name="Hint" type="Label" parent="LootEditorPanel/VBox" unique_id=1386170548]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Programs and credits a netrunner receives when looting this tile. Loot is granted once per run (the is_looted flag is reset on load)."
+autowrap_mode = 3
 
-[node name="CpuInfoLabel" type="Label" parent="LootEditorPanel/VBox"]
+[node name="CpuInfoLabel" type="Label" parent="LootEditorPanel/VBox" unique_id=2135322466]
 layout_mode = 2
 text = "CPU stats: INT 3 | Actions 1 | MU 10
 Each CPU contributes a flat 3 INT, 1 action/turn, 10 MU storage."
 
-[node name="CreditsLabel" type="Label" parent="LootEditorPanel/VBox"]
+[node name="CreditsLabel" type="Label" parent="LootEditorPanel/VBox" unique_id=2000661580]
 layout_mode = 2
 text = "Loot credits:"
 
-[node name="CreditsSpinBox" type="SpinBox" parent="LootEditorPanel/VBox"]
+[node name="CreditsSpinBox" type="SpinBox" parent="LootEditorPanel/VBox" unique_id=71602242]
 layout_mode = 2
-min_value = 0.0
 max_value = 100000.0
 suffix = " eb"
 
-[node name="ProgLabel" type="Label" parent="LootEditorPanel/VBox"]
+[node name="ProgLabel" type="Label" parent="LootEditorPanel/VBox" unique_id=974179993]
 layout_mode = 2
 text = "Loot programs:"
 
-[node name="ProgramsList" type="ItemList" parent="LootEditorPanel/VBox"]
+[node name="ProgramsList" type="ItemList" parent="LootEditorPanel/VBox" unique_id=438929684]
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 120)
 
-[node name="AddButton" type="Button" parent="LootEditorPanel/VBox"]
+[node name="AddButton" type="Button" parent="LootEditorPanel/VBox" unique_id=882057146]
 layout_mode = 2
 text = "Add program (.tres)..."
 
-[node name="RemoveButton" type="Button" parent="LootEditorPanel/VBox"]
+[node name="RemoveButton" type="Button" parent="LootEditorPanel/VBox" unique_id=1061305030]
 layout_mode = 2
 text = "Remove selected"
 
-[node name="ClearButton" type="Button" parent="LootEditorPanel/VBox"]
+[node name="ClearButton" type="Button" parent="LootEditorPanel/VBox" unique_id=1996888827]
 layout_mode = 2
 text = "Clear loot list"
 
-[node name="FilesEditorPanel" type="PanelContainer" parent="."]
+[node name="FilesEditorPanel" type="PanelContainer" parent="." unique_id=923816500]
 visible = false
 layout_mode = 0
 anchor_left = 1.0
@@ -419,161 +579,157 @@ offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 0
 
-[node name="VBox" type="VBoxContainer" parent="FilesEditorPanel"]
+[node name="VBox" type="VBoxContainer" parent="FilesEditorPanel" unique_id=952427870]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="FilesEditorPanel/VBox"]
+[node name="Title" type="Label" parent="FilesEditorPanel/VBox" unique_id=379565528]
 layout_mode = 2
 text = "Files Editor"
 
-[node name="Hint" type="Label" parent="FilesEditorPanel/VBox"]
+[node name="Hint" type="Label" parent="FilesEditorPanel/VBox" unique_id=1224900835]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Files are discrete data files a netrunner copies to deck memory (consuming MU alongside programs) during a dive, then fences at the hub for their credit value (eb). The credit value is hidden from the player in the datafort menu and only revealed at the hub shop."
+autowrap_mode = 3
 
-[node name="NameLabel" type="Label" parent="FilesEditorPanel/VBox"]
+[node name="NameLabel" type="Label" parent="FilesEditorPanel/VBox" unique_id=1605552520]
 layout_mode = 2
 text = "File name:"
 
-[node name="NameEdit" type="LineEdit" parent="FilesEditorPanel/VBox"]
+[node name="NameEdit" type="LineEdit" parent="FilesEditorPanel/VBox" unique_id=1114662220]
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "e.g. Corporate Payroll Logs"
 
-[node name="DescLabel" type="Label" parent="FilesEditorPanel/VBox"]
+[node name="DescLabel" type="Label" parent="FilesEditorPanel/VBox" unique_id=658802721]
 layout_mode = 2
 text = "Description:"
 
-[node name="DescEdit" type="TextEdit" parent="FilesEditorPanel/VBox"]
+[node name="DescEdit" type="TextEdit" parent="FilesEditorPanel/VBox" unique_id=118022908]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 60)
 wrap_mode = 2
 
-[node name="ValueLabel" type="Label" parent="FilesEditorPanel/VBox"]
+[node name="ValueLabel" type="Label" parent="FilesEditorPanel/VBox" unique_id=1757536615]
 layout_mode = 2
 text = "Credit value (fence price):"
 
-[node name="ValueSpinBox" type="SpinBox" parent="FilesEditorPanel/VBox"]
+[node name="ValueSpinBox" type="SpinBox" parent="FilesEditorPanel/VBox" unique_id=1160437391]
 layout_mode = 2
-min_value = 0.0
 max_value = 100000.0
 suffix = " eb"
 
-[node name="MuLabel" type="Label" parent="FilesEditorPanel/VBox"]
+[node name="MuLabel" type="Label" parent="FilesEditorPanel/VBox" unique_id=122442270]
 layout_mode = 2
 text = "MU size:"
 
-[node name="MuSpinBox" type="SpinBox" parent="FilesEditorPanel/VBox"]
+[node name="MuSpinBox" type="SpinBox" parent="FilesEditorPanel/VBox" unique_id=2008635602]
 layout_mode = 2
 min_value = 1.0
-max_value = 100.0
 value = 1.0
 suffix = " MU"
 
-[node name="FilesList" type="ItemList" parent="FilesEditorPanel/VBox"]
+[node name="FilesList" type="ItemList" parent="FilesEditorPanel/VBox" unique_id=235383824]
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 120)
 
-[node name="AddButton" type="Button" parent="FilesEditorPanel/VBox"]
+[node name="AddButton" type="Button" parent="FilesEditorPanel/VBox" unique_id=1189510997]
 layout_mode = 2
 text = "Add file"
 
-[node name="UpdateButton" type="Button" parent="FilesEditorPanel/VBox"]
+[node name="UpdateButton" type="Button" parent="FilesEditorPanel/VBox" unique_id=1904092036]
 layout_mode = 2
 text = "Update selected"
 
-[node name="RemoveButton" type="Button" parent="FilesEditorPanel/VBox"]
+[node name="RemoveButton" type="Button" parent="FilesEditorPanel/VBox" unique_id=1177036171]
 layout_mode = 2
 text = "Remove selected"
 
-[node name="ClearButton" type="Button" parent="FilesEditorPanel/VBox"]
+[node name="ClearButton" type="Button" parent="FilesEditorPanel/VBox" unique_id=407059917]
 layout_mode = 2
 text = "Clear files"
 
-[node name="ProgramsEditorPanel" type="PanelContainer" parent="."]
-visible = false
-layout_mode = 0
+[node name="ProgramsEditorPanel" type="PanelContainer" parent="." unique_id=275088543]
+custom_minimum_size = Vector2(5, 5)
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
-anchor_top = 1.0
 anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -300.0
-offset_top = -260.0
-offset_right = -10.0
-offset_bottom = -42.0
+offset_left = -307.0
+offset_top = 110.0
+offset_right = -17.0
+offset_bottom = 485.0
 grow_horizontal = 0
-grow_vertical = 0
 
-[node name="VBox" type="VBoxContainer" parent="ProgramsEditorPanel"]
+[node name="VBox" type="VBoxContainer" parent="ProgramsEditorPanel" unique_id=762291252]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="ProgramsEditorPanel/VBox"]
+[node name="Title" type="Label" parent="ProgramsEditorPanel/VBox" unique_id=1825506142]
 layout_mode = 2
 text = "Datafort Resident Programs"
 
-[node name="Hint" type="Label" parent="ProgramsEditorPanel/VBox"]
+[node name="Hint" type="Label" parent="ProgramsEditorPanel/VBox" unique_id=1928143818]
 layout_mode = 2
 text = "Programs the datafort's CPUs run against intruding netrunners each turn. Add anti-personnel programs for the CPU adversary to attack the runner."
+autowrap_mode = 3
 
-[node name="ProgramsList" type="ItemList" parent="ProgramsEditorPanel/VBox"]
+[node name="ProgramsList" type="ItemList" parent="ProgramsEditorPanel/VBox" unique_id=774215146]
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 120)
 
-[node name="MuLabel" type="Label" parent="ProgramsEditorPanel/VBox"]
+[node name="MuLabel" type="Label" parent="ProgramsEditorPanel/VBox" unique_id=1142712375]
 layout_mode = 2
 text = "MU: 0/0"
 
-[node name="AddButton" type="Button" parent="ProgramsEditorPanel/VBox"]
+[node name="AddButton" type="Button" parent="ProgramsEditorPanel/VBox" unique_id=748905637]
 layout_mode = 2
 text = "Add program (.tres)..."
 
-[node name="RemoveButton" type="Button" parent="ProgramsEditorPanel/VBox"]
+[node name="RemoveButton" type="Button" parent="ProgramsEditorPanel/VBox" unique_id=175841212]
 layout_mode = 2
 text = "Remove selected"
 
-[node name="ProgramsToggleButton" type="Button" parent="."]
-layout_mode = 0
+[node name="ProgramsToggleButton" type="Button" parent="." unique_id=466811669]
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
-anchor_top = 1.0
 anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -200.0
-offset_top = -32.0
+offset_left = -265.0
+offset_top = 10.0
 offset_right = -10.0
-offset_bottom = -10.0
+offset_bottom = 41.0
 grow_horizontal = 0
-grow_vertical = 0
 text = "Show / Hide programs editor"
 
-[node name="SaveDialog" type="FileDialog" parent="."]
+[node name="SaveDialog" type="FileDialog" parent="." unique_id=1705406050]
+title = "Open a File or Directory"
 file_mode = 3
-access = 0
 filters = PackedStringArray("*.tres ; CP2020 Datafort Resource")
 
-[node name="LoadDialog" type="FileDialog" parent="."]
+[node name="LoadDialog" type="FileDialog" parent="." unique_id=184065023]
+title = "Open a File"
 file_mode = 0
-access = 0
 filters = PackedStringArray("*.tres ; CP2020 Datafort Resource")
 
-[node name="LdlBrowseDialog" type="FileDialog" parent="."]
+[node name="LdlBrowseDialog" type="FileDialog" parent="." unique_id=880490493]
+title = "Open a File"
 file_mode = 0
-access = 0
-current_dir = "res://scenes/forts"
 filters = PackedStringArray("*.tres ; Godot Resource")
 
-[node name="IceProgramDialog" type="FileDialog" parent="."]
+[node name="IceProgramDialog" type="FileDialog" parent="." unique_id=1013277227]
+title = "Open a File"
 file_mode = 0
-access = 0
 filters = PackedStringArray("*.tres ; Program resource")
 
-[node name="LootAddDialog" type="FileDialog" parent="."]
+[node name="LootAddDialog" type="FileDialog" parent="." unique_id=1347671265]
+title = "Open a File"
 file_mode = 0
-access = 0
 filters = PackedStringArray("*.tres ; Program resource")
 
-[node name="ProgramsAddDialog" type="FileDialog" parent="."]
+[node name="ProgramsAddDialog" type="FileDialog" parent="." unique_id=507731675]
+title = "Open a File"
 file_mode = 0
-access = 0
 filters = PackedStringArray("*.tres ; Program resource")

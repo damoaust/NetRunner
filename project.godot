@@ -34,6 +34,11 @@ window/size/fullscreen=true
 
 enabled=PackedStringArray()
 
+[gui]
+
+theme/custom="uid://kphrmsxee22v"
+theme/custom_font="uid://bw6p07wapar7s"
+
 [input]
 
 move_up={

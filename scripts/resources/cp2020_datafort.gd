@@ -26,9 +26,11 @@ signal state_changed
 class Cpu:
 	var coord: Vector2i
 	var tile: CP2020TileData
-	func _init(c: Vector2i, t: CP2020TileData) -> void:
+	var floor: int = 0
+	func _init(c: Vector2i, t: CP2020TileData, f: int = 0) -> void:
 		coord = c
 		tile = t
+		floor = f
 
 const INT_PER_CPU := 3
 const ACTIONS_PER_CPU := 1
@@ -55,16 +57,19 @@ func initialize(layout: CP2020DatafortLayout) -> void:
 	cpus.clear()
 	if layout:
 		fort_name = layout.fort_name
-		for raw_key in layout.grid_tiles.keys():
-			var coord: Vector2i
-			if raw_key is String:
-				var parts = raw_key.split(",")
-				coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-			else:
-				coord = raw_key
-			var tile = layout.get_tile(coord)
-			if tile and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
-				cpus.append(Cpu.new(coord, tile))
+		# Collect CPUs across ALL floors; each CPU remembers its home floor so
+		# sight gating / line_of_sight can use the correct floor.
+		for f in range(layout.get_floor_count()):
+			for raw_key in layout.get_floor_tiles(f).keys():
+				var coord: Vector2i
+				if raw_key is String:
+					var parts = raw_key.split(",")
+					coord = Vector2i(parts[0].to_int(), parts[1].to_int())
+				else:
+					coord = raw_key
+				var tile = layout.get_tile(coord, f)
+				if tile and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+					cpus.append(Cpu.new(coord, tile, f))
 		# Duplicate resident programs (avoid mutating cached .tres resources).
 		resident_programs.clear()
 		for p in layout.resident_programs:
@@ -159,7 +164,7 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 	var can_see := false
 	for cpu in cpus:
 		if is_instance_valid(cpu.tile) and cpu.tile.cpu_crashed_turns <= 0 \
-				and layout.line_of_sight(cpu.coord, target_pos, sight_range):
+				and layout.line_of_sight(cpu.coord, target_pos, sight_range, cpu.floor):
 			can_see = true
 			break
 	if not can_see:

@@ -35,6 +35,18 @@ func _init() -> void:
 # entry tiles). See netrunner.initialize for the full arrival ordering.
 @export var is_primary_entry: bool = false
 
+# --- Multi-floor up/down travel (see docs/multi-floor-travel-plan.md §1) ---
+# Marks this ENTRY tile as allowing vertical travel to the floor above/below
+# within the SAME layout (no separate .tres). The target coord is the arrival
+# position on the destination floor. A tile can have both up AND down
+# (independent target coords). These are distinct from the horizontal LDL
+# fields above (is_ldl_link / target_subnet_path / target_entry_coord) which
+# cross dataforts.
+@export var can_go_up: bool = false
+@export var up_target_entry_coord: Vector2i = Vector2i(-1, -1)
+@export var can_go_down: bool = false
+@export var down_target_entry_coord: Vector2i = Vector2i(-1, -1)
+
 # --- Per-tile ICE config (BLACK_ICE tiles). A program .tres is REQUIRED —
 # every BLACK_ICE tile must have an assigned ice_program. The program
 # supplies the ICE's program_name / strength / effect_type / damage_dice
