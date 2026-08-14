@@ -240,3 +240,46 @@ func get_visual() -> Dictionary:
 		if c.a == 0.0:
 			c = def.get("color", Color.CYAN)
 	return {"glyph": g, "color": c}
+
+# Auto-centres a glyph within its tile by measuring the glyph's actual bitmap
+# metrics via the TextServer. Returns the offset to add to a Label's position
+# (on top of the base -cell_size/2 centre) so the glyph bitmap sits centred.
+# Returns Vector2.ZERO if metrics are unavailable (glyph not in font) — the
+# caller should fall back to its manual label_visual_offset in that case.
+# `glyph_offset` (per-program manual nudge) is applied by the caller on top.
+static func compute_glyph_centering(glyph_char: String, font: Font, font_size: int, cell_size: int) -> Vector2:
+	if glyph_char.is_empty() or font == null or font_size <= 0:
+		return Vector2.ZERO
+	var ts: TextServer = TextServerManager.get_primary_interface()
+	if ts == null:
+		return Vector2.ZERO
+	var rids: Array = font.get_rids()
+	if rids.is_empty():
+		return Vector2.ZERO
+	var font_rid: RID = rids[0]
+	var char_code: int = glyph_char.unicode_at(0)
+	var glyph_index: int = ts.font_get_glyph_index(font_rid, font_size, char_code, 0)
+	var g_size: Vector2 = ts.font_get_glyph_size(font_rid, Vector2i(font_size, 0), glyph_index)
+	var g_offset: Vector2 = ts.font_get_glyph_offset(font_rid, Vector2i(font_size, 0), glyph_index)
+	if g_size.x <= 0.0 or g_size.y <= 0.0:
+		return Vector2.ZERO
+	var ascent: float = font.get_ascent(font_size)
+	var descent: float = font.get_descent(font_size)
+	# The Label centres the text line (ascent + descent) in cell_size, so the
+	# text-box top is at (cell_size - ascent - descent) / 2 and the baseline is
+	# at text_box_top + ascent. The glyph bitmap sits at baseline + g_offset,
+	# so its vertical centre is at baseline + g_offset.y + g_size.y / 2.
+	var text_box_top: float = (float(cell_size) - ascent - descent) / 2.0
+	var baseline: float = text_box_top + ascent
+	var glyph_center_y: float = baseline + g_offset.y + g_size.y / 2.0
+	var auto_y: float = float(cell_size) / 2.0 - glyph_center_y
+	# Horizontal: the Label centres the advance width, so pen_x is at
+	# (cell_size - advance) / 2. The glyph bitmap left is at pen_x + g_offset.x.
+	var advance_v: Vector2 = ts.font_get_glyph_advance(font_rid, font_size, glyph_index)
+	var advance: float = advance_v.x
+	if advance <= 0.0:
+		advance = font.get_char_size(char_code, font_size).x
+	var pen_x: float = (float(cell_size) - advance) / 2.0
+	var glyph_center_x: float = pen_x + g_offset.x + g_size.x / 2.0
+	var auto_x: float = float(cell_size) / 2.0 - glyph_center_x
+	return Vector2(auto_x, auto_y)

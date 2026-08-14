@@ -83,22 +83,36 @@ func emit_log(msg: String) -> void:
 # Apply this node's on-map visual identity from its assigned program: sets the
 # glyph label text + tints its LabelSettings font_color. The LabelSettings is
 # duplicated per instance so the shared scene sub-resource is never mutated.
-# No-op if the label or program is missing. Call after initialize().
+# The label position is auto-centred using the glyph's TextServer bitmap metrics
+# (so different Unicode glyphs sit centred without manual tuning); the
+# per-program `glyph_offset` stacks on top for stubborn edge cases. No-op if
+# the label or program is missing. Call after initialize().
 func apply_visual_from_program() -> void:
 	if glyph_label == null or program == null:
 		return
 	var vis: Dictionary = program.get_visual()
-	glyph_label.text = vis.get("glyph", "◆")
+	var glyph: String = vis.get("glyph", "◆")
+	glyph_label.text = glyph
 	var col: Color = vis.get("color", Color.CYAN)
 	if glyph_label.label_settings:
 		glyph_label.label_settings = glyph_label.label_settings.duplicate()
 		glyph_label.label_settings.font_color = col
 	else:
 		glyph_label.add_theme_color_override("font_color", col)
-	# Re-apply the label position including the per-program glyph_offset so
-	# glyphs with different font metrics (baseline / em-square fill) can be
-	# individually nudged to sit centred in the tile.
-	glyph_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + label_visual_offset + program.glyph_offset
+	# Auto-centre the glyph via its TextServer bitmap metrics. Falls back to the
+	# node's manual label_visual_offset when metrics are unavailable.
+	var font: Font = null
+	var font_size: int = 0
+	if glyph_label.label_settings and glyph_label.label_settings.font:
+		font = glyph_label.label_settings.font
+		font_size = int(glyph_label.label_settings.font_size)
+	else:
+		font = glyph_label.get_theme_default_font()
+		font_size = int(glyph_label.get_theme_default_font_size())
+	var auto_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, font, font_size, cell_size)
+	if auto_offset == Vector2.ZERO:
+		auto_offset = label_visual_offset
+	glyph_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + auto_offset + program.glyph_offset
 
 # Rebuild the astar solid region from Datawalls and locked Code Gates. Called
 # by the game session before the auto-follow path each turn.

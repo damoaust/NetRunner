@@ -166,22 +166,36 @@ func emit_log(msg: String) -> void:
 # Apply this ICE's on-map visual identity from its assigned program: sets the
 # skull label text + tints its LabelSettings font_color. The LabelSettings is
 # duplicated per instance so the shared scene sub-resource is never mutated.
-# No-op if the label or program is missing. Call after initialize().
+# The label position is auto-centred using the glyph's TextServer bitmap metrics
+# (so different Unicode glyphs sit centred without manual tuning); the
+# per-program `glyph_offset` stacks on top for stubborn edge cases. No-op if
+# the label or program is missing. Call after initialize().
 func apply_visual_from_program() -> void:
 	if skull_label == null or program == null:
 		return
 	var vis: Dictionary = program.get_visual()
-	skull_label.text = vis.get("glyph", "☠")
+	var glyph: String = vis.get("glyph", "☠")
+	skull_label.text = glyph
 	var col: Color = vis.get("color", Color.RED)
 	if skull_label.label_settings:
 		skull_label.label_settings = skull_label.label_settings.duplicate()
 		skull_label.label_settings.font_color = col
 	else:
 		skull_label.add_theme_color_override("font_color", col)
-	# Re-apply the label position including the per-program glyph_offset so
-	# glyphs with different font metrics (baseline / em-square fill) can be
-	# individually nudged to sit centred in the tile.
-	skull_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + label_visual_offset + program.glyph_offset
+	# Auto-centre the glyph via its TextServer bitmap metrics. Falls back to the
+	# node's manual label_visual_offset when metrics are unavailable.
+	var font: Font = null
+	var font_size: int = 0
+	if skull_label.label_settings and skull_label.label_settings.font:
+		font = skull_label.label_settings.font
+		font_size = int(skull_label.label_settings.font_size)
+	else:
+		font = skull_label.get_theme_default_font()
+		font_size = int(skull_label.get_theme_default_font_size())
+	var auto_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, font, font_size, cell_size)
+	if auto_offset == Vector2.ZERO:
+		auto_offset = label_visual_offset
+	skull_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + auto_offset + program.glyph_offset
 
 # Line-of-sight from this ICE's position to `target_pos` within sight_range.
 func has_los_to(target_pos: Vector2i, layout: CP2020DatafortLayout) -> bool:
