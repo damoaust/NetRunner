@@ -95,6 +95,10 @@ func apply_visual_from_program() -> void:
 		glyph_label.label_settings.font_color = col
 	else:
 		glyph_label.add_theme_color_override("font_color", col)
+	# Re-apply the label position including the per-program glyph_offset so
+	# glyphs with different font metrics (baseline / em-square fill) can be
+	# individually nudged to sit centred in the tile.
+	glyph_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + label_visual_offset + program.glyph_offset
 
 # Rebuild the astar solid region from Datawalls and locked Code Gates. Called
 # by the game session before the auto-follow path each turn.

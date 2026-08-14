@@ -73,6 +73,12 @@ const DEFAULT_VISUALS: Dictionary = {
 # look with no authoring. Set them in a .tres to give a program a custom icon.
 @export var glyph: String = ""
 @export var color: Color = Color(0, 0, 0, 0)
+# Per-program nudge to centre the glyph in its tile. Different Unicode glyphs
+# render at different positions within their text box (baseline / em-square
+# fill vary by block), so the node's global label_visual_offset can't centre
+# them all. Designers set this in a .tres to fine-tune glyphs that sit off
+# (e.g. ⚔, ⚡ which sit higher/lower than ◆). Default ZERO = global offset only.
+@export var glyph_offset: Vector2 = Vector2.ZERO
 # Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
 # as damage (existing behaviour for all current programs). >0 = roll
 # 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.

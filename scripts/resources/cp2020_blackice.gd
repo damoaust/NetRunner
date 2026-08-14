@@ -178,6 +178,10 @@ func apply_visual_from_program() -> void:
 		skull_label.label_settings.font_color = col
 	else:
 		skull_label.add_theme_color_override("font_color", col)
+	# Re-apply the label position including the per-program glyph_offset so
+	# glyphs with different font metrics (baseline / em-square fill) can be
+	# individually nudged to sit centred in the tile.
+	skull_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + label_visual_offset + program.glyph_offset
 
 # Line-of-sight from this ICE's position to `target_pos` within sight_range.
 func has_los_to(target_pos: Vector2i, layout: CP2020DatafortLayout) -> bool:
