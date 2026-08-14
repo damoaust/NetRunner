@@ -832,6 +832,7 @@ func _rez_program(prog: NetProgram) -> bool:
 	rez.cell_size = int(board_renderer.cell_size) if board_renderer else 40
 	rez.grid_offset_y = int(board_renderer.grid_offset_y) if board_renderer else 90
 	rez.initialize(spawn_pos, layout_size)
+	rez.apply_visual_from_program()
 	rez.message_logged.connect(log_to_terminal)
 	rez.moved_to.connect(_on_rezzed_program_moved)
 	rez.destroyed.connect(_on_rezzed_program_destroyed.bind(rez))
@@ -1131,6 +1132,7 @@ func spawn_black_ice() -> void:
 				ice.max_integrity = ice.program.strength
 				ice.home_floor = f
 				ice.initialize(coord, layout_size)
+				ice.apply_visual_from_program()
 				ice.message_logged.connect(log_to_terminal)
 				ice.moved_to.connect(_on_ice_moved)
 				# Anti-personnel (DAMAGE_RUNNER) ICE attacks the runner's meat

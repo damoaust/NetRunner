@@ -80,6 +80,22 @@ func move_to_step(coord: Vector2i) -> void:
 func emit_log(msg: String) -> void:
 	message_logged.emit(msg)
 
+# Apply this node's on-map visual identity from its assigned program: sets the
+# glyph label text + tints its LabelSettings font_color. The LabelSettings is
+# duplicated per instance so the shared scene sub-resource is never mutated.
+# No-op if the label or program is missing. Call after initialize().
+func apply_visual_from_program() -> void:
+	if glyph_label == null or program == null:
+		return
+	var vis: Dictionary = program.get_visual()
+	glyph_label.text = vis.get("glyph", "◆")
+	var col: Color = vis.get("color", Color.CYAN)
+	if glyph_label.label_settings:
+		glyph_label.label_settings = glyph_label.label_settings.duplicate()
+		glyph_label.label_settings.font_color = col
+	else:
+		glyph_label.add_theme_color_override("font_color", col)
+
 # Rebuild the astar solid region from Datawalls and locked Code Gates. Called
 # by the game session before the auto-follow path each turn.
 func refresh_pathfinding(layout: CP2020DatafortLayout) -> void:

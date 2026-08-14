@@ -129,9 +129,11 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 		canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), beacon_color, 2.0)
 		canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), beacon_color, 2.0)
 
-	# Rezzed attack-program overlay: draw a pulsing cyan diamond "◆" glyph at
-	# each rezzed node's position. Only nodes on the current floor are drawn
-	# (floor-gated like ICE). Drawn after tiles + beacons so it sits on top.
+	# Rezzed attack-program overlay: draw a pulsing diamond + the program's
+	# own glyph (from NetProgram.get_visual()) at each rezzed node's position,
+	# tinted with the program's color — so each rezzed program has a distinct
+	# on-map identity. Only nodes on the current floor are drawn (floor-gated
+	# like ICE). Drawn after tiles + beacons so it sits on top.
 	for rez in rezzed_program_nodes:
 		if not is_instance_valid(rez):
 			continue
@@ -139,9 +141,10 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 			continue
 		var rez_rect = Rect2(rez.current_position.x * cell_size, grid_offset_y + (rez.current_position.y * cell_size), cell_size, cell_size)
 		var rcenter = rez_rect.get_center()
-		var rez_color = Color(0.2, 0.9, 1.0, 1.0)
+		var vis: Dictionary = rez.program.get_visual() if rez.program else {}
+		var rez_color: Color = vis.get("color", Color(0.2, 0.9, 1.0, 1.0))
 		var rpulse: float = 9.0 + sin(Time.get_ticks_msec() * 0.006) * 2.0
-		canvas.draw_circle(rcenter, rpulse, Color(0.1, 0.6, 0.8, 0.3))
+		canvas.draw_circle(rcenter, rpulse, Color(rez_color.r, rez_color.g, rez_color.b, 0.3))
 		# Diamond outline.
 		var ds: float = 8.0
 		var d := PackedVector2Array([
@@ -151,11 +154,10 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 			rcenter + Vector2(-ds, 0),
 		])
 		canvas.draw_polyline(d, rez_color, 2.0, true)
-		# Label the program's initial so the player can tell rezzed programs apart.
-		var prog_name: String = rez.program.program_name if rez.program else "?"
-		var initial := prog_name.substr(0, 1)
-		var font := _get_default_font()
-		canvas.draw_string(font, rcenter + Vector2(-4, 4), initial, HORIZONTAL_ALIGNMENT_CENTER, -1, 11, rez_color)
+		# The program's glyph itself is drawn by the RezzedProgram node's
+		# GlyphLabel (apply_visual_from_program); this overlay only frames it
+		# with a pulsing tinted halo so the player can tell rezzed programs
+		# apart at a glance by colour.
 
 func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool) -> void:
 	var alpha_mult: float = 1.0 if is_visible else 0.3

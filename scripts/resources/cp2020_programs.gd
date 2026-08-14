@@ -37,14 +37,42 @@ const ATTACK_VISUALS: Dictionary = {
 	EffectType.CRASH_CPU: {"color": Color(1.0, 0.5, 0.0), "width": 3.0, "duration": 0.5, "style": "beam"},
 }
 
+# Per-effect-type default on-map visual identity (glyph + color). Renderers
+# (rezzed program nodes, Black ICE nodes, board overlay) resolve a program's
+# look via get_visual(): a program's own `glyph`/`color` override these when
+# set, so every program can carry a distinct visual stored in its .tres
+# without forcing designers to author one. Glyphs use Unicode blocks already
+# confirmed rendering in the default font (geometric shapes / misc symbols).
+const DEFAULT_VISUALS: Dictionary = {
+	EffectType.BYPASS_GATE: {"glyph": "◇", "color": Color(0.30, 0.90, 0.45, 1.0)},
+	EffectType.BREACH_WALL: {"glyph": "▦", "color": Color(1.00, 0.60, 0.20, 1.0)},
+	EffectType.DEREZ_ICE: {"glyph": "⚔", "color": Color(1.00, 0.20, 0.20, 1.0)},
+	EffectType.DAMAGE_RUNNER: {"glyph": "☠", "color": Color(0.90, 0.15, 0.25, 1.0)},
+	EffectType.REVEAL_NODES: {"glyph": "◉", "color": Color(0.30, 0.80, 1.00, 1.0)},
+	EffectType.MODIFY_MU: {"glyph": "⚙", "color": Color(0.70, 0.70, 0.75, 1.0)},
+	EffectType.SHIELD: {"glyph": "◈", "color": Color(0.30, 0.60, 1.00, 1.0)},
+	EffectType.CRASH_CPU: {"glyph": "⚡", "color": Color(1.00, 0.50, 0.00, 1.0)},
+	EffectType.ARMOR: {"glyph": "▣", "color": Color(0.60, 0.70, 0.80, 1.0)},
+	EffectType.WORM: {"glyph": "◐", "color": Color(0.40, 0.90, 0.30, 1.0)},
+	EffectType.DETECTION: {"glyph": "◎", "color": Color(1.00, 0.80, 0.20, 1.0)},
+	EffectType.INVISIBILITY: {"glyph": "◌", "color": Color(0.80, 0.40, 1.00, 1.0)},
+}
+
 @export var program_name: String = "Hammer"
 @export var type: ProgramType = ProgramType.INTRUSION
 @export var effect_type: EffectType = EffectType.BREACH_WALL
 @export var memory_cost: int = 2 # MU required to equip
 @export var strength: int = 4   # Added to attack/defense rolls[cite: 16]
 @export var price: int = 600    # Cost in Eurodollars
-@export var icon: Texture2D     # UI Icon[cite: 16]
+@export var icon: Texture2D     # UI Icon (workbench list rows)[cite: 16]
 @export var description: String = "" # One-line summary shown in the workbench detail card
+# On-map visual identity for this program. `glyph` is the character drawn on
+# the grid (rezzed program / Black ICE node + board overlay); `color` is its
+# tint. Leave both at their defaults (empty glyph / alpha-0 color) to fall
+# back to the per-effect-type DEFAULT_VISUALS — every program gets a distinct
+# look with no authoring. Set them in a .tres to give a program a custom icon.
+@export var glyph: String = ""
+@export var color: Color = Color(0, 0, 0, 0)
 # Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
 # as damage (existing behaviour for all current programs). >0 = roll
 # 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.
@@ -191,3 +219,18 @@ func get_attack_visual() -> Dictionary:
 	if ATTACK_VISUALS.has(effect_type):
 		return ATTACK_VISUALS[effect_type]
 	return {"color": Color(1.0, 0.2, 0.2), "width": 3.0, "duration": 0.5, "style": "beam"}
+
+# Resolves this program's on-map visual identity: {"glyph": String, "color":
+# Color}. A program's own `glyph` (non-empty) / `color` (alpha > 0) override
+# the per-effect-type DEFAULT_VISUALS, so a custom look can be authored per
+# .tres; otherwise every program gets a distinct-by-effect-type default.
+func get_visual() -> Dictionary:
+	var g := glyph
+	var c := color
+	if g.is_empty() or c.a == 0.0:
+		var def: Dictionary = DEFAULT_VISUALS.get(effect_type, {})
+		if g.is_empty():
+			g = def.get("glyph", "◆")
+		if c.a == 0.0:
+			c = def.get("color", Color.CYAN)
+	return {"glyph": g, "color": c}

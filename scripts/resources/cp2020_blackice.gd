@@ -163,6 +163,22 @@ func emit_alarm() -> void:
 func emit_log(msg: String) -> void:
 	message_logged.emit(msg)
 
+# Apply this ICE's on-map visual identity from its assigned program: sets the
+# skull label text + tints its LabelSettings font_color. The LabelSettings is
+# duplicated per instance so the shared scene sub-resource is never mutated.
+# No-op if the label or program is missing. Call after initialize().
+func apply_visual_from_program() -> void:
+	if skull_label == null or program == null:
+		return
+	var vis: Dictionary = program.get_visual()
+	skull_label.text = vis.get("glyph", "☠")
+	var col: Color = vis.get("color", Color.RED)
+	if skull_label.label_settings:
+		skull_label.label_settings = skull_label.label_settings.duplicate()
+		skull_label.label_settings.font_color = col
+	else:
+		skull_label.add_theme_color_override("font_color", col)
+
 # Line-of-sight from this ICE's position to `target_pos` within sight_range.
 func has_los_to(target_pos: Vector2i, layout: CP2020DatafortLayout) -> bool:
 	return layout.line_of_sight(current_position, target_pos, sight_range, home_floor)
