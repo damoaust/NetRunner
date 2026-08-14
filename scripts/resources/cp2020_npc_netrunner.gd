@@ -259,9 +259,9 @@ func _update_obstacles(layout: CP2020DatafortLayout) -> void:
 				astar_grid.set_point_solid(coord, true)
 
 
-func update_visibility(is_explored: bool, is_visible: bool) -> void:
+func update_visibility(_is_explored: bool, p_visible: bool) -> void:
 	if glyph_label:
-		glyph_label.visible = is_visible
+		glyph_label.visible = p_visible
 
 
 func take_damage(amount: int) -> bool:

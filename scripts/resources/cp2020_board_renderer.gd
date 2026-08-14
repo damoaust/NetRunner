@@ -4,6 +4,72 @@ extends Node2D
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
 
+# --- Themeable colors (inspector-editable; defaults reproduce the original
+# hardcoded palette). Colours used with the fog alpha multiplier store their
+# base alpha here; _a() scales it by alpha_mult at draw time. ---
+
+@export_group("Grid")
+@export var color_grid_bg: Color = Color(0.02, 0.03, 0.06, 1.0)
+@export var color_grid_line: Color = Color(0.0, 0.78, 0.92, 0.22)
+@export var color_grid_line_bright: Color = Color(0.0, 0.9, 1.0, 0.55)
+@export var color_unexplored_fill: Color = Color(0.0, 0.0, 0.0, 1.0)
+@export var color_fog_overlay: Color = Color(0.01, 0.02, 0.04, 0.88)
+@export var color_visible_overlay: Color = Color(0.04, 0.08, 0.12, 0.35)
+@export var color_empty_dot: Color = Color(0.0, 0.78, 0.92, 0.35)
+
+@export_group("Grid Effects")
+@export var color_scanline: Color = Color(0.0, 0.0, 0.0, 0.12)
+@export var color_vignette: Color = Color(0.0, 0.0, 0.0, 0.3)
+@export var color_tech_frame: Color = Color(0.0, 0.9, 1.0, 0.55)
+
+@export_group("Entry")
+@export var color_entry_fill: Color = Color(0.0, 0.4, 0.8, 0.3)
+@export var color_entry_frame: Color = Color(0.0, 1.0, 1.0, 1.0)
+@export var color_entry_up: Color = Color(0.0, 0.8, 0.8, 1.0)
+@export var color_entry_down: Color = Color(0.6, 0.2, 0.8, 1.0)
+@export var color_entry_up_glyph: Color = Color(0.0, 0.9, 0.9, 1.0)
+@export var color_entry_down_glyph: Color = Color(0.8, 0.4, 1.0, 1.0)
+@export var color_primary_entry_mark: Color = Color(1.0, 1.0, 1.0, 1.0)
+
+@export_group("Datawall")
+@export var color_wall_fill: Color = Color(0.8, 0.1, 0.1, 0.6)
+@export var color_wall_border: Color = Color(1.0, 0.0, 0.0, 1.0)
+
+@export_group("Code Gate")
+@export var color_gate_unlocked: Color = Color(0.0, 1.0, 0.0, 1.0)
+@export var color_gate_locked: Color = Color(1.0, 0.5, 0.0, 1.0)
+
+@export_group("Memory Unit")
+@export var color_mu_fill: Color = Color(0.0, 0.4, 0.7, 0.25)
+@export var color_mu_border: Color = Color(0.0, 0.75, 1.0, 0.8)
+@export var color_mu_chip_fill: Color = Color(0.0, 0.3, 0.6, 0.4)
+@export var color_mu_chip_border: Color = Color(0.0, 0.75, 1.0, 1.0)
+@export var color_mu_copied_dot: Color = Color(0.2, 0.9, 0.3, 0.9)
+
+@export_group("Control Node")
+@export var color_cpu_fill: Color = Color(0.5, 0.0, 0.5, 0.25)
+@export var color_cpu_border: Color = Color(0.5, 0.0, 0.5, 0.8)
+@export var color_cpu_inner: Color = Color(0.5, 0.0, 0.5, 0.6)
+@export var color_cpu_diamond: Color = Color(0.6, 0.2, 0.8, 0.7)
+@export var color_cpu_crashed_fill: Color = Color(0.3, 0.05, 0.05, 0.5)
+@export var color_cpu_crashed_border: Color = Color(1.0, 0.0, 0.0, 1.0)
+
+@export_group("Watchdog")
+@export var color_beacon: Color = Color(0.9, 0.6, 0.1, 1.0)
+@export var color_beacon_halo: Color = Color(0.7, 0.4, 0.05, 0.35)
+
+@export_group("Rezzed")
+@export var color_rez_default: Color = Color(0.2, 0.9, 1.0, 1.0)
+
+@export_group("Worm")
+@export var color_worm_full: Color = Color(0.7, 0.3, 0.9, 1.0)
+@export var color_worm_damaged: Color = Color(0.9, 0.5, 0.2, 1.0)
+@export var color_worm_critical: Color = Color(0.9, 0.2, 0.2, 1.0)
+@export var color_worm_halo: Color = Color(0.5, 0.2, 0.7, 0.35)
+
+@export_group("Floor HUD")
+@export var color_flash: Color = Color(1.0, 1.0, 1.0, 1.0)
+
 # Reference to the current layout being displayed
 var current_layout: CP2020DatafortLayout
 
@@ -23,6 +89,7 @@ var _default_font: Font = null
 # _process; the centered "Floor N — Name" text is drawn over the board
 # while alpha > 0. A persistent HUD label is always drawn in the header.
 var _floor_flash_alpha: float = 0.0
+var _pulse_time: float = 0.0
 
 func _get_default_font() -> Font:
 	if _default_font == null:
@@ -30,6 +97,10 @@ func _get_default_font() -> Font:
 		_default_font = label.get_theme_default_font()
 		label.free()
 	return _default_font
+
+# Scale a colour's alpha by the fog multiplier (explored-not-visible tiles).
+func _a(c: Color, alpha_mult: float) -> Color:
+	return Color(c.r, c.g, c.b, c.a * alpha_mult)
 
 func _draw() -> void:
 	if current_layout:
@@ -42,24 +113,22 @@ func _draw() -> void:
 func _draw_floor_hud() -> void:
 	if current_layout == null:
 		return
-	var font := _get_default_font()
-	var f := current_layout.current_floor
-	var count := current_layout.get_floor_count()
-	var fname: String = ""
-	if f >= 0 and f < current_layout.floors.size():
-		fname = current_layout.floors[f].floor_name
-	if fname == "":
-		fname = "Floor %d" % f
-	# Persistent label, top-left of the header strip (above the grid).
-	var hud_text := "Floor %d/%d — %s" % [f + 1, count, fname]
-	draw_string(font, Vector2(8, 18), hud_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.7, 0.85, 1.0, 1.0))
-	# Centered flash overlay (fades after a floor switch).
+	# The persistent floor label now lives in the scene tree as a themed
+	# Label (FloorHudLabel, updated by the game session). Only the
+	# transient centered flash is drawn here.
 	if _floor_flash_alpha > 0.0:
+		var font := _get_default_font()
+		var f := current_layout.current_floor
+		var fname: String = ""
+		if f >= 0 and f < current_layout.floors.size():
+			fname = current_layout.floors[f].floor_name
+		if fname == "":
+			fname = "Floor %d" % f
 		var flash_text := "▼ %s ▲" % fname
 		var total_width := current_layout.columns * cell_size
 		var center_x := total_width * 0.5
 		var flash_y := grid_offset_y + (current_layout.rows * cell_size) * 0.5
-		var col := Color(1.0, 1.0, 1.0, _floor_flash_alpha)
+		var col := Color(color_flash.r, color_flash.g, color_flash.b, color_flash.a * _floor_flash_alpha)
 		# Shadow for legibility against any tile underneath.
 		draw_string(font, Vector2(center_x - 80, flash_y), flash_text, HORIZONTAL_ALIGNMENT_CENTER, 160, 28, Color(0, 0, 0, _floor_flash_alpha * 0.8))
 		draw_string(font, Vector2(center_x - 80, flash_y), flash_text, HORIZONTAL_ALIGNMENT_CENTER, 160, 28, col)
@@ -70,70 +139,128 @@ func flash_floor_label() -> void:
 	_floor_flash_alpha = 1.0
 	queue_redraw()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_pulse_time += delta
 	if _floor_flash_alpha > 0.0:
-		_floor_flash_alpha = max(0.0, _floor_flash_alpha - _delta * 0.7)
-		queue_redraw()
+		_floor_flash_alpha = max(0.0, _floor_flash_alpha - delta * 0.7)
+	queue_redraw()
+
+func _pulse_value() -> float:
+	return 0.5 + 0.5 * sin(_pulse_time * 3.0)
+
+func _draw_neon_grid_lines(total_w: float, total_h: float) -> void:
+	var pulse := _pulse_value()
+	var bright_alpha := color_grid_line_bright.a * (0.5 + 0.5 * pulse)
+	var oy := float(grid_offset_y)
+	for x in range(current_layout.columns + 1):
+		var px := float(x * cell_size)
+		if x % 5 == 0:
+			draw_line(Vector2(px, oy), Vector2(px, oy + total_h),
+				Color(color_grid_line_bright.r, color_grid_line_bright.g, color_grid_line_bright.b, bright_alpha), 1.5)
+		else:
+			draw_line(Vector2(px, oy), Vector2(px, oy + total_h), color_grid_line, 1.0)
+	for y in range(current_layout.rows + 1):
+		var py := oy + float(y * cell_size)
+		if y % 5 == 0:
+			draw_line(Vector2(0, py), Vector2(total_w, py),
+				Color(color_grid_line_bright.r, color_grid_line_bright.g, color_grid_line_bright.b, bright_alpha), 1.5)
+		else:
+			draw_line(Vector2(0, py), Vector2(total_w, py), color_grid_line, 1.0)
+
+func _draw_scanlines(total_w: float, total_h: float) -> void:
+	var oy := float(grid_offset_y)
+	var y: float = oy
+	while y < oy + total_h:
+		draw_line(Vector2(0, y), Vector2(total_w, y), color_scanline, 1.0)
+		y += 4.0
+
+func _draw_vignette(total_w: float, total_h: float) -> void:
+	var oy := float(grid_offset_y)
+	var margin := 100.0
+	draw_rect(Rect2(0, oy, total_w, margin), color_vignette, true)
+	draw_rect(Rect2(0, oy + total_h - margin, total_w, margin), color_vignette, true)
+	draw_rect(Rect2(0, oy, margin, total_h), color_vignette, true)
+	draw_rect(Rect2(total_w - margin, oy, margin, total_h), color_vignette, true)
+
+func _draw_tech_frame(total_w: float, total_h: float) -> void:
+	var oy := float(grid_offset_y)
+	var origin := Vector2(0, oy)
+	var frame_size := Vector2(total_w, total_h)
+	var tl := origin
+	var top_r := origin + Vector2(frame_size.x, 0)
+	var bl := origin + Vector2(0, frame_size.y)
+	var bottom_r := origin + frame_size
+	var inset := 18.0
+	var w := 2.0
+	draw_rect(Rect2(origin, frame_size), color_tech_frame, false, w)
+	draw_line(tl, tl + Vector2(inset, 0), color_tech_frame, w + 1.0)
+	draw_line(tl, tl + Vector2(0, inset), color_tech_frame, w + 1.0)
+	draw_line(top_r, top_r + Vector2(-inset, 0), color_tech_frame, w + 1.0)
+	draw_line(top_r, top_r + Vector2(0, inset), color_tech_frame, w + 1.0)
+	draw_line(bl, bl + Vector2(inset, 0), color_tech_frame, w + 1.0)
+	draw_line(bl, bl + Vector2(0, -inset), color_tech_frame, w + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color_tech_frame, w + 1.0)
+	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color_tech_frame, w + 1.0)
 
 func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 	# Render only the current floor's tiles. Empty current floor -> blank board.
 	if not layout or layout.get_current_floor_tiles().is_empty():
 		return
 
-	var total_width = layout.columns * cell_size
-	var total_height = layout.rows * cell_size
+	var total_width: float = float(layout.columns * cell_size)
+	var total_height: float = float(layout.rows * cell_size)
 
-	# STATE 3 (UNEXPLORED): Paint whole board black
-	canvas.draw_rect(Rect2(0, grid_offset_y, total_width, total_height), Color.BLACK)
+	# 1. Base background (dark navy) across the grid area.
+	canvas.draw_rect(Rect2(0, grid_offset_y, total_width, total_height), color_grid_bg)
 
-	for raw_key in layout.get_current_floor_tiles().keys():
-		# 1. Safely convert the string key from the .tres file back into a Vector2i
-		var coord: Vector2i
-		if raw_key is String:
-			var parts = raw_key.split(",")
-			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-		else:
-			coord = raw_key
-			
-		# 2. Safely get the tile using our helper function (current floor)
-		var tile_data = layout.get_tile(coord, layout.current_floor)
-		
-		if not tile_data or not tile_data.is_explored:
-			continue # Leave it total black
+	# 2. Neon grid lines across the full grid (dim + bright every 5th, pulsing).
+	_draw_neon_grid_lines(total_width, total_height)
 
-		# 3. Now coord.x and coord.y will work perfectly!
-		var cell_rect = Rect2(coord.x * cell_size, grid_offset_y + (coord.y * cell_size), cell_size, cell_size)
+	# 3+4. Fog-state overlays + tile graphics per cell.
+	# Iterate every cell so unexplored/no-tile areas are painted as black void.
+	var oy: float = float(grid_offset_y)
+	for x in range(layout.columns):
+		for y in range(layout.rows):
+			var coord := Vector2i(x, y)
+			var tile_data := layout.get_tile(coord, layout.current_floor)
+			var cell_rect := Rect2(float(x * cell_size), oy + float(y * cell_size), float(cell_size), float(cell_size))
 
-		if tile_data.is_visible:
-			# STATE 1 (VISIBLE): Brighter floor
-			canvas.draw_rect(cell_rect, Color(0.08, 0.08, 0.08), true)
-			_draw_tile_graphics(canvas, tile_data, cell_rect, true)
-			canvas.draw_rect(cell_rect, Color(0.3, 0.4, 0.5, 0.8), false, 1.0)
-		else:
-			# STATE 2 (EXPLORED / FOG OF WAR): Darker floor
-			canvas.draw_rect(cell_rect, Color(0.04, 0.04, 0.05, 1.0), true)
-			_draw_tile_graphics(canvas, tile_data, cell_rect, false)
-			canvas.draw_rect(cell_rect, Color(0.15, 0.15, 0.2, 0.6), false, 1.0)
+			if tile_data == null or not tile_data.is_explored:
+				# UNEXPLORED: opaque black void — hide grid lines.
+				canvas.draw_rect(cell_rect, color_unexplored_fill, true)
+				continue
 
-	# Watchdog beacon overlay: draw a pulsing amber "W" glyph at each
-	# beacon position deployed by the netrunner. Drawn after all tiles so
-	# the beacon is visible on top of any tile graphics.
+			if tile_data.is_visible:
+				# VISIBLE: subtle floor tint — grid lines clearly visible.
+				canvas.draw_rect(cell_rect, color_visible_overlay, true)
+				_draw_tile_graphics(canvas, tile_data, cell_rect, true)
+			else:
+				# EXPLORED (FOG): semi-transparent dark overlay — dim grid lines.
+				canvas.draw_rect(cell_rect, color_fog_overlay, true)
+				_draw_tile_graphics(canvas, tile_data, cell_rect, false)
+
+	# 5. Scanlines across the grid area.
+	_draw_scanlines(total_width, total_height)
+
+	# 6. Vignette around the grid edges.
+	_draw_vignette(total_width, total_height)
+
+	# 7. Tech frame (corner brackets + border) around the grid.
+	_draw_tech_frame(total_width, total_height)
+
+	# 8. Watchdog beacon overlay — pulsing amber "W" glyph at each beacon.
 	for beacon in watchdog_beacons:
 		var beacon_rect = Rect2(beacon.x * cell_size, grid_offset_y + (beacon.y * cell_size), cell_size, cell_size)
 		var center = beacon_rect.get_center()
-		var beacon_color = Color(0.9, 0.6, 0.1, 1.0)
+		var beacon_color = color_beacon
 		var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
-		canvas.draw_circle(center, pulse_radius, Color(0.7, 0.4, 0.05, 0.35))
+		canvas.draw_circle(center, pulse_radius, color_beacon_halo)
 		var s: float = 7.0
 		canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), beacon_color, 2.0)
 		canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), beacon_color, 2.0)
 		canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), beacon_color, 2.0)
 
-	# Rezzed attack-program overlay: draw a pulsing diamond + the program's
-	# own glyph (from NetProgram.get_visual()) at each rezzed node's position,
-	# tinted with the program's color — so each rezzed program has a distinct
-	# on-map identity. Only nodes on the current floor are drawn (floor-gated
-	# like ICE). Drawn after tiles + beacons so it sits on top.
+	# 9. Rezzed attack-program overlay — pulsing diamond + tinted halo.
 	for rez in rezzed_program_nodes:
 		if not is_instance_valid(rez):
 			continue
@@ -142,10 +269,9 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 		var rez_rect = Rect2(rez.current_position.x * cell_size, grid_offset_y + (rez.current_position.y * cell_size), cell_size, cell_size)
 		var rcenter = rez_rect.get_center()
 		var vis: Dictionary = rez.program.get_visual() if rez.program else {}
-		var rez_color: Color = vis.get("color", Color(0.2, 0.9, 1.0, 1.0))
+		var rez_color: Color = vis.get("color", color_rez_default)
 		var rpulse: float = 9.0 + sin(Time.get_ticks_msec() * 0.006) * 2.0
 		canvas.draw_circle(rcenter, rpulse, Color(rez_color.r, rez_color.g, rez_color.b, 0.3))
-		# Diamond outline.
 		var ds: float = 8.0
 		var d := PackedVector2Array([
 			rcenter + Vector2(0, -ds),
@@ -154,10 +280,6 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 			rcenter + Vector2(-ds, 0),
 		])
 		canvas.draw_polyline(d, rez_color, 2.0, true)
-		# The program's glyph itself is drawn by the RezzedProgram node's
-		# GlyphLabel (apply_visual_from_program); this overlay only frames it
-		# with a pulsing tinted halo so the player can tell rezzed programs
-		# apart at a glance by colour.
 
 func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool) -> void:
 	var alpha_mult: float = 1.0 if is_visible else 0.3
@@ -167,11 +289,10 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 		CP2020DatafortLayout.TileType.EMPTY:
 			# Draw a subtle inner dot in the center of empty tiles to mark them as walkable paths
 			var center = cell_rect.get_center()
-			var dot_color = Color(0.3, 0.4, 0.5, 0.4 * alpha_mult)
-			canvas.draw_circle(center, 2.0, dot_color)
+			canvas.draw_circle(center, 2.0, _a(color_empty_dot, alpha_mult))
 
 		CP2020DatafortLayout.TileType.ENTRY:
-			canvas.draw_rect(cell_rect, Color(0.0, 0.4, 0.8, 0.3 * alpha_mult), true)
+			canvas.draw_rect(cell_rect, _a(color_entry_fill, alpha_mult), true)
 			# Vertical-travel frame: up=teal, down=purple, both=split. An LDL
 			# link keeps the cyan frame. This is the primary at-a-glance
 			# indicator that a tile allows up/down movement (see
@@ -180,60 +301,58 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 			var has_down := tile_data.can_go_down
 			if has_up and has_down:
 				var half := Rect2(cell_rect.position, Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
-				canvas.draw_rect(half, Color(0.0, 0.8, 0.8, 1.0 * alpha_mult), false, 2.0)
+				canvas.draw_rect(half, _a(color_entry_up, alpha_mult), false, 2.0)
 				var half2 := Rect2(cell_rect.position + Vector2(0, cell_rect.size.y * 0.5), Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
-				canvas.draw_rect(half2, Color(0.6, 0.2, 0.8, 1.0 * alpha_mult), false, 2.0)
+				canvas.draw_rect(half2, _a(color_entry_down, alpha_mult), false, 2.0)
 			elif has_up:
-				canvas.draw_rect(cell_rect, Color(0.0, 0.8, 0.8, 1.0 * alpha_mult), false, 2.0)
+				canvas.draw_rect(cell_rect, _a(color_entry_up, alpha_mult), false, 2.0)
 			elif has_down:
-				canvas.draw_rect(cell_rect, Color(0.6, 0.2, 0.8, 1.0 * alpha_mult), false, 2.0)
+				canvas.draw_rect(cell_rect, _a(color_entry_down, alpha_mult), false, 2.0)
 			else:
-				canvas.draw_rect(cell_rect, Color(Color.CYAN, 1.0 * alpha_mult), false, 2.0)
+				canvas.draw_rect(cell_rect, _a(color_entry_frame, alpha_mult), false, 2.0)
 			# Compact corner glyphs: "↑" top-left, "↓" bottom-left (8px). Kept
 			# to the corners so the tile doesn't clutter when both are set.
 			if has_up or has_down:
 				var font := _get_default_font()
 				var glyph_size := 8
-				var up_color := Color(0.0, 0.9, 0.9, 1.0 * alpha_mult)
-				var down_color := Color(0.8, 0.4, 1.0, 1.0 * alpha_mult)
 				if has_up:
-					canvas.draw_string(font, cell_rect.position + Vector2(2, glyph_size + 1), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, up_color)
+					canvas.draw_string(font, cell_rect.position + Vector2(2, glyph_size + 1), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, _a(color_entry_up_glyph, alpha_mult))
 				if has_down:
-					canvas.draw_string(font, cell_rect.position + Vector2(2, cell_rect.size.y - 1), "↓", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, down_color)
+					canvas.draw_string(font, cell_rect.position + Vector2(2, cell_rect.size.y - 1), "↓", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, _a(color_entry_down_glyph, alpha_mult))
 			# Primary-entry marker: a small white inset square marks this
 			# ENTRY as the map's designated arrival point (initial dive +
 			# inbound LDL fallback). Only one ENTRY per map should carry this.
 			if tile_data.is_primary_entry:
 				var mark := Rect2(cell_rect.position + Vector2(cell_rect.size.x - 12, 4), Vector2(8, 8))
-				canvas.draw_rect(mark, Color(1.0, 1.0, 1.0, 1.0 * alpha_mult), true)
+				canvas.draw_rect(mark, _a(color_primary_entry_mark, alpha_mult), true)
 
 		CP2020DatafortLayout.TileType.DATAWALL:
-			canvas.draw_rect(cell_rect, Color(0.8, 0.1, 0.1, 0.6 * alpha_mult), true)
-			canvas.draw_rect(cell_rect, Color(Color.RED, 1.0 * alpha_mult), false, 2.0)
+			canvas.draw_rect(cell_rect, _a(color_wall_fill, alpha_mult), true)
+			canvas.draw_rect(cell_rect, _a(color_wall_border, alpha_mult), false, 2.0)
 
 		CP2020DatafortLayout.TileType.CODE_GATE:
-			var base_color = Color.GREEN if tile_data.is_unlocked else Color.ORANGE
-			canvas.draw_rect(cell_rect, Color(base_color, 0.3 * alpha_mult), true)
-			canvas.draw_rect(cell_rect, Color(base_color, 1.0 * alpha_mult), false, 2.0)
+			var base_color = color_gate_unlocked if tile_data.is_unlocked else color_gate_locked
+			canvas.draw_rect(cell_rect, _a(base_color, alpha_mult * 0.3), true)
+			canvas.draw_rect(cell_rect, _a(base_color, alpha_mult), false, 2.0)
 			
 			var mid_y = cell_rect.position.y + (cell_rect.size.y / 2.0)
 			canvas.draw_line(
 				Vector2(cell_rect.position.x, mid_y), 
 				Vector2(cell_rect.end.x, mid_y), 
-				Color(base_color, 1.0 * alpha_mult), 
+				_a(base_color, alpha_mult), 
 				2.0
 			)
 
 		CP2020DatafortLayout.TileType.MEMORY_UNIT:
-			canvas.draw_rect(cell_rect, Color(0.0, 0.4, 0.7, 0.25 * alpha_mult), true)
-			canvas.draw_rect(cell_rect, Color(Color.DEEP_SKY_BLUE, 0.8 * alpha_mult), false, 2.0)
+			canvas.draw_rect(cell_rect, _a(color_mu_fill, alpha_mult), true)
+			canvas.draw_rect(cell_rect, _a(color_mu_border, alpha_mult), false, 2.0)
 			
 			var chip_rect = Rect2(cell_rect.position + Vector2(8, 10), Vector2(24, 20))
-			canvas.draw_rect(chip_rect, Color(0.0, 0.3, 0.6, 0.4 * alpha_mult), true)
-			canvas.draw_rect(chip_rect, Color(Color.DEEP_SKY_BLUE, 1.0 * alpha_mult), false, 2.0)
+			canvas.draw_rect(chip_rect, _a(color_mu_chip_fill, alpha_mult), true)
+			canvas.draw_rect(chip_rect, _a(color_mu_chip_border, alpha_mult), false, 2.0)
 			
 			# IC pin details
-			var pin_color = Color(Color.DEEP_SKY_BLUE, 1.0 * alpha_mult)
+			var pin_color = _a(color_mu_chip_border, alpha_mult)
 			canvas.draw_line(chip_rect.position + Vector2(-4, 4), chip_rect.position + Vector2(0, 4), pin_color, 2.0)
 			canvas.draw_line(chip_rect.position + Vector2(-4, 12), chip_rect.position + Vector2(0, 12), pin_color, 2.0)
 			canvas.draw_line(chip_rect.position + Vector2(24, 4), chip_rect.position + Vector2(28, 4), pin_color, 2.0)
@@ -246,7 +365,7 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 			var all_copied: bool = tile_data.files.size() > 0 and tile_data.copied_file_paths.size() >= tile_data.files.size()
 			if all_copied:
 				var dot_pos = chip_rect.position + chip_rect.size - Vector2(4, 4)
-				canvas.draw_circle(dot_pos, 3.0, Color(0.2, 0.9, 0.3, 0.9 * alpha_mult))
+				canvas.draw_circle(dot_pos, 3.0, _a(color_mu_copied_dot, alpha_mult))
 
 		CP2020DatafortLayout.TileType.CONTROL_NODE:
 			# A datafort CPU. Crashed CPUs (Krash) render dimmed red with an "X"
@@ -254,16 +373,16 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 			# normal purple diamond.
 			var crashed: bool = tile_data.cpu_crashed_turns > 0
 			if crashed:
-				canvas.draw_rect(cell_rect, Color(0.3, 0.05, 0.05, 0.5 * alpha_mult), true)
-				canvas.draw_rect(cell_rect, Color(Color.RED, 1.0 * alpha_mult), false, 2.0)
+				canvas.draw_rect(cell_rect, _a(color_cpu_crashed_fill, alpha_mult), true)
+				canvas.draw_rect(cell_rect, _a(color_cpu_crashed_border, alpha_mult), false, 2.0)
 				var center = cell_rect.get_center()
-				canvas.draw_line(center + Vector2(-9, -9), center + Vector2(9, 9), Color(Color.RED, 1.0 * alpha_mult), 2.5)
-				canvas.draw_line(center + Vector2(9, -9), center + Vector2(-9, 9), Color(Color.RED, 1.0 * alpha_mult), 2.5)
+				canvas.draw_line(center + Vector2(-9, -9), center + Vector2(9, 9), _a(color_cpu_crashed_border, alpha_mult), 2.5)
+				canvas.draw_line(center + Vector2(9, -9), center + Vector2(-9, 9), _a(color_cpu_crashed_border, alpha_mult), 2.5)
 			else:
-				canvas.draw_rect(cell_rect, Color(0.5, 0.0, 0.5, 0.25 * alpha_mult), true)
-				canvas.draw_rect(cell_rect, Color(Color.PURPLE, 0.8 * alpha_mult), false, 2.0)
+				canvas.draw_rect(cell_rect, _a(color_cpu_fill, alpha_mult), true)
+				canvas.draw_rect(cell_rect, _a(color_cpu_border, alpha_mult), false, 2.0)
 				var inner_rect = Rect2(cell_rect.position + Vector2(4, 4), Vector2(cell_rect.size.x - 8, cell_rect.size.y - 8))
-				canvas.draw_rect(inner_rect, Color(Color.PURPLE, 0.6 * alpha_mult), false, 1.5)
+				canvas.draw_rect(inner_rect, _a(color_cpu_inner, alpha_mult), false, 1.5)
 				var center = cell_rect.get_center()
 				var diamond = PackedVector2Array([
 					center + Vector2(0, -10),
@@ -271,7 +390,7 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 					center + Vector2(0, 10),
 					center + Vector2(-10, 0)
 				])
-				canvas.draw_polygon(diamond, PackedColorArray([Color(0.6, 0.2, 0.8, 0.7 * alpha_mult)]))
+				canvas.draw_polygon(diamond, PackedColorArray([_a(color_cpu_diamond, alpha_mult)]))
 
 	# NETWATCH / NETRUNNER tiles have no board renderer case — like
 	# BLACK_ICE, they are spawn markers only. The spawned NPC nodes
@@ -286,17 +405,17 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 	if tile_data.worm_turns_remaining > 0:
 		var center = cell_rect.get_center()
 		# Color shifts from purple (full) → orange (damaged) → red (near 0).
-		var worm_color = Color(0.7, 0.3, 0.9, 1.0 * alpha_mult)
 		var max_int: int = tile_data.worm_max_integrity if tile_data.worm_max_integrity > 0 else 1
 		var integrity_ratio: float = float(tile_data.worm_integrity) / float(max_int)
+		var worm_color: Color = _a(color_worm_full, alpha_mult)
 		if integrity_ratio < 1.0:
 			# Blend purple → orange as integrity drops.
-			worm_color = Color(0.9, 0.5, 0.2, 1.0 * alpha_mult).lerp(Color(0.7, 0.3, 0.9, 1.0 * alpha_mult), integrity_ratio)
+			worm_color = _a(color_worm_damaged, alpha_mult).lerp(_a(color_worm_full, alpha_mult), integrity_ratio)
 		if integrity_ratio <= 0.34:
-			worm_color = Color(0.9, 0.2, 0.2, 1.0 * alpha_mult)
+			worm_color = _a(color_worm_critical, alpha_mult)
 		# Pulsing background circle to draw attention.
 		var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
-		canvas.draw_circle(center, pulse_radius, Color(0.5, 0.2, 0.7, 0.35 * alpha_mult))
+		canvas.draw_circle(center, pulse_radius, _a(color_worm_halo, alpha_mult))
 		# "W" glyph drawn as three diagonal strokes.
 		var s: float = 7.0
 		canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), worm_color, 2.0)

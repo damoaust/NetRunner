@@ -1,11 +1,12 @@
 [gd_scene format=3 uid="uid://casrp8osrw5p4"]
 
 [ext_resource type="Script" uid="uid://dgmtdeo35vtqm" path="res://scripts/resources/cp2020_game_session.gd" id="1_dptho"]
+[ext_resource type="Texture2D" uid="uid://dc13kp1hi7m4e" path="res://background_city.jpg" id="2_d1l68"]
 [ext_resource type="PackedScene" uid="uid://d5ren1w5dywy" path="res://scenes/ui/cp2020_netrunner.tscn" id="3_ei0ny"]
 [ext_resource type="Script" uid="uid://cv3qbo8qed61v" path="res://scripts/resources/cp2020_netrunner.gd" id="4_byruw"]
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="5_y7tfe"]
 [ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="6_eihqs"]
-[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer2.tres" id="7_rqnxn"]
+[ext_resource type="Resource" uid="uid://bxf3rnkpngeh3" path="res://data/killer2.tres" id="7_rqnxn"]
 [ext_resource type="Script" uid="uid://dkjy1jvw2xgfp" path="res://scripts/resources/cp2020_board_renderer.gd" id="8_eihqs"]
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="8_llsot"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="9_e28di"]
@@ -18,6 +19,14 @@
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="13_80o14"]
 [ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="14_owktc"]
 [ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="15_d1l68"]
+[ext_resource type="Theme" uid="uid://kphrmsxee22v" path="res://themes/cool_blue.tres" id="16_theme"]
+[ext_resource type="Script" uid="uid://bhaev1dkh72a8" path="res://scripts/resources/cp2020_combat_effect_animator.gd" id="17_combat"]
+
+[sub_resource type="Environment" id="Environment_rybyy"]
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_su5n1"]
+
+[sub_resource type="Compositor" id="Compositor_rm7yw"]
 
 [node name="Cp2020Gameplay" type="Control" unique_id=170105146]
 layout_mode = 3
@@ -26,9 +35,44 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("16_theme")
 script = ExtResource("1_dptho")
 
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=479724607]
+layer = -1
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer" unique_id=1169503804]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0.019607844, 0, 1)
+
+[node name="TextureRect" type="TextureRect" parent="CanvasLayer" unique_id=214197064]
+self_modulate = Color(1, 1, 1, 0.05490196)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_d1l68")
+stretch_mode = 2
+flip_h = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1141727509]
+environment = SubResource("Environment_rybyy")
+camera_attributes = SubResource("CameraAttributesPractical_su5n1")
+compositor = SubResource("Compositor_rm7yw")
+
 [node name="UI" type="CanvasLayer" parent="." unique_id=1055337778]
+
+[node name="FloorHudLabel" type="Label" parent="UI" unique_id=121887305]
+offset_left = 8.0
+offset_top = 4.0
+offset_right = 300.0
+offset_bottom = 28.0
+text = "Floor 1/4 - Lobby"
 
 [node name="PanelContainer" type="PanelContainer" parent="UI" unique_id=436676994]
 anchors_preset = 1
@@ -75,8 +119,10 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Datafort: --"
 
-[node name="ProgramListContainer" type="VBoxContainer" parent="UI/PanelContainer/VBoxContainer" unique_id=1835341297]
+[node name="ProgramList" type="ItemList" parent="UI/PanelContainer/VBoxContainer" unique_id=1835341297]
+custom_minimum_size = Vector2(380, 120)
 layout_mode = 2
+allow_search = false
 
 [node name="TerminalLog" type="RichTextLabel" parent="UI/PanelContainer/VBoxContainer" unique_id=157221439]
 custom_minimum_size = Vector2(400, 150)
@@ -94,6 +140,9 @@ script = ExtResource("8_eihqs")
 [node name="RunnerCamera" type="Camera2D" parent="BoardRenderer" unique_id=710234561]
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
+
+[node name="CombatAnimator" type="Node2D" parent="BoardRenderer" unique_id=921187305]
+script = ExtResource("17_combat")
 
 [node name="CP2020Netrunner" parent="." unique_id=366506451 instance=ExtResource("3_ei0ny")]
 script = ExtResource("4_byruw")

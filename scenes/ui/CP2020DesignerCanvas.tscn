@@ -52,6 +52,11 @@ environment = SubResource("Environment_gmksv")
 camera_attributes = SubResource("CameraAttributesPhysical_c5ll2")
 compositor = SubResource("Compositor_4tp70")
 
+[node name="Label" type="Label" parent="." unique_id=1106110526]
+layout_mode = 0
+offset_right = 11.0
+offset_bottom = 22.0
+
 [node name="TopPanel" type="VBoxContainer" parent="." unique_id=1642773889]
 layout_mode = 0
 offset_left = 20.0
@@ -173,8 +178,8 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = 112.0
+offset_left = 27.0
+offset_top = 123.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_grid")
@@ -384,14 +389,14 @@ text = "Clear assigned program"
 
 [node name="NpcEditorPanel" type="PanelContainer" parent="." unique_id=1719441231]
 visible = false
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
-grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="NpcEditorPanel" unique_id=857158766]
 layout_mode = 2
@@ -483,14 +488,14 @@ text = "Reset to template (clear override)"
 
 [node name="CpuEditorPanel" type="PanelContainer" parent="." unique_id=229650743]
 visible = false
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
-grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="CpuEditorPanel" unique_id=950852854]
 layout_mode = 2
@@ -511,14 +516,14 @@ text = "Stats per CPU: INT 3 | Actions 1 | MU 10"
 
 [node name="LootEditorPanel" type="PanelContainer" parent="." unique_id=32102072]
 visible = false
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
-grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="LootEditorPanel" unique_id=1944745855]
 layout_mode = 2
@@ -570,14 +575,14 @@ text = "Clear loot list"
 
 [node name="FilesEditorPanel" type="PanelContainer" parent="." unique_id=923816500]
 visible = false
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
-grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="FilesEditorPanel" unique_id=952427870]
 layout_mode = 2
@@ -652,12 +657,13 @@ layout_mode = 2
 text = "Clear files"
 
 [node name="ProgramsEditorPanel" type="PanelContainer" parent="." unique_id=275088543]
+visible = false
 custom_minimum_size = Vector2(5, 5)
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -307.0
+offset_left = -253.0
 offset_top = 110.0
 offset_right = -17.0
 offset_bottom = 485.0
@@ -671,9 +677,10 @@ layout_mode = 2
 text = "Datafort Resident Programs"
 
 [node name="Hint" type="Label" parent="ProgramsEditorPanel/VBox" unique_id=1928143818]
+custom_minimum_size = Vector2(5, 5)
 layout_mode = 2
 text = "Programs the datafort's CPUs run against intruding netrunners each turn. Add anti-personnel programs for the CPU adversary to attack the runner."
-autowrap_mode = 3
+autowrap_mode = 1
 
 [node name="ProgramsList" type="ItemList" parent="ProgramsEditorPanel/VBox" unique_id=774215146]
 custom_minimum_size = Vector2(0, 120)
@@ -733,3 +740,8 @@ filters = PackedStringArray("*.tres ; Program resource")
 title = "Open a File"
 file_mode = 0
 filters = PackedStringArray("*.tres ; Program resource")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=868258700]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0

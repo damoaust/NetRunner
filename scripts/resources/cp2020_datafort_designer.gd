@@ -97,12 +97,20 @@ var selected_files_coord: Vector2i = Vector2i(-1, -1)
 @onready var programs_toggle_button: Button = $ProgramsToggleButton
 
 
+# --- Glyph alignment controls (built in code, children of IceEditorPanel/VBox) ---
+var glyph_preview: CP2020GlyphPreview = null
+var glyph_auto_center_check: CheckBox = null
+var glyph_offset_x_spin: SpinBox = null
+var glyph_offset_y_spin: SpinBox = null
+var glyph_save_button: Button = null
+
 func _ready() -> void:
 	setup_new_map()
 	_connect_toolbar_signals()
 	_connect_panel_signals()
 	_connect_grid_signals()
 	_refresh_floor_controls()
+	_build_glyph_align_controls()
 	grid_canvas.queue_redraw()
 
 
@@ -809,6 +817,11 @@ func _open_ice_editor(coord: Vector2i) -> void:
 		return
 	selected_ice_coord = coord
 	_refresh_ice_program_label(tile)
+	if tile.ice_program != null:
+		_populate_glyph_controls(tile.ice_program)
+	elif glyph_preview:
+		glyph_preview.program = null
+		glyph_preview.refresh()
 	ice_panel.visible = true
 
 func _refresh_ice_program_label(tile: CP2020TileData) -> void:
@@ -846,6 +859,7 @@ func _on_ice_program_picked(path: String) -> void:
 	if prog is NetProgram:
 		tile.ice_program = prog
 		_refresh_ice_program_label(tile)
+		_populate_glyph_controls(prog)
 		grid_canvas.queue_redraw()
 
 func _clear_ice_program() -> void:
@@ -856,12 +870,141 @@ func _clear_ice_program() -> void:
 		return
 	tile.ice_program = null
 	_refresh_ice_program_label(tile)
+	if glyph_preview:
+		glyph_preview.program = null
+		glyph_preview.refresh()
 	grid_canvas.queue_redraw()
 
 func _hide_ice_panel() -> void:
 	if ice_panel:
 		ice_panel.visible = false
 	selected_ice_coord = Vector2i(-1, -1)
+	if glyph_preview:
+		glyph_preview.program = null
+		glyph_preview.refresh()
+
+
+# ---------------------------------------------------------------------------
+# Glyph alignment controls (built in code inside the ICE editor panel)
+# ---------------------------------------------------------------------------
+
+func _build_glyph_align_controls() -> void:
+	if ice_panel == null:
+		return
+	var vbox = ice_panel.get_node_or_null("VBox")
+	if vbox == null:
+		return
+	# Avoid duplicates on script reload.
+	if vbox.has_node("GlyphSep"):
+		glyph_preview = vbox.get_node_or_null("GlyphPreview")
+		glyph_auto_center_check = vbox.get_node_or_null("GlyphAutoCenterCheck")
+		glyph_offset_x_spin = vbox.get_node_or_null("GlyphOffsetXSpin")
+		glyph_offset_y_spin = vbox.get_node_or_null("GlyphOffsetYSpin")
+		glyph_save_button = vbox.get_node_or_null("GlyphSaveButton")
+		if glyph_preview:
+			glyph_preview.refresh()
+		return
+	var sep := HSeparator.new()
+	sep.name = "GlyphSep"
+	vbox.add_child(sep)
+	var title := Label.new()
+	title.text = "Glyph Alignment"
+	vbox.add_child(title)
+	glyph_preview = CP2020GlyphPreview.new()
+	glyph_preview.name = "GlyphPreview"
+	vbox.add_child(glyph_preview)
+	glyph_auto_center_check = CheckBox.new()
+	glyph_auto_center_check.name = "GlyphAutoCenterCheck"
+	glyph_auto_center_check.text = "Auto-Center (uncheck for manual offset)"
+	glyph_auto_center_check.toggled.connect(_on_glyph_auto_center_toggled)
+	vbox.add_child(glyph_auto_center_check)
+	var offset_row := HBoxContainer.new()
+	offset_row.name = "GlyphOffsetRow"
+	var x_label := Label.new()
+	x_label.text = "Offset X:"
+	offset_row.add_child(x_label)
+	glyph_offset_x_spin = SpinBox.new()
+	glyph_offset_x_spin.name = "GlyphOffsetXSpin"
+	glyph_offset_x_spin.min_value = -40
+	glyph_offset_x_spin.max_value = 40
+	glyph_offset_x_spin.step = 1
+	glyph_offset_x_spin.value_changed.connect(_on_glyph_offset_changed)
+	offset_row.add_child(glyph_offset_x_spin)
+	var y_label := Label.new()
+	y_label.text = "Y:"
+	offset_row.add_child(y_label)
+	glyph_offset_y_spin = SpinBox.new()
+	glyph_offset_y_spin.name = "GlyphOffsetYSpin"
+	glyph_offset_y_spin.min_value = -40
+	glyph_offset_y_spin.max_value = 40
+	glyph_offset_y_spin.step = 1
+	glyph_offset_y_spin.value_changed.connect(_on_glyph_offset_changed)
+	offset_row.add_child(glyph_offset_y_spin)
+	vbox.add_child(offset_row)
+	glyph_save_button = Button.new()
+	glyph_save_button.name = "GlyphSaveButton"
+	glyph_save_button.text = "Save program .tres"
+	glyph_save_button.tooltip_text = "Persist glyph_offset / glyph_auto_center to the program's .tres file."
+	glyph_save_button.pressed.connect(_on_save_program_tres)
+	vbox.add_child(glyph_save_button)
+
+
+func _populate_glyph_controls(prog: NetProgram) -> void:
+	if glyph_auto_center_check:
+		glyph_auto_center_check.set_block_signals(true)
+		glyph_auto_center_check.button_pressed = prog.glyph_auto_center
+		glyph_auto_center_check.set_block_signals(false)
+	if glyph_offset_x_spin:
+		glyph_offset_x_spin.set_block_signals(true)
+		glyph_offset_x_spin.value = prog.glyph_offset.x
+		glyph_offset_x_spin.set_block_signals(false)
+	if glyph_offset_y_spin:
+		glyph_offset_y_spin.set_block_signals(true)
+		glyph_offset_y_spin.value = prog.glyph_offset.y
+		glyph_offset_y_spin.set_block_signals(false)
+	if glyph_preview:
+		glyph_preview.program = prog
+		glyph_preview.refresh()
+
+
+func _on_glyph_auto_center_toggled(pressed: bool) -> void:
+	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ice_coord, current_layout.current_floor)
+	if tile == null or tile.ice_program == null:
+		return
+	tile.ice_program.glyph_auto_center = pressed
+	if glyph_preview:
+		glyph_preview.refresh()
+
+
+func _on_glyph_offset_changed(_value: float) -> void:
+	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ice_coord, current_layout.current_floor)
+	if tile == null or tile.ice_program == null:
+		return
+	tile.ice_program.glyph_offset = Vector2(glyph_offset_x_spin.value, glyph_offset_y_spin.value)
+	if glyph_preview:
+		glyph_preview.refresh()
+
+
+func _on_save_program_tres() -> void:
+	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ice_coord, current_layout.current_floor)
+	if tile == null or tile.ice_program == null:
+		return
+	var prog = tile.ice_program
+	var path = prog.resource_path
+	if path.is_empty():
+		print("[GlyphAlign] Program has no resource_path — it was created in-memory. Save it manually in the FileSystem dock first.")
+		return
+	var err = ResourceSaver.save(prog, path)
+	if err == OK:
+		print("[GlyphAlign] Saved %s (glyph_offset=%s, auto_center=%s)" % [path, prog.glyph_offset, prog.glyph_auto_center])
+	else:
+		print("[GlyphAlign] ERROR saving %s: %d" % [path, err])
 
 
 # ---------------------------------------------------------------------------

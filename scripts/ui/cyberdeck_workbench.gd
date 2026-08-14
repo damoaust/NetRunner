@@ -64,6 +64,7 @@ const THEME_RES := preload("res://themes/cyberpunk_theme.tres")
 @onready var unload_button: Button = get_node_or_null("%UnloadButton")
 @onready var clear_button: Button = get_node_or_null("%ClearButton")
 @onready var jack_button: Button = get_node_or_null("%JackButton")
+@onready var exit_button: Button = get_node_or_null("%ExitButton")
 @onready var mu_message: Label = get_node_or_null("%MuMessage")
 @onready var destination_label: Label = get_node_or_null("%DestinationLabel")
 # --- Shop panel references (scene-tree nodes) ---
@@ -221,6 +222,8 @@ func _connect_signals() -> void:
 		clear_button.pressed.connect(_on_clear_pressed)
 	if jack_button:
 		jack_button.pressed.connect(_on_button_pressed)
+	if exit_button:
+		exit_button.pressed.connect(_on_exit_pressed)
 	if unlock_button:
 		unlock_button.pressed.connect(_open_unlock_window)
 	if buy_deck_button:
@@ -624,6 +627,9 @@ func _on_button_pressed() -> void:
 	RunState.save_run()
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 
+func _on_exit_pressed() -> void:
+	get_tree().quit()
+
 # Clear the persistent status banner when switching tabs so SHOP messages
 # (e.g. "Select loot to sell.") don't bleed into LOADOUT.
 func _on_tab_changed(_tab: int) -> void:
@@ -645,6 +651,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_J:
 			if jack_button and not jack_button.disabled:
 				_on_button_pressed()
+		KEY_ESCAPE:
+			_on_exit_pressed()
 
 func _start_cursor_blink() -> void:
 	# Blinking "_" cursor in the detail card to give the static UI some life.

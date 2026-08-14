@@ -5,10 +5,12 @@ signal message_logged(msg: String)
 signal moved_to(new_pos: Vector2i)
 signal attacked_netrunner(strength: int)
 # Emitted by anti-program (DEREZ_ICE) ICE when it has line of sight to a
-# Worm-active tile. Carries the attacker's STR (for the opposed roll) and the
-# grid coord of the Worm being attacked. The runner handles it with an opposed
-# roll (Killer STR + 1D10 vs Worm integrity + 1D10); only the Killer can deal
-# damage on a win — Worms are passive defenders.
+# Emitted by anti-program (DEREZ_ICE) ICE when it has line of sight to a
+# rezzed attack program on the grid. Carries the attacker's STR (for the
+# opposed roll) and the grid coord of the rezzed program being attacked.
+# The game session resolves an opposed roll (Killer STR + 1D10 vs rezzed
+# program integrity + 1D10); only the Killer can deal damage on a win —
+# rezzed programs are passive defenders during the adversary phase.
 signal attacked_program(attacker_str: int, tile_coord: Vector2i)
 signal alarm_triggered
 signal destroyed
@@ -56,6 +58,12 @@ var _had_los: bool = false
 # dormant this turn (re-tests next LoS turn), on a pierce the ICE activates and
 # the cloak is broken globally. Already-active ICE ignore the cloak.
 var cloak_program: NetProgram = null
+
+# Reference to the game session's rezzed_program_nodes array, set at spawn
+# time. GDScript Arrays are reference types, so additions/removals during
+# gameplay are visible to all ICE without re-pushing. Used by anti-program
+# (DEREZ_ICE) ICE to scan for rezzed attack programs within LoS.
+var rezzed_programs: Array = []
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -184,16 +192,38 @@ func apply_visual_from_program() -> void:
 		skull_label.add_theme_color_override("font_color", col)
 	# Auto-centre the glyph via its TextServer bitmap metrics. Falls back to the
 	# node's manual label_visual_offset when metrics are unavailable.
+	# NB: the scene LabelSettings sets font_size (30) but no font, so the Font
+	# reference falls back to the theme default font while the SIZE must still
+	# come from label_settings — measuring at the default size (~16) while the
+	# Label renders at 30 produces a centring offset for the wrong glyph size.
 	var font: Font = null
 	var font_size: int = 0
-	if skull_label.label_settings and skull_label.label_settings.font:
+	if skull_label.label_settings:
 		font = skull_label.label_settings.font
 		font_size = int(skull_label.label_settings.font_size)
-	else:
+	if font == null:
 		font = skull_label.get_theme_default_font()
+	if font_size <= 0:
 		font_size = int(skull_label.get_theme_default_font_size())
+	# Resolve which font has the glyph. The theme font (whitrabt) lacks many
+	# Unicode symbols, so fall back to seguiemj.ttf (Segoe UI Emoji) for both
+	# metrics and rendering when the glyph isn't found.
 	var auto_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, font, font_size, cell_size)
 	if auto_offset == Vector2.ZERO:
+		var fallback_font: Font = load("res://data/seguiemj.ttf") as Font
+		if fallback_font != null:
+			var fb_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, fallback_font, font_size, cell_size)
+			if fb_offset != Vector2.ZERO:
+				auto_offset = fb_offset
+				if skull_label.label_settings:
+					skull_label.label_settings.font = fallback_font
+				else:
+					skull_label.add_theme_font_override("font", fallback_font)
+	# When auto-center is disabled the designer positions the glyph entirely via
+	# glyph_offset in the Inspector; auto_offset is discarded.
+	if not program.glyph_auto_center:
+		auto_offset = Vector2.ZERO
+	elif auto_offset == Vector2.ZERO:
 		auto_offset = label_visual_offset
 	skull_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + auto_offset + program.glyph_offset
 
@@ -228,10 +258,10 @@ func activate_alarm() -> void:
 		current_state = State.PURSUE
 		message_logged.emit("ALARM: %s woken and hunting!" % program.program_name)
 
-func update_visibility(is_explored: bool, is_visible: bool) -> void:
+func update_visibility(_is_explored: bool, p_visible: bool) -> void:
 	if not skull_label:
 		return
-	skull_label.visible = is_visible
+	skull_label.visible = p_visible
 
 func take_damage(amount: int) -> bool:
 	current_integrity -= amount

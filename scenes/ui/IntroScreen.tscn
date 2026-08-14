@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://b7kq2w8xnf3mp"]
 
 [ext_resource type="Script" uid="uid://demk1buam8kxn" path="res://scripts/ui/intro_screen.gd" id="1_intro"]
-[ext_resource type="Theme" uid="uid://c2myk4yt270q6" path="res://themes/cyberpunk_theme.tres" id="2_theme"]
 
 [node name="IntroScreen" type="Control" unique_id=498512]
 layout_mode = 3
@@ -10,7 +9,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("2_theme")
 script = ExtResource("1_intro")
 
 [node name="Background" type="ColorRect" parent="." unique_id=7521739]

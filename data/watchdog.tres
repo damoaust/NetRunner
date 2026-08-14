@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="WatchdogProgram" format=3]
+[gd_resource type="Resource" script_class="WatchdogProgram" format=3 uid="uid://bw471kn1nru5"]
 
-[ext_resource type="Script" path="res://scripts/programs/watchdog_program.gd" id="1_wd"]
+[ext_resource type="Script" uid="uid://dkmnxhjk5qo6c" path="res://scripts/programs/watchdog_program.gd" id="1_wd"]
 
 [resource]
 script = ExtResource("1_wd")
@@ -8,6 +8,6 @@ program_name = "Watchdog"
 type = 2
 effect_type = 10
 memory_cost = 5
-strength = 4
 price = 610
 description = "Watchdog is designed to alert its owners to illegal entries into the system. It can activate an external alarm or send a message to an occupied workstation. Netrunners can use Watchdogs to patrol another part of the Net, then key the Watchdog to run to their cybermodem if security is breached."
+glyph = "🐾"

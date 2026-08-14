@@ -25,6 +25,7 @@ const COL_WARN := Color(1.0, 0.3, 0.3)
 const COL_AMBER := Color(1.0, 0.75, 0.2)
 const COL_HEADER := Color(0.25, 1.0, 0.6)
 const COL_GREEN := Color(0.2, 1.0, 0.4)
+const COL_CYAN := Color(0.2, 0.9, 1.0, 1.0)
 const COL_RED := Color(1.0, 0.25, 0.25)
 const COL_GREY := Color(0.38, 0.45, 0.42)
 

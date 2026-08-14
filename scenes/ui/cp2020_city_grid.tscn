@@ -1,24 +1,23 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c0unvwytxwsc5"]
 
-[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid.gd" id="1_grid"]
+[ext_resource type="Script" uid="uid://vr1w6sk3vhkv" path="res://scripts/resources/cp2020_city_grid.gd" id="1_grid"]
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="2_tm"]
-[ext_resource type="Theme" path="res://themes/cyberpunk_theme.tres" id="3_theme"]
+[ext_resource type="Theme" uid="uid://c2myk4yt270q6" path="res://themes/cyberpunk_theme.tres" id="3_theme"]
 
-[node name="Cp2020CityGrid" type="Node2D"]
+[node name="Cp2020CityGrid" type="Node2D" unique_id=2083218881]
 script = ExtResource("1_grid")
 
-[node name="TurnManager" type="Node" parent="."]
+[node name="TurnManager" type="Node" parent="." unique_id=891610403]
 script = ExtResource("2_tm")
 
-[node name="RunnerCamera" type="Camera2D" parent="."]
-enabled = true
+[node name="RunnerCamera" type="Camera2D" parent="." unique_id=1357623813]
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
-zoom = Vector2(1, 1)
 
-[node name="HUDLayer" type="CanvasLayer" parent="."]
+[node name="HUDLayer" type="CanvasLayer" parent="." unique_id=408457222]
 
-[node name="HUDOverlay" type="Control" parent="HUDLayer"]
+[node name="HUDOverlay" type="Control" parent="HUDLayer" unique_id=125069036]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -27,46 +26,34 @@ offset_bottom = 1080.0
 mouse_filter = 2
 theme = ExtResource("3_theme")
 
-[node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=1809022192]
+layout_mode = 0
 offset_left = 30.0
 offset_top = 12.0
 offset_right = 450.0
 offset_bottom = 60.0
 text = "LOCATION: CITY GRID"
-theme_override_colors/font_color = Color(0, 1, 0.85, 1)
-theme_override_colors/font_outline_color = Color(0, 0.3, 0.4, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 24
 
-[node name="ActionsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="ActionsLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=165991785]
+layout_mode = 0
 offset_left = 480.0
 offset_top = 12.0
 offset_right = 750.0
 offset_bottom = 60.0
 text = "ACTIONS: 5/5"
-theme_override_colors/font_color = Color(1, 1, 0.3, 1)
-theme_override_colors/font_outline_color = Color(0.3, 0.3, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 24
 
-[node name="CreditsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="CreditsLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=456373362]
+layout_mode = 0
 offset_left = 780.0
 offset_top = 12.0
 offset_right = 1080.0
 offset_bottom = 60.0
 text = "CREDITS: 1000 eb"
-theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-theme_override_colors/font_outline_color = Color(0.4, 0.2, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 24
 
-[node name="TraceLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="TraceLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=589750556]
+layout_mode = 0
 offset_left = 1110.0
 offset_top = 12.0
 offset_right = 1350.0
 offset_bottom = 60.0
 text = "TRACE: 0"
-theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
-theme_override_colors/font_outline_color = Color(0.4, 0, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 24

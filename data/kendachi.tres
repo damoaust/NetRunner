@@ -6,7 +6,7 @@
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="3_kylw5"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="4_dnonk"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="5_y8atb"]
-[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer2.tres" id="6_87luw"]
+[ext_resource type="Resource" uid="uid://bxf3rnkpngeh3" path="res://data/killer2.tres" id="6_87luw"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="7_7015w"]
 [ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="8_kylw5"]
 

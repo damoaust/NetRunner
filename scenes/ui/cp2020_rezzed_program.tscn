@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/resources/cp2020_rezzed_program.gd" id="1_rez"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_rez"]
-font_size = 26
+font_size = 30
 font_color = Color(0.2, 0.9, 1, 1)
 
 [node name="RezzedProgram" type="Node2D"]

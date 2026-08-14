@@ -13,7 +13,8 @@ extends Control
 @onready var health_bar: ProgressBar = $UI/PanelContainer/VBoxContainer/HealthBar
 @onready var trace_label: Label = $UI/PanelContainer/VBoxContainer/TraceLabel
 @onready var datafort_label: Label = $UI/PanelContainer/VBoxContainer/DatafortLabel
-@onready var program_list_container: VBoxContainer = $UI/PanelContainer/VBoxContainer/ProgramListContainer
+@onready var floor_hud_label: Label = $UI/FloorHudLabel
+@onready var program_list: ItemList = $UI/PanelContainer/VBoxContainer/ProgramList
 @onready var netrunner: CP2020Netrunner = $CP2020Netrunner
 @onready var turn_manager: CP2020TurnManager = $TurnManager
 @onready var camera: Camera2D = board_renderer.get_node_or_null("RunnerCamera") if board_renderer else null
@@ -166,13 +167,14 @@ func _ready() -> void:
 		netrunner.seed_program_integrity()
 
 	# Combat effect animator — child of the board renderer so its beams render
-	# on top of the grid. Created programmatically (no .tscn edit). Syncs the
-	# grid geometry from the renderer. Stays idle until play_effect() is called.
+	# on top of the grid. Lives in the scene tree as a BoardRenderer child
+	# (CombatAnimator node); we look it up and sync grid geometry from the
+	# renderer. Stays idle until play_effect() is called.
 	if board_renderer and combat_animator == null:
-		combat_animator = CombatEffectAnimator.new()
-		combat_animator.cell_size = board_renderer.cell_size
-		combat_animator.grid_offset_y = board_renderer.grid_offset_y
-		board_renderer.add_child(combat_animator)
+		combat_animator = board_renderer.get_node_or_null("CombatAnimator") as CombatEffectAnimator
+		if combat_animator:
+			combat_animator.cell_size = board_renderer.cell_size
+			combat_animator.grid_offset_y = board_renderer.grid_offset_y
 
 	# Load the subnet chosen on the world map (fall back to default)
 	var subnet_path := RunState.selected_subnet_path if RunState.selected_subnet_path != "" else starting_subnet_path
@@ -181,6 +183,18 @@ func _ready() -> void:
 	_on_health_changed(netrunner.current_health, netrunner.max_health)
 	_update_trace()
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
+
+func _update_floor_hud_label() -> void:
+	if floor_hud_label == null or current_layout == null:
+		return
+	var f := current_floor
+	var count := current_layout.get_floor_count()
+	var fname: String = ""
+	if f >= 0 and f < current_layout.floors.size():
+		fname = current_layout.floors[f].floor_name
+	if fname == "":
+		fname = "Floor %d" % f
+	floor_hud_label.text = "Floor %d/%d — %s" % [f + 1, count, fname]
 
 func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool:
 	if not ResourceLoader.exists(path):
@@ -290,6 +304,7 @@ func _set_current_floor(f: int) -> void:
 		current_layout.current_floor = f
 	if is_instance_valid(netrunner):
 		netrunner.current_floor = f
+	_update_floor_hud_label()
 
 # Authoritative vertical-travel blocking check (mirrors the interaction
 # handler's pre-check so the menu can grey out blocked directions). Returns
@@ -390,8 +405,8 @@ func _input(event: InputEvent) -> void:
 				if prog and prog not in _deployed_programs and not _is_program_rezzed(prog):
 					programs.append(prog)
 		if interaction_handler and current_layout:
-			var cs: float = board_renderer.cell_size if board_renderer else 40.0
-			var go_y: float = board_renderer.grid_offset_y if board_renderer else 90.0
+			var cs: float = float(board_renderer.cell_size) if board_renderer else 40.0
+			var go_y: float = float(board_renderer.grid_offset_y) if board_renderer else 90.0
 			var nr_pos: Vector2i = netrunner.current_position if netrunner else Vector2i(-1, -1)
 			interaction_handler.handle_input(event, mouse_pos, current_layout, programs, cs, go_y, ice_nodes, nr_pos, npc_nodes, netrunner, rezzed_program_nodes)
 
@@ -1056,9 +1071,8 @@ func update_deck_info(_program: Variant = null) -> void:
 		deck_name_label.text = "Deck: %s" % netrunner.deck_name
 	if memory_label:
 		memory_label.text = "Memory: %d / %d MU" % [netrunner.get_used_memory(), netrunner.max_memory_units]
-	if program_list_container:
-		for child in program_list_container.get_children():
-			child.queue_free()
+	if program_list:
+		program_list.clear()
 		for prog in netrunner.installed_programs:
 			if not prog:
 				continue
@@ -1073,21 +1087,21 @@ func update_deck_info(_program: Variant = null) -> void:
 				status_prefix = "[REZZED] "
 			elif active:
 				status_prefix = "[ACTIVE] "
-			var label := Label.new()
-			# Show cur/max integrity when damaged but not fully crashed.
+			var item_text: String
 			if crashed:
-				label.text = "%s%s  (STR %d, %d MU) — de-rezzed, clogging MU" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
+				item_text = "%s%s  (STR %d, %d MU) — de-rezzed, clogging MU" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
 			elif integrity < prog.strength:
-				label.text = "%s%s  (STR %d/%d, %d MU)" % [status_prefix, prog.program_name, integrity, prog.strength, prog.memory_cost]
+				item_text = "%s%s  (STR %d/%d, %d MU)" % [status_prefix, prog.program_name, integrity, prog.strength, prog.memory_cost]
 			else:
-				label.text = "%s%s  (STR %d, %d MU)" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
+				item_text = "%s%s  (STR %d, %d MU)" % [status_prefix, prog.program_name, prog.strength, prog.memory_cost]
+			program_list.add_item(item_text)
+			var idx := program_list.item_count - 1
 			if crashed:
-				label.add_theme_color_override("font_color", Color.RED)
+				program_list.set_item_custom_fg_color(idx, CP2020Theme.COL_RED)
 			elif rezzed:
-				label.add_theme_color_override("font_color", Color.CYAN)
+				program_list.set_item_custom_fg_color(idx, CP2020Theme.COL_CYAN)
 			elif active:
-				label.add_theme_color_override("font_color", Color.GREEN)
-			program_list_container.add_child(label)
+				program_list.set_item_custom_fg_color(idx, CP2020Theme.COL_GREEN)
 
 func spawn_black_ice() -> void:
 	# Clear any previously spawned ICE nodes (e.g. on subnet reload)
@@ -1131,6 +1145,7 @@ func spawn_black_ice() -> void:
 				ice.program = tile.ice_program.duplicate()
 				ice.max_integrity = ice.program.strength
 				ice.home_floor = f
+				ice.rezzed_programs = rezzed_program_nodes
 				ice.initialize(coord, layout_size)
 				ice.apply_visual_from_program()
 				ice.message_logged.connect(log_to_terminal)
@@ -1148,15 +1163,16 @@ func spawn_black_ice() -> void:
 						var vis: Dictionary = prog_ref.get_attack_visual() if is_instance_valid(prog_ref) else ENEMY_ATTACK_VISUAL
 						combat_animator.play_effect(ice.current_position, netrunner.current_position, vis)
 					_on_ice_attacked(strength, attacker_name, is_anti_personnel, prog_ref))
-				# Anti-program (DEREZ_ICE) ICE scans for Worms in LoS and emits
-				# attacked_program(attacker_str, tile_coord) when it spots one.
-				# The game session resolves an opposed roll (Killer STR + 1D10 vs
-				# Worm integrity + 1D10); only the Killer can deal damage on a win.
-				ice.attacked_program.connect(func(atk_str: int, worm_coord: Vector2i) -> void:
+				# Anti-program (DEREZ_ICE) ICE scans for rezzed attack programs in
+				# LoS and emits attacked_program(attacker_str, tile_coord) when it
+				# spots one. The game session resolves an opposed roll (Killer
+				# STR + 1D10 vs rezzed program integrity + 1D10); only the Killer
+				# can deal damage on a win.
+				ice.attacked_program.connect(func(atk_str: int, target_coord: Vector2i) -> void:
 					if combat_animator:
 						var vis: Dictionary = prog_ref.get_attack_visual() if is_instance_valid(prog_ref) else ENEMY_ATTACK_VISUAL
-						combat_animator.play_effect(ice.current_position, worm_coord, vis)
-					_on_ice_attacked_program(atk_str, worm_coord, ice))
+						combat_animator.play_effect(ice.current_position, target_coord, vis)
+					_on_ice_attacked_program(atk_str, target_coord, ice))
 				# DETECTION ICE (Watchdog) emits alarm_triggered when it detects
 				# the netrunner. The game session activates all other attack ICE.
 				ice.alarm_triggered.connect(_on_ice_alarm_triggered)
@@ -1624,35 +1640,39 @@ func _on_ice_attacked(strength: int, attacker_name: String, is_anti_personnel: b
 	if netrunner:
 		netrunner.apply_damage(strength, label, is_anti_personnel, prog)
 
-# Anti-program (DEREZ_ICE) Killer spotted a Worm-active tile in LoS. Resolve
-# an opposed roll (CP2020 anti-program combat): Killer STR + 1D10 vs Worm
-# integrity + 1D10. Only the Killer can deal damage on a win — Worms are
-# passive defenders that can only damage walls/gates, not ICE. If the Worm
-# wins or ties, no damage to either side (the Worm merely survives the round).
-# If the Killer wins, the Worm takes 1D6 damage; at 0 integrity the Worm is
-# destroyed (worm_turns_remaining reset to 0, tile stays closed — intrusion
-# failed). Shield does NOT block this.
+# Anti-program (DEREZ_ICE) Killer spotted a rezzed attack program in LoS.
+# Resolve an opposed roll (CP2020 anti-program combat): Killer STR + 1D10 vs
+# rezzed program integrity + 1D10. Only the Killer can deal damage on a win —
+# rezzed programs are passive defenders during the adversary phase (they
+# fight back via player command on the runner's turn). If the rezzed program
+# wins or ties, no damage to either side. If the Killer wins, the rezzed
+# program takes 1D6 damage; at 0 integrity it is de-rezzed (take_damage
+# frees the node and _on_rezzed_program_destroyed erases it from the list).
+# Shield does NOT block this.
 func _on_ice_attacked_program(attacker_str: int, tile_coord: Vector2i, ice: BlackIce) -> void:
-	if current_layout == null:
-		return
-	var tile: CP2020TileData = current_layout.get_tile(tile_coord, ice.home_floor)
-	if tile == null or tile.worm_turns_remaining <= 0:
-		log_to_terminal("%s's anti-program attack finds no Worm at %s.\n" % [ice.program.program_name, tile_coord])
-		return
 	var attacker_name := ice.program.program_name
+	# Find the rezzed program at the target coord on the ICE's floor.
+	var target_rez: RezzedProgram = null
+	for rez in rezzed_program_nodes:
+		if not is_instance_valid(rez):
+			continue
+		if rez.home_floor != ice.home_floor:
+			continue
+		if rez.current_position == tile_coord:
+			target_rez = rez
+			break
+	if target_rez == null:
+		log_to_terminal("%s's anti-program attack finds no target at %s.\n" % [attacker_name, tile_coord])
+		return
 	var atk_roll := randi_range(1, 10) + attacker_str
-	var def_roll := randi_range(1, 10) + tile.worm_integrity
-	log_to_terminal("WARNING: %s attacks the Worm at %s — opposed roll: Killer %d (1D10+%d) vs Worm %d (1D10+%d).\n" % [attacker_name, tile_coord, atk_roll, attacker_str, def_roll, tile.worm_integrity])
+	var def_roll := randi_range(1, 10) + target_rez.current_integrity
+	log_to_terminal("WARNING: %s attacks '%s' at %s — opposed roll: Killer %d (1D10+%d) vs Program %d (1D10+%d).\n" % [attacker_name, target_rez.program.program_name, tile_coord, atk_roll, attacker_str, def_roll, target_rez.current_integrity])
 	if atk_roll > def_roll:
 		var dmg := randi_range(1, 6)
-		tile.worm_integrity = max(0, tile.worm_integrity - dmg)
-		log_to_terminal("Killer wins! Worm takes %d damage (Integrity %d/%d).\n" % [dmg, tile.worm_integrity, tile.worm_max_integrity])
-		if tile.worm_integrity <= 0:
-			tile.worm_turns_remaining = 0
-			tile.worm_max_integrity = 0
-			log_to_terminal("Worm DESTROYED at %s — intrusion failed, tile stays closed.\n" % tile_coord)
+		log_to_terminal("Killer wins! '%s' takes %d damage.\n" % [target_rez.program.program_name, dmg])
+		target_rez.take_damage(dmg)
 	else:
-		log_to_terminal("Worm holds — no damage dealt (passive defender).\n")
+		log_to_terminal("'%s' holds — no damage dealt (passive defender).\n" % target_rez.program.program_name)
 	if board_renderer:
 		board_renderer.queue_redraw()
 

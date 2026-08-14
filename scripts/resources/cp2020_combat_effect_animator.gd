@@ -8,6 +8,10 @@ extends Node2D
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
 
+# Fallback beam color when the caller's visual config omits a color. The
+# per-program visual (NetProgram.ATTACK_VISUALS) takes precedence.
+@export var default_color: Color = Color(1, 0.2, 0.2)
+
 # Active effect instances. Each Dictionary keys:
 #   from: Vector2 (pixel), to: Vector2 (pixel), color: Color, width: float,
 #   duration: float, style: String, elapsed: float
@@ -30,7 +34,7 @@ func play_effect(from_grid: Vector2i, to_grid: Vector2i, visual: Dictionary) -> 
 	var effect: Dictionary = {
 		"from": _grid_to_pixel(from_grid),
 		"to": _grid_to_pixel(to_grid),
-		"color": visual.get("color", Color(1, 0.2, 0.2)),
+		"color": visual.get("color", default_color),
 		"width": float(visual.get("width", 3.0)),
 		"duration": float(visual.get("duration", 0.5)),
 		"style": String(visual.get("style", "beam")),

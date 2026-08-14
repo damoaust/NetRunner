@@ -79,6 +79,11 @@ const DEFAULT_VISUALS: Dictionary = {
 # them all. Designers set this in a .tres to fine-tune glyphs that sit off
 # (e.g. ⚔, ⚡ which sit higher/lower than ◆). Default ZERO = global offset only.
 @export var glyph_offset: Vector2 = Vector2.ZERO
+# When true (default) the node auto-centres the glyph via TextServer bitmap metrics.
+# When false the auto-offset is discarded and the designer positions the glyph
+# entirely via `glyph_offset` — useful for glyphs whose metrics produce a bad
+# auto-centre, or when the font lacks the glyph entirely. Toggle in the Inspector.
+@export var glyph_auto_center: bool = true
 # Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
 # as damage (existing behaviour for all current programs). >0 = roll
 # 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.
@@ -155,28 +160,26 @@ func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLa
 		else:
 			return
 
-# Stationary Killer (DEREZ_ICE) turn: scan every tile in the layout for an
-# active Worm (worm_turns_remaining > 0) within line of sight of this ICE's
-# position. If one is found, emit attacked_program so the game session
-# resolves the opposed roll. The Killer does not move and does not target the
-# netrunner. One attack per turn (first Worm in LoS wins).
+# Stationary Killer (DEREZ_ICE) turn: scan for rezzed attack programs within
+# line of sight of this ICE's position on the same floor. If one is found,
+# emit attacked_program so the game session resolves the opposed roll. The
+# Killer does not move and does not target the netrunner. Worms are stealth
+# code breakers — invisible to ICE and never targeted. One attack per turn
+# (first rezzed program in LoS wins).
 func _take_killer_turn(ice: BlackIce, layout: CP2020DatafortLayout) -> void:
-	for raw_key in layout.get_current_floor_tiles().keys():
-		var coord: Vector2i
-		if raw_key is String:
-			var parts = raw_key.split(",")
-			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-		else:
-			coord = raw_key
-		var tile = layout.get_tile(coord, layout.current_floor)
-		if tile == null or tile.worm_turns_remaining <= 0:
+	for rez in ice.rezzed_programs:
+		if not is_instance_valid(rez):
 			continue
-		if not ice.has_los_to(coord, layout):
+		if rez.home_floor != ice.home_floor:
 			continue
-		ice.emit_log("%s spots a Worm at %s — executing anti-program attack!" % [program_name, coord])
-		ice.emit_attack_program(strength, coord)
+		if rez.current_integrity <= 0:
+			continue
+		if not ice.has_los_to(rez.current_position, layout):
+			continue
+		ice.emit_log("%s spots a rezzed program '%s' at %s — executing anti-program attack!" % [program_name, rez.program.program_name, rez.current_position])
+		ice.emit_attack_program(strength, rez.current_position)
 		return
-	# No Worm in LoS — hold position silently.
+	# No rezzed program in LoS — hold position silently.
 
 # Default netrunner-side program behavior. Dispatches to the game session's
 # private execute_* helpers based on `effect_type`. Returns `true` if the

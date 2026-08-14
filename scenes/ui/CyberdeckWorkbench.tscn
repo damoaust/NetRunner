@@ -19,6 +19,16 @@
 [ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="17_killer6"]
 [ext_resource type="FontFile" uid="uid://bf8ebwffw1byl" path="res://Sddystopiandemo-GO7xa.otf" id="20_ldt4r"]
 
+[sub_resource type="Environment" id="Environment_dbyrx"]
+background_mode = 3
+glow_enabled = true
+glow_strength = 1.19
+glow_bloom = 0.15
+
+[sub_resource type="CameraAttributesPhysical" id="CameraAttributesPhysical_va62j"]
+
+[sub_resource type="Compositor" id="Compositor_4btsc"]
+
 [node name="CyberdeckWorkbench" type="Control" unique_id=997511488]
 layout_mode = 3
 anchors_preset = 15
@@ -29,6 +39,11 @@ grow_vertical = 2
 script = ExtResource("1_ih6ts")
 available_decks = Array[ExtResource("2_gys0u")]([ExtResource("13_startdeck"), ExtResource("14_kendachi"), ExtResource("15_ziggurat")])
 available_programs = Array[ExtResource("3_prog")]([ExtResource("4_aegis"), ExtResource("5_codecracker"), ExtResource("6_flatline"), ExtResource("7_hammer"), ExtResource("8_jackhammer"), ExtResource("9_killer"), ExtResource("16_killer4"), ExtResource("17_killer6"), ExtResource("10_shield"), ExtResource("11_wizbook"), ExtResource("12_worm")])
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2041910377]
+environment = SubResource("Environment_dbyrx")
+camera_attributes = SubResource("CameraAttributesPhysical_va62j")
+compositor = SubResource("Compositor_4btsc")
 
 [node name="Background" type="ColorRect" parent="." unique_id=344016831]
 show_behind_parent = true
@@ -64,6 +79,9 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="Margin/RootVBox/TitleRow" unique_id=968007708]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 1.2298725, 2.6034334, 0.5764706)
+theme_override_constants/outline_size = 10
 theme_override_fonts/font = ExtResource("20_ldt4r")
 theme_override_font_sizes/font_size = 87
 text = "CYBERDECK WORKBENCH"
@@ -471,17 +489,6 @@ metadata/_tab_index = 1
 [node name="UnlockRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP" unique_id=295451701]
 layout_mode = 2
 
-[node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/UnlockRow" unique_id=47215546]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "PURCHASE UNLOCKS"
-
-[node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP" unique_id=646615436]
-custom_minimum_size = Vector2(0, 1)
-layout_mode = 2
-color = Color(0, 0.45490196, 1, 0.5764706)
-
 [node name="Grid" type="GridContainer" parent="Margin/RootVBox/Tabs/SHOP" unique_id=1220882878]
 layout_mode = 2
 size_flags_vertical = 3
@@ -499,6 +506,7 @@ layout_mode = 2
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=345052212]
 layout_mode = 2
+theme_type_variation = &"MyHeader"
 text = "BUY DECKS"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=1183754792]
@@ -511,9 +519,19 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="BuyDeckButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=1818837854]
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=1245337083]
+layout_mode = 2
+
+[node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox/HBoxContainer" unique_id=774056144]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+text = "PURCHASE UNLOCKS"
+
+[node name="BuyDeckButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox/HBoxContainer" unique_id=1818837854]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 text = "BUY DECK"
 
 [node name="BuyProgramsPanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid" unique_id=296407756]
@@ -526,6 +544,7 @@ layout_mode = 2
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=2093200420]
 layout_mode = 2
+theme_type_variation = &"MyHeader"
 text = "BUY PROGRAMS"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=538742000]
@@ -538,9 +557,18 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="BuyProgramButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=212743116]
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=1930168445]
+layout_mode = 2
+
+[node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox/HBoxContainer" unique_id=442898238]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "PURCHASE UNLOCKS"
+
+[node name="BuyProgramButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox/HBoxContainer" unique_id=212743116]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = "BUY PROGRAM"
 
 [node name="SellLootPanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid" unique_id=2016071442]
@@ -553,6 +581,7 @@ layout_mode = 2
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=1311415865]
 layout_mode = 2
+theme_type_variation = &"MyHeader"
 text = "SELL LOOT"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=1005877067]
@@ -580,6 +609,7 @@ layout_mode = 2
 
 [node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=453665639]
 layout_mode = 2
+theme_type_variation = &"MyHeader"
 text = "SELL FILES"
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=1141296297]
@@ -592,14 +622,19 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="SellFileButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=1037721656]
+[node name="HBoxContainer" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=207463091]
+layout_mode = 2
+
+[node name="SellFileButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox/HBoxContainer" unique_id=1037721656]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = "SELL FILE"
 
-[node name="SellAllFilesButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=1768899918]
+[node name="SellAllFilesButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox/HBoxContainer" unique_id=1768899918]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = "SELL ALL"
 
 [node name="Footer" type="HBoxContainer" parent="Margin/RootVBox" unique_id=1610942416]
@@ -621,3 +656,9 @@ unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Jack into the Net using the selected deck and loaded programs (Shortcut: J)"
 text = "[ J ]  JACK IN"
+
+[node name="ExitButton" type="Button" parent="Margin/RootVBox/Footer" unique_id=701122338]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Exit the game"
+text = "[ ESC ]  EXIT GAME"

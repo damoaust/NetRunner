@@ -26,11 +26,11 @@ signal state_changed
 class Cpu:
 	var coord: Vector2i
 	var tile: CP2020TileData
-	var floor: int = 0
+	var floor_index: int = 0
 	func _init(c: Vector2i, t: CP2020TileData, f: int = 0) -> void:
 		coord = c
 		tile = t
-		floor = f
+		floor_index = f
 
 const INT_PER_CPU := 3
 const ACTIONS_PER_CPU := 1
@@ -164,7 +164,7 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 	var can_see := false
 	for cpu in cpus:
 		if is_instance_valid(cpu.tile) and cpu.tile.cpu_crashed_turns <= 0 \
-				and layout.line_of_sight(cpu.coord, target_pos, sight_range, cpu.floor):
+				and layout.line_of_sight(cpu.coord, target_pos, sight_range, cpu.floor_index):
 			can_see = true
 			break
 	if not can_see:
@@ -220,4 +220,3 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 		# runner / session.
 		if not is_inside_tree():
 			return
-

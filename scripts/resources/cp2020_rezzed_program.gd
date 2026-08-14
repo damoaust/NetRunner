@@ -72,7 +72,7 @@ func update_visual_position() -> void:
 # to `coord` before calling — this only updates the visual, awaits the step
 # timer, and emits moved_to. Resources can't await get_tree(), so the await
 # lives here on the Node2D.
-func move_to_step(coord: Vector2i) -> void:
+func move_to_step(_coord: Vector2i) -> void:
 	update_visual_position()
 	await get_tree().create_timer(0.3).timeout
 	moved_to.emit(current_position)
@@ -101,16 +101,39 @@ func apply_visual_from_program() -> void:
 		glyph_label.add_theme_color_override("font_color", col)
 	# Auto-centre the glyph via its TextServer bitmap metrics. Falls back to the
 	# node's manual label_visual_offset when metrics are unavailable.
+	# NB: the scene LabelSettings sets font_size (26) but no font, so the Font
+	# reference falls back to the theme default font while the SIZE must still
+	# come from label_settings — measuring at the default size while the Label
+	# renders at the LabelSettings size produces a centring offset for the
+	# wrong glyph size.
 	var font: Font = null
 	var font_size: int = 0
-	if glyph_label.label_settings and glyph_label.label_settings.font:
+	if glyph_label.label_settings:
 		font = glyph_label.label_settings.font
 		font_size = int(glyph_label.label_settings.font_size)
-	else:
+	if font == null:
 		font = glyph_label.get_theme_default_font()
+	if font_size <= 0:
 		font_size = int(glyph_label.get_theme_default_font_size())
+	# Resolve which font has the glyph. The theme font (whitrabt) lacks many
+	# Unicode symbols, so fall back to seguiemj.ttf (Segoe UI Emoji) for both
+	# metrics and rendering when the glyph isn't found.
 	var auto_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, font, font_size, cell_size)
 	if auto_offset == Vector2.ZERO:
+		var fallback_font: Font = load("res://data/seguiemj.ttf") as Font
+		if fallback_font != null:
+			var fb_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, fallback_font, font_size, cell_size)
+			if fb_offset != Vector2.ZERO:
+				auto_offset = fb_offset
+				if glyph_label.label_settings:
+					glyph_label.label_settings.font = fallback_font
+				else:
+					glyph_label.add_theme_font_override("font", fallback_font)
+	# When auto-center is disabled the designer positions the glyph entirely via
+	# glyph_offset in the Inspector; auto_offset is discarded.
+	if not program.glyph_auto_center:
+		auto_offset = Vector2.ZERO
+	elif auto_offset == Vector2.ZERO:
 		auto_offset = label_visual_offset
 	glyph_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + auto_offset + program.glyph_offset
 
@@ -131,10 +154,10 @@ func refresh_pathfinding(layout: CP2020DatafortLayout) -> void:
 			if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL or (tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked):
 				astar_grid.set_point_solid(coord, true)
 
-func update_visibility(is_explored: bool, is_visible: bool) -> void:
+func update_visibility(_is_explored: bool, p_visible: bool) -> void:
 	if not glyph_label:
 		return
-	glyph_label.visible = is_visible
+	glyph_label.visible = p_visible
 
 func take_damage(amount: int) -> bool:
 	current_integrity -= amount

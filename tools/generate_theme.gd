@@ -36,6 +36,13 @@ func _ready() -> void:
 	theme.set_font_size("font_size", "Label", 21)
 	theme.set_constant("outline_size", "Label", 0)
 
+	# --- RichTextLabel (terminal log) ---
+	theme.set_color("font_color", "RichTextLabel", COL_TEXT)
+	theme.set_color("font_outline_color", "RichTextLabel", Color(0, 0, 0, 0.85))
+	theme.set_font("font", "RichTextLabel", mono)
+	theme.set_font_size("font_size", "RichTextLabel", 21)
+	theme.set_constant("outline_size", "RichTextLabel", 0)
+
 	# --- Button ---
 	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 		theme.set_stylebox(st, "Button", _btn_style(st))
