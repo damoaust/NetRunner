@@ -712,8 +712,8 @@ grow_horizontal = 0
 text = "Show / Hide programs editor"
 
 [node name="SaveDialog" type="FileDialog" parent="." unique_id=1705406050]
-title = "Open a File or Directory"
-file_mode = 3
+title = "Save Datafort Layout"
+file_mode = 4
 filters = PackedStringArray("*.tres ; CP2020 Datafort Resource")
 
 [node name="LoadDialog" type="FileDialog" parent="." unique_id=184065023]
