@@ -454,6 +454,10 @@ func _input(event: InputEvent) -> void:
 	# --- KEYBOARD INPUT (Pass to Netrunner) ---
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER:
+			# Finishing a partial move spends the movement action; then end the
+			# turn (forfeits any remaining actions/movement).
+			if turn_manager and turn_manager.end_movement_action():
+				pass
 			_end_player_turn()
 			return
 
@@ -478,12 +482,15 @@ func _input(event: InputEvent) -> void:
 				log_to_terminal("Stunned — cannot move.\n")
 				return
 			if turn_manager and not turn_manager.has_movement():
-				log_to_terminal("No movement remaining. End turn (Space) to let ICE move.\n")
+				if turn_manager.actions_remaining <= 0:
+					log_to_terminal("No action remaining to move. End turn (Space) to let adversaries move.\n")
+				else:
+					log_to_terminal("No movement remaining this action. End turn (Space) to let adversaries move.\n")
 				return
 			var moved_successfully = netrunner.move(dir)
 			if moved_successfully:
 				if turn_manager:
-					turn_manager.consume_movement()
+					turn_manager.consume_movement_step()
 				recalculate_fog_of_war(netrunner.current_position)
 				board_renderer.queue_redraw()
 				_check_actions_exhausted()
@@ -570,8 +577,13 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 	match action_name:
 		"use_program":
 			if program is NetProgram and current_layout:
-				if turn_manager and not turn_manager.has_actions():
-					log_to_terminal("No actions remaining. End turn (Space) to let ICE move.\n")
+				if turn_manager and not turn_manager.can_use_programs():
+					if turn_manager.programs_blocked:
+						log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
+					elif turn_manager._movement_action_active:
+						log_to_terminal("Already moving this action — end movement (Space) first.\n")
+					else:
+						log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
 					return
 				# Crashed (de-rezzed) programs clog MU but can't be used —
 				# their integrity is 0. Block the action before consuming it.
@@ -638,7 +650,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 			# action. The node spawns at the runner's tile (or nearest walkable
 			# adjacent tile) and auto-follows thereafter.
 			if program is NetProgram:
-				if turn_manager and not turn_manager.has_actions():
+				if turn_manager and not turn_manager.can_use_programs():
 					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
 					return
 				if _rez_program(program as NetProgram):
@@ -657,7 +669,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 			# helpers, sourcing stats from the rezzed node's program duplicate.
 			if program is RezzedProgram and current_layout:
 				var rez_node: RezzedProgram = program as RezzedProgram
-				if turn_manager and not turn_manager.has_actions():
+				if turn_manager and not turn_manager.can_use_programs():
 					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
 					return
 				if not is_instance_valid(rez_node) or rez_node.program == null:
@@ -679,7 +691,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					if payload.size() >= 2 and payload[0] is DemonNode:
 						var demon_node: DemonNode = payload[0]
 						var sub_idx: int = int(payload[1])
-						if turn_manager and not turn_manager.has_actions():
+						if turn_manager and not turn_manager.can_use_programs():
 							log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
 							return
 						if not is_instance_valid(demon_node):
@@ -1916,7 +1928,10 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 		if is_instance_valid(netrunner) and netrunner.deck_crashed_turns > 0:
 			netrunner.tick_deck_crash()
 		if is_instance_valid(netrunner) and netrunner.deck_crashed_turns > 0 and turn_manager:
-			turn_manager.actions_remaining = 0
+			# Deck crash blocks programs but preserves a movement action so the
+			# runner can flee (CP2020 RAW). actions_remaining stays at full so
+			# movement works; programs_blocked gates program use.
+			turn_manager.programs_blocked = true
 			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
 			log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
 		# CP2020 Death Trap: a stunned (unconscious) runner cannot act OR
@@ -1924,6 +1939,8 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 		# auto-hit every turn until the runner flatlines or is rescued by a
 		# meat-space ally pulling the plug (future feature).
 		if is_instance_valid(netrunner) and netrunner.is_stunned and turn_manager:
+			# Stun zeroes the action pool — movement now requires an action, so
+			# this blocks both programs AND movement (Death Trap).
 			turn_manager.actions_remaining = 0
 			turn_manager.movement_remaining = 0
 			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
@@ -2050,8 +2067,8 @@ func _check_actions_exhausted() -> void:
 	# movement budget are exhausted (or they explicitly end the turn). This
 	# lets a runner move freely after using their single program/Net action,
 	# and vice versa, matching the CP2020 action economy.
-	if turn_manager and turn_manager.actions_remaining <= 0 and turn_manager.movement_remaining <= 0:
-		log_to_terminal("Out of actions and movement. --- Netrunner turn ended. ---\n")
+	if turn_manager and turn_manager.actions_remaining <= 0:
+		log_to_terminal("Out of actions — ending turn.\n")
 		var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
 		var nr_init := netrunner.reflex + (RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0) + netrunner.temp_speed_bonus
 		turn_manager.end_round(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)

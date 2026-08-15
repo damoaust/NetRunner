@@ -71,9 +71,9 @@ var active_toolbox: NetProgram = null
 var active_speed: NetProgram = null
 
 # Anti-system crash state. While > 0 the runner's cyberdeck is crashed: the
-# turn manager forces actions_remaining to 0 (movement still allowed) so the
-# runner can flee but cannot run programs. Decremented by tick_deck_crash at
-# the start of each netrunner turn.
+# game session sets turn_manager.programs_blocked = true (movement still
+# allowed so the runner can flee) so the runner cannot run programs but can
+# still move. Decremented by tick_deck_crash at the start of each netrunner turn.
 var deck_crashed_turns: int = 0
 
 # Stunned Runner Death Trap (CP2020). When a Stun save fails, the runner is
@@ -625,7 +625,7 @@ func crash_deck(duration: int, attacker_name: String) -> void:
 # Called at the start of each netrunner turn by the game session. Decrements
 # the crash timer and logs when the deck reboots (reaches 0). Returns nothing;
 # the game session reads deck_crashed_turns after this to decide whether to
-# force actions_remaining to 0.
+# set turn_manager.programs_blocked.
 func tick_deck_crash() -> void:
 	if deck_crashed_turns <= 0:
 		return
