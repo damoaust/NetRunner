@@ -1030,10 +1030,6 @@ func _scan_data_catalogue() -> void:
 				_unlockable_programs.append(path)
 			elif res is DeckModule:
 				_unlockable_modules.append(path)
-				# Auto-unlock module blueprints so they appear in the shop on
-				# first visit (modules are discoverable gear, not starting
-				# gear — but the catalogue scan is the discovery mechanism).
-				MetaState.unlock_module(path)
 		fname = dir.get_next()
 	dir.list_dir_end()
 
@@ -1464,49 +1460,62 @@ func _refresh_unlock_list() -> void:
 	unlock_buy_button.disabled = true
 	if unlock_credits_label:
 		unlock_credits_label.text = "CREDITS: %d eb" % RunState.credits
-	# Decks first, then programs. Metadata: {"path": path, "is_deck": bool}.
+	# Decks, then programs, then modules. Metadata: {"path": path, "category": String, "cost": int}.
 	unlock_list.add_item("-- DECKS --", null, false)
 	unlock_list.set_item_custom_fg_color(0, COL_HEADER)
 	unlock_list.set_item_disabled(0, true)
 	for path in _unlockable_decks:
-		_add_unlock_row(path, true)
+		_add_unlock_row(path, "deck")
 	unlock_list.add_item("-- PROGRAMS --", null, false)
 	unlock_list.set_item_custom_fg_color(unlock_list.item_count - 1, COL_HEADER)
 	unlock_list.set_item_disabled(unlock_list.item_count - 1, true)
 	for path in _unlockable_programs:
-		_add_unlock_row(path, false)
+		_add_unlock_row(path, "program")
+	unlock_list.add_item("-- MODULES --", null, false)
+	unlock_list.set_item_custom_fg_color(unlock_list.item_count - 1, COL_HEADER)
+	unlock_list.set_item_disabled(unlock_list.item_count - 1, true)
+	for path in _unlockable_modules:
+		_add_unlock_row(path, "module")
 
-func _add_unlock_row(path: String, is_deck: bool) -> void:
+func _add_unlock_row(path: String, category: String) -> void:
 	var res = load(path)
 	if res == null:
 		return
 	var name_txt: String = ""
 	var cost: int = 0
-	if is_deck:
-		var deck := res as Cyberdeck
-		if deck == null:
-			return
-		name_txt = deck.deck_name
-		cost = deck.price
-	else:
-		var prog := res as NetProgram
-		if prog == null:
-			return
-		name_txt = prog.program_name
-		cost = prog.price
 	var already := false
-	if is_deck:
-		already = MetaState.has_deck(path)
-	else:
-		already = MetaState.has_program(path)
+	match category:
+		"deck":
+			var deck := res as Cyberdeck
+			if deck == null:
+				return
+			name_txt = deck.deck_name
+			cost = deck.price
+			already = MetaState.has_deck(path)
+		"program":
+			var prog := res as NetProgram
+			if prog == null:
+				return
+			name_txt = prog.program_name
+			cost = prog.price
+			already = MetaState.has_program(path)
+		"module":
+			var mod := res as DeckModule
+			if mod == null:
+				return
+			name_txt = mod.module_name
+			cost = mod.price
+			already = MetaState.has_module(path)
+		_:
+			return
 	if already:
 		var idxu := unlock_list.add_item("%s — ✓ UNLOCKED" % name_txt, null, false)
-		unlock_list.set_item_metadata(idxu, {"path": path, "is_deck": is_deck, "cost": cost})
+		unlock_list.set_item_metadata(idxu, {"path": path, "category": category, "cost": cost})
 		unlock_list.set_item_disabled(idxu, true)
 		unlock_list.set_item_custom_fg_color(idxu, COL_GREY)
 		return
 	var idx := unlock_list.add_item("%s — %d eb" % [name_txt, cost], null, true)
-	unlock_list.set_item_metadata(idx, {"path": path, "is_deck": is_deck, "cost": cost})
+	unlock_list.set_item_metadata(idx, {"path": path, "category": category, "cost": cost})
 	if RunState.credits < cost:
 		unlock_list.set_item_disabled(idx, true)
 		unlock_list.set_item_custom_fg_color(idx, COL_GREY)
@@ -1525,7 +1534,7 @@ func _on_unlock_pressed() -> void:
 		return
 	var meta: Dictionary = unlock_list.get_item_metadata(_selected_unlock_idx)
 	var path: String = meta.get("path", "")
-	var is_deck: bool = meta.get("is_deck", false)
+	var category: String = meta.get("category", "")
 	var cost: int = meta.get("cost", 0)
 	if path == "":
 		return
@@ -1535,18 +1544,25 @@ func _on_unlock_pressed() -> void:
 	RunState.credits -= cost
 	var unlocked := false
 	var item_name := ""
-	if is_deck:
-		var deck := load(path) as Cyberdeck
-		if deck != null:
-			item_name = deck.deck_name
-			MetaState.unlock_deck(path)
-			unlocked = true
-	else:
-		var prog := load(path) as NetProgram
-		if prog != null:
-			item_name = prog.program_name
-			MetaState.unlock_program(path)
-			unlocked = true
+	match category:
+		"deck":
+			var deck := load(path) as Cyberdeck
+			if deck != null:
+				item_name = deck.deck_name
+				MetaState.unlock_deck(path)
+				unlocked = true
+		"program":
+			var prog := load(path) as NetProgram
+			if prog != null:
+				item_name = prog.program_name
+				MetaState.unlock_program(path)
+				unlocked = true
+		"module":
+			var mod := load(path) as DeckModule
+			if mod != null:
+				item_name = mod.module_name
+				MetaState.unlock_module(path)
+				unlocked = true
 	if unlocked:
 		_refresh_unlock_list()
 		_refresh_shop()
