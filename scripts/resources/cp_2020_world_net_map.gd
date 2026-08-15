@@ -2,9 +2,11 @@ class_name CP2020WorldNetMap
 extends Node2D
 
 # Grid-based world map. Runner spawns on a city hub and moves tile-by-tile
-# with a 5-action-per-turn limit (no ICE on the world map). Right-clicking the
-# runner's tile when on a city hub offers Pay for LDL / Hack LDL to enter the
-# datafort.
+# with a 5-action-per-turn limit (no ICE on the world map). A persistent LDL
+# command panel (right side of the HUD) lists hackable LDLs within 5 spaces of
+# the runner, plus ENTER City Grid (when on a hub) and Jack Out. Hacking an
+# LDL is a raw 1D10 roll vs the LDL's Security Level (CP2020 RAW: no STAT +
+# Skill added); a failure just drops the line (no trace, no auto-NetWatch).
 #
 # Regions are purely for categorising (colour + HUD location label). The runner
 # may traverse any in-bounds tile, including the blue open-ocean areas between
@@ -19,7 +21,6 @@ const CELL: int = 40
 const W: int = 1920
 const H: int = 1080
 const SCREEN_OFFSET: Vector2 = Vector2(20, 60)
-const POPUP_THEME := preload("res://scripts/resources/cp2020_theme.gd")
 
 const OPEN_OCEAN_NAME: String = "OPEN OCEAN"
 
@@ -60,9 +61,15 @@ var spawn_hub_name: String = ""
 @onready var trace_label: Label = get_node_or_null("HUDLayer/HUDOverlay/TraceLabel")
 @onready var camera: Camera2D = get_node_or_null("RunnerCamera")
 
-# Nearby hubs offered in the current jump/dive popup (survives the signal
-# callback, mirroring the interaction_handler _current_programs pattern).
-var _popup_nearby: Array = []
+# Persistent LDL command panel (built in code, parented to HUDLayer/HUDOverlay).
+# Replaces the old right-click popup. The list section rebuilds on every
+# _update_hud() so it stays in sync with the runner's position.
+var _ldl_panel: PanelContainer = null
+var _ldl_list_container: VBoxContainer = null
+var _ldl_enter_button: Button = null
+# Cached nearby-hub dictionaries + the bound dest for each list button, so
+# the button signal callbacks can resolve which hub was clicked.
+var _ldl_panel_hubs: Array = []
 
 # Animation state for pulsing neon elements.
 var _pulse_time: float = 0.0
@@ -81,6 +88,7 @@ func _ready() -> void:
 		turn_manager.start_netrunner_turn()
 		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
 			turn_manager.actions_changed.connect(_on_actions_changed)
+	_build_ldl_panel()
 	_update_hud()
 	_update_camera_limits()
 	_center_camera_on_runner()
@@ -435,26 +443,6 @@ func _input(event: InputEvent) -> void:
 			_update_hud()
 			queue_redraw()
 			_check_actions_exhausted()
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		# Right-click on the runner's tile. On a hub, show the full LDL popup
-		# (enter city grid, jump, jack out). Off-hub, show a minimal jack-out
-		# popup so the runner can always exit to the Workbench.
-		var grid := _screen_to_grid(get_global_mouse_position())
-		if grid == runner_pos:
-			if _hub_at(grid) != null:
-				_open_ldl_popup(grid)
-			else:
-				_open_jackout_popup()
-			get_viewport().set_input_as_handled()
-
-
-func _screen_to_grid(world_pos: Vector2) -> Vector2i:
-	# Convert a world position (under the cursor) to a grid cell. The map grid
-	# is anchored at SCREEN_OFFSET, so subtract that before dividing by CELL.
-	var local := world_pos - SCREEN_OFFSET
-	var x := int(local.x / CELL)
-	var y := int(local.y / CELL)
-	return Vector2i(clampi(x, 0, grid_cols - 1), clampi(y, 0, grid_rows - 1))
 
 
 func _try_move(target: Vector2i) -> bool:
@@ -484,46 +472,133 @@ func _on_actions_changed(remaining: int, max_actions: int) -> void:
 
 
 # ---------------------------------------------------------------------------
-# LDL entry popup
+# LDL command panel (replaces the old right-click popup)
 # ---------------------------------------------------------------------------
 
-func _open_ldl_popup(hub_pos: Vector2i) -> void:
-	var hub: Dictionary = _hub_at(hub_pos)
-	if hub == null:
-		return
-	var popup := PopupMenu.new()
-	# Parent to the HUD CanvasLayer so the popup stays in screen space (the
+func _build_ldl_panel() -> void:
+	# Build a persistent panel docked to the right edge of the HUD overlay.
+	# Parented to HUDLayer/HUDOverlay so it stays in screen space (the
 	# RunnerCamera scrolls anything under the Node2D root).
-	var hud_layer := get_node_or_null("HUDLayer")
-	if hud_layer != null:
-		hud_layer.add_child(popup)
-	else:
-		add_child(popup)
+	var overlay: Control = get_node_or_null("HUDLayer/HUDOverlay")
+	if overlay == null:
+		return
 
-	POPUP_THEME.apply_cyberpunk_theme(popup, 18)
+	_ldl_panel = PanelContainer.new()
+	_ldl_panel.name = "LDLPanel"
+	# Dock to the right side, below the top HUD labels.
+	_ldl_panel.anchor_right = 1.0
+	_ldl_panel.anchor_bottom = 1.0
+	_ldl_panel.offset_left = 1530.0
+	_ldl_panel.offset_top = 80.0
+	_ldl_panel.offset_right = -30.0
+	_ldl_panel.offset_bottom = -30.0
+	_ldl_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(_ldl_panel)
 
-	# Build the nearby-hub jump list (Chebyshev <= 5, excluding self).
-	_popup_nearby = _nearby_hubs(hub_pos)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	_ldl_panel.add_child(margin)
 
-	# Enter the city's City Grid. Trace is built by inter-city jumps, not by
-	# entering a city, so the enter itself adds no trace.
-	popup.add_item("ENTER %s City Grid" % hub.name, 0)
-	popup.add_separator()
-	for i in range(_popup_nearby.size()):
-		var dest: Dictionary = _popup_nearby[i]
-		popup.add_item("Hack LDL -> %s (Sec %d, +Trace %d)" % [dest.name, int(dest.security_code), int(dest.trace_value)], 100 + i)
-		popup.add_item("Pay LDL -> %s (%d eb)" % [dest.name, int(dest.ldl_cost)], 200 + i)
-	popup.add_separator()
-	popup.add_item("> Jack Out to Hub", 998)
-	popup.add_item("Cancel", 999)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	margin.add_child(col)
 
-	popup.id_pressed.connect(_on_ldl_popup_id.bind(hub))
-	# Position the popup near the hub in screen coordinates.
-	var world_pos := SCREEN_OFFSET + Vector2(hub_pos.x * CELL + CELL, hub_pos.y * CELL)
-	var screen_pos := _world_to_screen(world_pos) + Vector2(20, 20)
-	popup.position = screen_pos
-	popup.popup()
-	popup.set_position(screen_pos)
+	var title := Label.new()
+	title.text = "LDL LINKS"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", COLOR_GRID_BRIGHT)
+	title.add_theme_color_override("font_outline_color", Color(0.0, 0.3, 0.4, 1.0))
+	title.add_theme_constant_override("outline_size", 4)
+	title.add_theme_font_size_override("font_size", 20)
+	col.add_child(title)
+
+	var sep := HSeparator.new()
+	col.add_child(sep)
+
+	# ENTER button — only meaningful on a hub with a City Grid; its visibility
+	# and label are refreshed by _refresh_ldl_panel().
+	_ldl_enter_button = Button.new()
+	_ldl_enter_button.text = "ENTER CITY GRID"
+	_ldl_enter_button.custom_minimum_size = Vector2(0, 36)
+	_ldl_enter_button.add_theme_font_size_override("font_size", 14)
+	_ldl_enter_button.pressed.connect(_on_enter_button_pressed)
+	col.add_child(_ldl_enter_button)
+
+	var list_label := Label.new()
+	list_label.text = "HACKABLE LINKS (within 5)"
+	list_label.add_theme_color_override("font_color", COLOR_TEXT_LABEL)
+	list_label.add_theme_font_size_override("font_size", 12)
+	col.add_child(list_label)
+
+	# Scrollable list container for the per-LDL rows.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(0, 200)
+	col.add_child(scroll)
+
+	_ldl_list_container = VBoxContainer.new()
+	_ldl_list_container.add_theme_constant_override("separation", 4)
+	scroll.add_child(_ldl_list_container)
+
+	var jack_sep := HSeparator.new()
+	col.add_child(jack_sep)
+
+	var jack_button := Button.new()
+	jack_button.text = "> JACK OUT TO HUB"
+	jack_button.custom_minimum_size = Vector2(0, 36)
+	jack_button.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4, 1.0))
+	jack_button.add_theme_font_size_override("font_size", 14)
+	jack_button.pressed.connect(_jack_out_to_hub)
+	col.add_child(jack_button)
+
+	_refresh_ldl_panel()
+
+
+func _refresh_ldl_panel() -> void:
+	if _ldl_list_container == null:
+		return
+
+	# ENTER button: visible only when the runner sits on a hub that has a
+	# City Grid path assigned.
+	var current_hub: Variant = _hub_at(runner_pos)
+	if _ldl_enter_button != null:
+		if current_hub != null and String(current_hub.get("city_grid_path", "")) != "":
+			_ldl_enter_button.text = "ENTER %s" % current_hub.name.to_upper()
+			_ldl_enter_button.visible = true
+		else:
+			_ldl_enter_button.visible = false
+
+	# Clear the previous list rows.
+	for child in _ldl_list_container.get_children():
+		child.queue_free()
+	_ldl_panel_hubs = _nearby_hubs(runner_pos)
+
+	if _ldl_panel_hubs.is_empty():
+		var empty := Label.new()
+		empty.text = "(no LDLs in range)"
+		empty.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55, 0.8))
+		empty.add_theme_font_size_override("font_size", 12)
+		_ldl_list_container.add_child(empty)
+		return
+
+	for i in range(_ldl_panel_hubs.size()):
+		var dest: Dictionary = _ldl_panel_hubs[i]
+		var row := Button.new()
+		row.text = "%s\nSec %d  +Trace %d" % [dest.name, int(dest.security_code), int(dest.trace_value)]
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.custom_minimum_size = Vector2(0, 48)
+		row.add_theme_font_size_override("font_size", 13)
+		row.pressed.connect(_hack_jump.bind(dest))
+		_ldl_list_container.add_child(row)
+
+
+func _on_enter_button_pressed() -> void:
+	var hub: Variant = _hub_at(runner_pos)
+	if hub != null:
+		_enter_city_grid(hub)
 
 
 func _chebyshev(a: Vector2i, b: Vector2i) -> int:
@@ -540,33 +615,6 @@ func _nearby_hubs(pos: Vector2i) -> Array:
 	return out
 
 
-func _world_to_screen(world_pos: Vector2) -> Vector2:
-	var vp := get_viewport()
-	var vp_size := vp.get_visible_rect().size
-	if camera == null:
-		return world_pos
-	var zoom := camera.zoom
-	var screen_center := camera.get_screen_center_position()
-	return (world_pos - screen_center) * zoom + vp_size * 0.5
-
-
-func _on_ldl_popup_id(id: int, hub: Dictionary) -> void:
-	if id == 0:
-		_enter_city_grid(hub)
-		return
-	if id == 998:
-		_jack_out_to_hub()
-		return
-	if id == 999:
-		return  # Cancel
-	if id >= 100 and id < 100 + _popup_nearby.size():
-		_hack_jump(_popup_nearby[id - 100])
-		return
-	if id >= 200 and id < 200 + _popup_nearby.size():
-		_pay_jump(_popup_nearby[id - 200])
-		return
-
-
 func _jack_out_to_hub() -> void:
 	# End the run and return to the Workbench to fence loot/files and gear up.
 	print("WORLD MAP: Jack Out to Hub. Run trace reset.")
@@ -578,33 +626,9 @@ func _jack_out_to_hub() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
 
 
-func _open_jackout_popup() -> void:
-	# Minimal popup for jacking out when right-clicking off-hub.
-	var popup := PopupMenu.new()
-	var hud_layer := get_node_or_null("HUDLayer")
-	if hud_layer != null:
-		hud_layer.add_child(popup)
-	else:
-		add_child(popup)
-	POPUP_THEME.apply_cyberpunk_theme(popup, 18)
-	popup.add_item("> Jack Out to Hub", 998)
-	popup.add_item("Cancel", 999)
-	popup.id_pressed.connect(_on_jackout_popup_id)
-	var world_pos := SCREEN_OFFSET + Vector2(runner_pos.x * CELL + CELL, runner_pos.y * CELL)
-	var screen_pos := _world_to_screen(world_pos) + Vector2(20, 20)
-	popup.position = screen_pos
-	popup.popup()
-	popup.set_position(screen_pos)
-
-
-func _on_jackout_popup_id(id: int) -> void:
-	if id == 998:
-		_jack_out_to_hub()
-
-
 func _hack_jump(dest: Dictionary) -> void:
-	# Security Code rule: roll 1D10 >= destination security_code to scam the
-	# LDL. Success builds trace and teleports; failure hits the caught table.
+	# CP2020 RAW LDL connection check: a raw 1D10 roll must meet or exceed the
+	# LDL's Security Level to scam the connection. No STAT + Skill is added.
 	var roll := randi_range(1, 10)
 	print("WORLD MAP: Hack LDL -> %s — 1D10 %d vs Security Code %d." % [dest.name, roll, int(dest.security_code)])
 	if roll >= int(dest.security_code):
@@ -616,55 +640,11 @@ func _hack_jump(dest: Dictionary) -> void:
 		_update_hud()
 		queue_redraw()
 		return
-	print("WORLD MAP: Hack failed — caught scamming the LDL.")
-	_caught_table(dest)
-
-
-func _pay_jump(dest: Dictionary) -> void:
-	var cost: int = int(dest.ldl_cost)
-	if RunState.credits < cost:
-		print("WORLD MAP: Insufficient credits (%d eb) for %s LDL (%d eb)." % [RunState.credits, dest.name, cost])
-		_update_hud()
-		return
-	RunState.credits -= cost
-	var trace_reduction: int = RunState.selected_deck.effective_trace_reduction() if RunState.selected_deck != null else 0
-	RunState.accumulated_trace += max(0, int(dest.trace_value) - trace_reduction)
-	runner_pos = dest.pos
-	_center_camera_on_runner()
-	print("WORLD MAP: Paid %d eb, jumped to %s. Run trace difficulty: %d" % [cost, dest.name, RunState.accumulated_trace])
-	_update_hud()
-	queue_redraw()
-
-
-func _caught_table(hub: Dictionary) -> void:
-	# 1D6 immediate consequences for a failed LDL hack (no persistent state).
-	var caught := randi_range(1, 6)
-	print("WORLD MAP: NETWATCH roll 1D6 = %d" % caught)
-	match caught:
-		1, 2, 3, 4:
-			var charge: int = int(hub.ldl_cost)
-			RunState.credits = maxi(0, RunState.credits - charge)
-			print("WORLD MAP: Cut off and charged for the call (-%d eb). Credits: %d" % [charge, RunState.credits])
-		5:
-			print("WORLD MAP: Cut off. NETWATCH has your access code — expect company in Realspace.")
-		6:
-			_handle_netcop_bust()
-	_update_hud()
-
-
-func _handle_netcop_bust() -> void:
-	var bust := randi_range(1, 6)
-	print("WORLD MAP: NetCops bust attempt — 1D6 = %d" % bust)
-	match bust:
-		1, 2:
-			var fine := randi_range(1, 6) * 100
-			RunState.credits = maxi(0, RunState.credits - fine)
-			print("WORLD MAP: Fined %d eb. Credits: %d" % [fine, RunState.credits])
-		3, 4, 5:
-			var days := randi_range(1, 6) + 1
-			print("WORLD MAP: You escape. NetCops patrol the area %d days hoping you show up." % days)
-		6:
-			print("WORLD MAP: You escape, but an All-Net Bulletin is issued. They are looking for you.")
+	# RAW failure: the connection simply fails — the line drops. No trace is
+	# added, the runner does not move (signal stays at the last connected
+	# node), and NetWatch is not automatically alerted. NetWatch/raids only
+	# arise from in-datafort security programs or a sysop spotting you.
+	print("WORLD MAP: LDL hack failed — line dropped. No trace added.")
 
 
 func _enter_city_grid(hub: Dictionary) -> void:
@@ -702,3 +682,4 @@ func _update_hud() -> void:
 				location_label.text = "LOCATION: %s" % regions[region_index].name
 			else:
 				location_label.text = "LOCATION: %s" % OPEN_OCEAN_NAME
+	_refresh_ldl_panel()
