@@ -1038,8 +1038,8 @@ func _open_unlock_window() -> void:
 	_scan_data_catalogue()
 	if unlock_window == null:
 		_build_unlock_window()
-	_refresh_unlock_list()
 	add_child(unlock_window)
+	_refresh_unlock_list()
 	unlock_window.popup_centered(Vector2i(420, 520))
 
 func _build_unlock_window() -> void:
