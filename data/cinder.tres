@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_cinder"]
+
+[resource]
+script = ExtResource("1_cinder")
+program_name = "Cinder"
+type = 4
+effect_type = 3
+memory_cost = 4
+strength = 4
+price = 2500
+damage_dice = 6
+description = "Anti-personnel attack program. Sets the runner's neural link alight, dealing 1D6 physical damage per hit."

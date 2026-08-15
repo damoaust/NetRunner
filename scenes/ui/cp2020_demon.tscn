@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://demonnode01"]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_demon.gd" id="1_demon"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_demon"]
+font_size = 30
+font_color = Color(0.8, 0.25, 0.9, 1)
+
+[node name="DemonNode" type="Node2D"]
+script = ExtResource("1_demon")
+label_visual_offset = Vector2(-1, -2)
+
+[node name="GlyphLabel" type="Label" parent="."]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "⚝"
+label_settings = SubResource("LabelSettings_demon")
+horizontal_alignment = 1
+vertical_alignment = 1

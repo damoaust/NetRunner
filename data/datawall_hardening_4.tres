@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DeckModule" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_deck_module.gd" id="1_dw4"]
+
+[resource]
+script = ExtResource("1_dw4")
+module_name = "Data Wall Hardening +4"
+effect_type = 2
+bonus_value = 4
+price = 2500
+glyph = "🛡"
+color = Color(0.25, 0.4, 1.0, 1.0)
+description = "Military-grade data wall hardening. Adds +4 to the deck's effective Data Wall STR."

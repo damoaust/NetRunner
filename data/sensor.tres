@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_sensor"]
+
+[resource]
+script = ExtResource("1_sensor")
+program_name = "Sensor"
+type = 2
+effect_type = 4
+memory_cost = 4
+strength = 5
+price = 550
+description = "Detection utility. Sweeps a radius (STR = spaces) around the runner, lifting fog of war on every tile in range — including structure behind walls. Reveals the map without moving."

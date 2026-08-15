@@ -25,7 +25,8 @@ enum EffectType {
 	ARMOR,           # Defense program: absorbs damage point-for-point (Armor STR subtracts from incoming rolled damage; remainder hits HP).
 	WORM,            # Stealth opener: slips behind data walls/code gates, opens from the inside over 2 turns. No alert.
 	DETECTION,       # Detection/alarm: Watchdog detects intruders via LoS and trips an alarm activating all attack ICE. As a netrunner utility, deploys a tripwire beacon that alerts when enemies approach.
-	INVISIBILITY      # Stealth cloak: overlays a false signal on the runner's cybermodem trace. While active, each dormant adversary's first LoS detection is gated by an opposed roll (1D10+cloak.STR vs 1D10+seeker.STR); ties/holds -> seeker ignores you, seeker wins -> cloak pierced & adversary activates.
+	INVISIBILITY,     # Stealth cloak: overlays a false signal on the runner's cybermodem trace. While active, each dormant adversary's first LoS detection is gated by an opposed roll (1D10+cloak.STR vs 1D10+seeker.STR); ties/holds -> seeker ignores you, seeker wins -> cloak pierced & adversary activates.
+	DEMON,            # Demon: a program shell carrying N other programs as subroutines (Imp=2/Afreet=3/Succubus=4/Balron=5). Rezzed as one node; the runner commands it to fire any loaded subroutine, each using the Demon core's STR (not the subroutine's own). Faithful CP2020 multi-program-in-one tradeoff.
 }
 
 # Attack/defense visual config per effect type. Each entry describes the beam
@@ -35,6 +36,7 @@ const ATTACK_VISUALS: Dictionary = {
 	EffectType.DEREZ_ICE: {"color": Color(1.0, 0.15, 0.15), "width": 3.0, "duration": 0.5, "style": "beam"},
 	EffectType.DAMAGE_RUNNER: {"color": Color(1.0, 0.3, 0.1), "width": 3.0, "duration": 0.5, "style": "beam"},
 	EffectType.CRASH_CPU: {"color": Color(1.0, 0.5, 0.0), "width": 3.0, "duration": 0.5, "style": "beam"},
+	EffectType.DEMON: {"color": Color(0.80, 0.25, 0.90), "width": 3.5, "duration": 0.5, "style": "beam"},
 }
 
 # Per-effect-type default on-map visual identity (glyph + color). Renderers
@@ -56,6 +58,7 @@ const DEFAULT_VISUALS: Dictionary = {
 	EffectType.WORM: {"glyph": "◐", "color": Color(0.40, 0.90, 0.30, 1.0)},
 	EffectType.DETECTION: {"glyph": "◎", "color": Color(1.00, 0.80, 0.20, 1.0)},
 	EffectType.INVISIBILITY: {"glyph": "◌", "color": Color(0.80, 0.40, 1.00, 1.0)},
+	EffectType.DEMON: {"glyph": "⚝", "color": Color(0.80, 0.25, 0.90, 1.0)},
 }
 
 @export var program_name: String = "Hammer"
@@ -208,6 +211,20 @@ func execute_runner_action(session: CP2020GameSession, target_coord: Vector2i) -
 			return true
 		NetProgram.EffectType.INVISIBILITY:
 			return session._execute_invisibility(self)
+		NetProgram.EffectType.REVEAL_NODES:
+			# Default REVEAL_NODES behavior is a Sensor-style radius sweep
+			# (STR = radius). Probe (single-target) overrides this method.
+			session._execute_sensor(self, target_coord)
+			return true
+		NetProgram.EffectType.MODIFY_MU:
+			# Default MODIFY_MU behavior is a Toolbox-style MU ceiling boost
+			# (STR = bonus MU). Speed (initiative boost) overrides this method.
+			return session._execute_toolbox(self)
+		NetProgram.EffectType.DEMON:
+			# Demons are rezzed onto the net and commanded via the rezzed-program
+			# menu — they are never fired straight from the deck.
+			session.log_to_terminal("Demons must be rezzed onto the net before they can act.\n")
+			return false
 		_:
 			session.log_to_terminal("Program effect not implemented yet.\n")
 			return false

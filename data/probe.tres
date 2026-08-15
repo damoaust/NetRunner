@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ProbeProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/programs/probe_program.gd" id="1_probe"]
+
+[resource]
+script = ExtResource("1_probe")
+program_name = "Probe"
+type = 2
+effect_type = 4
+memory_cost = 2
+strength = 2
+price = 300
+description = "Focused detection utility. Identifies a single targeted node within line of sight, revealing it and reporting any ICE or netrunner stationed there. Cheaper than a full Sensor sweep."

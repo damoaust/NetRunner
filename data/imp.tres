@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="DemonProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/programs/demon_program.gd" id="1_imp"]
+
+[resource]
+script = ExtResource("1_imp")
+program_name = "Imp"
+type = 6
+effect_type = 12
+strength = 4
+memory_cost = 4
+price = 1500
+demon_level = 1
+max_subroutines = 2
+glyph = "⚝"
+color = Color(0.60, 0.30, 0.90, 1.0)
+description = "Lowest Demon class. A program shell carrying up to 2 subroutines. Rezzed as one node; commands fire any loaded subroutine at the Demon's STR 4."

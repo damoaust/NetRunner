@@ -15,4 +15,5 @@ max_mu = 10
 speed_bonus = 0
 data_wall_strength = 2
 interface_rank = 4
+upgrade_slots = 2
 installed_programs = Array[ExtResource("1_6nq7d")]([ExtResource("2_6nq7d"), ExtResource("3_byobi"), ExtResource("4_fltg3"), ExtResource("5_og7id"), ExtResource("6_8fwol")])

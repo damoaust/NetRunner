@@ -13,5 +13,6 @@
 [resource]
 script = ExtResource("2_tsrmj")
 price = 2000
+upgrade_slots = 3
 installed_programs = Array[ExtResource("1_x0hyd")]([ExtResource("2_c8vba"), ExtResource("3_kylw5"), ExtResource("4_dnonk"), ExtResource("5_y8atb"), ExtResource("6_87luw"), ExtResource("7_7015w"), ExtResource("8_kylw5")])
 metadata/_custom_type_script = "uid://c8r70jm1siw14"

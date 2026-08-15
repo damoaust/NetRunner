@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SpeedProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/programs/speed_program.gd" id="1_speed"]
+
+[resource]
+script = ExtResource("1_speed")
+program_name = "Speed"
+type = 6
+effect_type = 5
+memory_cost = 2
+strength = 3
+price = 450
+description = "Utility booster. Increases your cyberdeck's initiative speed bonus by the program's STR for the rest of the run, helping you win action order against the system. One active instance."

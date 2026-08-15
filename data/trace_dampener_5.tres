@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DeckModule" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_deck_module.gd" id="1_tr5"]
+
+[resource]
+script = ExtResource("1_tr5")
+module_name = "Trace Dampener -5"
+effect_type = 4
+bonus_value = 5
+price = 4000
+glyph = "∿"
+color = Color(0.3, 0.7, 1.0, 1.0)
+description = "Military signal dampener. Reduces accumulated trace from LDL travel by 5 per jump."

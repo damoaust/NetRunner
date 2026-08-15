@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_mcodecracker"]
+
+[resource]
+script = ExtResource("1_mcodecracker")
+program_name = "Master Codecracker"
+type = 1
+effect_type = 0
+memory_cost = 3
+strength = 5
+price = 750
+description = "Advanced decryption suite. Bypasses code-gate security DV with superior cracking strength."

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_mhammer"]
+
+[resource]
+script = ExtResource("1_mhammer")
+program_name = "Master Hammer"
+type = 0
+effect_type = 1
+memory_cost = 3
+strength = 6
+price = 800
+description = "Heavyweight intrusion program. Hammers down data walls with twice the striking power of a standard Hammer."

@@ -13,11 +13,13 @@ extends Resource
 @export var selected_security_tier: int = 0
 
 # Each owned deck is stored as a dictionary: { "path": deck_resource_path,
-# "installed_program_paths": [path, ...] }. The original resource is duplicated
-# on load and the listed programs are duplicated and installed.
+# "installed_program_paths": [path, ...], "installed_module_paths":
+# [path, ...] }. The original resource is duplicated on load and the listed
+# programs/modules are duplicated and installed.
 @export var owned_deck_entries: Array = []
 
 @export var owned_program_paths: Array[String] = []
+@export var owned_module_paths: Array[String] = []
 @export var loot_paths: Array[String] = []
 
 # Carried files are often runtime duplicates, so we store them inline.

@@ -192,7 +192,7 @@ func _resolve_interface_rank() -> int:
 	# Default to 6; pull from the loaded deck if available.
 	var deck = RunState.selected_deck
 	if deck != null and "interface_rank" in deck:
-		return int(deck.interface_rank)
+		return int(deck.effective_interface_rank())
 	return 6
 
 
@@ -607,7 +607,8 @@ func _hack_jump(dest: Dictionary) -> void:
 	var roll := randi_range(1, 10)
 	print("WORLD MAP: Hack LDL -> %s — 1D10 %d vs Security Code %d." % [dest.name, roll, int(dest.security_code)])
 	if roll >= int(dest.security_code):
-		RunState.accumulated_trace += int(dest.trace_value)
+		var trace_reduction: int = RunState.selected_deck.effective_trace_reduction() if RunState.selected_deck != null else 0
+		RunState.accumulated_trace += max(0, int(dest.trace_value) - trace_reduction)
 		runner_pos = dest.pos
 		_center_camera_on_runner()
 		print("WORLD MAP: Jumped to %s. Run trace difficulty: %d" % [dest.name, RunState.accumulated_trace])
@@ -625,7 +626,8 @@ func _pay_jump(dest: Dictionary) -> void:
 		_update_hud()
 		return
 	RunState.credits -= cost
-	RunState.accumulated_trace += int(dest.trace_value)
+	var trace_reduction: int = RunState.selected_deck.effective_trace_reduction() if RunState.selected_deck != null else 0
+	RunState.accumulated_trace += max(0, int(dest.trace_value) - trace_reduction)
 	runner_pos = dest.pos
 	_center_camera_on_runner()
 	print("WORLD MAP: Paid %d eb, jumped to %s. Run trace difficulty: %d" % [cost, dest.name, RunState.accumulated_trace])

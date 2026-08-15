@@ -59,6 +59,17 @@ var active_armor: NetProgram = null
 var cloak: NetProgram = null
 var interface_rank: int = 6  # Netrunner's INT for initiative (set from cyberdeck)
 
+# --- MODIFY_MU utility boosts (Toolbox / Speed) -----------------------------
+# Per-run utility boosts activated mid-dive. Toolbox raises the effective
+# deck MU ceiling (lets the runner copy/equip more); Speed raises the
+# initiative speed bonus. Both last the whole run (transient — the netrunner
+# node is freed on scene change, so they reset naturally next dive). One
+# active instance of each; re-activation refreshes rather than stacks.
+var temp_memory_bonus: int = 0
+var temp_speed_bonus: int = 0
+var active_toolbox: NetProgram = null
+var active_speed: NetProgram = null
+
 # Anti-system crash state. While > 0 the runner's cyberdeck is crashed: the
 # turn manager forces actions_remaining to 0 (movement still allowed) so the
 # runner can flee but cannot run programs. Decremented by tick_deck_crash at
@@ -123,6 +134,12 @@ func get_used_memory() -> int:
 	# when files are copied to the deck during a dive.
 	total_mu += RunState.get_carried_files_mu()
 	return total_mu
+
+# Effective deck MU ceiling including any active Toolbox (MODIFY_MU) boost.
+# Free-MU checks during a dive should use this instead of raw max_memory_units
+# so a Toolbox boost actually lets the runner carry/equip more.
+func effective_max_memory() -> int:
+	return max_memory_units + temp_memory_bonus
 
 func _ready() -> void:
 	current_health = max_health
@@ -223,7 +240,7 @@ func _draw_diamond(center: Vector2, size: float, color: Color, filled: bool) -> 
 func install_program(prog: NetProgram) -> bool:
 	if not prog:
 		return false
-	if get_used_memory() + prog.memory_cost <= max_memory_units:
+	if get_used_memory() + prog.memory_cost <= effective_max_memory():
 		installed_programs.append(prog)
 		# Seed program HP from its strength (a program's STR is its max health).
 		program_integrity[prog] = prog.strength
@@ -568,6 +585,32 @@ func raise_cloak(program: NetProgram) -> void:
 func pierce_cloak() -> void:
 	cloak = null
 	cloak_pierced.emit()
+
+# --- MODIFY_MU utility boosts (Toolbox / Speed) -----------------------------
+# Activate a Toolbox (MODIFY_MU) boost: raises the effective deck MU ceiling
+# by the program's STR for the rest of the run. One active instance — a second
+# activation refreshes the bonus rather than stacking. Returns true when the
+# bonus is applied (caller consumes an action), false if already active.
+func activate_toolbox(program: NetProgram) -> bool:
+	if active_toolbox != null:
+		return false
+	active_toolbox = program
+	temp_memory_bonus = program.strength
+	message_logged.emit("Toolbox '%s' online — deck MU ceiling +%d for this run." % [program.program_name, program.strength])
+	deck_updated.emit()
+	return true
+
+# Activate a Speed (MODIFY_MU) boost: raises the initiative speed bonus by the
+# program's STR for the rest of the run. One active instance. Returns true when
+# applied (caller consumes an action), false if already active.
+func activate_speed(program: NetProgram) -> bool:
+	if active_speed != null:
+		return false
+	active_speed = program
+	temp_speed_bonus = program.strength
+	message_logged.emit("Speed '%s' online — initiative speed +%d for this run." % [program.program_name, program.strength])
+	deck_updated.emit()
+	return true
 
 # --- Anti-system (Krash / CRASH_CPU) runner-deck crash ----------------------
 # An anti-system attack that targets the runner's cyberdeck instead of a

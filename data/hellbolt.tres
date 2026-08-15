@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_hellbolt"]
+
+[resource]
+script = ExtResource("1_hellbolt")
+program_name = "Hellbolt"
+type = 4
+effect_type = 3
+memory_cost = 5
+strength = 4
+price = 4000
+damage_dice = 10
+description = "Anti-personnel attack program. Hurls a bolt of burning code that deals 1D10 physical damage per hit. A step between Sword and Hellhound."

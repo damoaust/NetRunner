@@ -11,4 +11,5 @@ speed_bonus = 4
 data_wall_strength = 10
 interface_rank = 8
 price = 4500
+upgrade_slots = 4
 metadata/_custom_type_script = "uid://c8r70jm1siw14"

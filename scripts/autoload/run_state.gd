@@ -46,6 +46,10 @@ var owned_decks: Array[Cyberdeck] = []
 # Programs the runner owns this life (purchased or starting), available to
 # load into the deck at the workbench.
 var owned_programs: Array[NetProgram] = []
+# Deck modules the runner owns this life (purchased or looted) but has not
+# installed into a deck. Installed modules live on the deck's
+# `installed_modules` and are saved per-deck. Lost on death.
+var owned_modules: Array[DeckModule] = []
 # Files copied from datafort MEMORY_UNIT tiles during the current run, carried
 # to the hub to fence for their credit_value. Consume deck MU alongside
 # programs while carried. Lost on death.
@@ -66,6 +70,7 @@ func reset() -> void:
 	loot.clear()
 	owned_decks.clear()
 	owned_programs.clear()
+	owned_modules.clear()
 	carried_files.clear()
 	last_death_cause = ""
 	last_run_summary.clear()
@@ -224,6 +229,59 @@ func buy_program(prog: NetProgram) -> bool:
 func equip_deck(deck: Cyberdeck) -> void:
 	selected_deck = deck
 
+# --- Deck-module helpers (used by the hub shop + workbench) ---
+# Purchases a module: subtracts price from credits, appends a duplicate to
+# owned_modules, returns true. Returns false if mod is null or insufficient
+# credits.
+func buy_module(mod: DeckModule) -> bool:
+	if mod == null:
+		return false
+	if credits < mod.price:
+		return false
+	credits -= mod.price
+	var mod_dup := mod.duplicate()
+	mod_dup.source_path = mod.resource_path
+	owned_modules.append(mod_dup)
+	return true
+
+# Loot helper: appends a duplicate of mod to owned_modules (duplicate to avoid
+# mutating cached .tres). Also discovers the module in the persistent
+# MetaState catalogue.
+func add_module_loot(mod: DeckModule) -> void:
+	if mod == null:
+		return
+	var source_path := mod.resource_path if mod.resource_path != "" else ""
+	var dup := mod.duplicate()
+	dup.source_path = source_path
+	owned_modules.append(dup)
+	if source_path != "":
+		MetaState.unlock_module(source_path)
+
+# Installs an owned module into a deck's upgrade slot. Removes the module from
+# owned_modules (by instance match) and delegates to the deck. Returns false
+# if mod/deck is null or the deck has no free slot.
+func install_module_to_deck(mod: DeckModule, deck: Cyberdeck) -> bool:
+	if mod == null or deck == null:
+		return false
+	if not deck.can_install_module():
+		return false
+	var idx: int = owned_modules.find(mod)
+	if idx >= 0:
+		owned_modules.remove_at(idx)
+	deck.install_module(mod)
+	return true
+
+# Uninstalls a module from a deck and returns it to owned_modules. Returns
+# false if mod/deck is null or the module was not installed on the deck.
+func uninstall_module_from_deck(mod: DeckModule, deck: Cyberdeck) -> bool:
+	if mod == null or deck == null:
+		return false
+	var removed: DeckModule = deck.uninstall_module(mod)
+	if removed == null:
+		return false
+	owned_modules.append(removed)
+	return true
+
 # --- Run-state persistence (survives app restarts, lost on permadeath) ---
 func save_run() -> void:
 	var data := RunStateData.new()
@@ -242,12 +300,17 @@ func save_run() -> void:
 		var deck_path: String = deck.resource_path if deck.resource_path != "" else deck.source_path
 		var entry: Dictionary = {
 			"path": deck_path,
-			"installed_program_paths": []
+			"installed_program_paths": [],
+			"installed_module_paths": []
 		}
 		for prog: NetProgram in deck.installed_programs:
 			if prog == null:
 				continue
 			entry["installed_program_paths"].append(prog.resource_path if prog.resource_path != "" else prog.source_path)
+		for mod: DeckModule in deck.installed_modules:
+			if mod == null:
+				continue
+			entry["installed_module_paths"].append(mod.resource_path if mod.resource_path != "" else mod.source_path)
 		data.owned_deck_entries.append(entry)
 	for prog: NetProgram in owned_programs:
 		if prog == null:
@@ -255,6 +318,12 @@ func save_run() -> void:
 		var prog_path: String = prog.resource_path if prog.resource_path != "" else prog.source_path
 		if prog_path != "":
 			data.owned_program_paths.append(prog_path)
+	for mod: DeckModule in owned_modules:
+		if mod == null:
+			continue
+		var mod_path: String = mod.resource_path if mod.resource_path != "" else mod.source_path
+		if mod_path != "":
+			data.owned_module_paths.append(mod_path)
 	for prog: NetProgram in loot:
 		if prog == null:
 			continue
@@ -296,6 +365,13 @@ func _load_run() -> void:
 			var prog_dup := prog.duplicate()
 			prog_dup.source_path = path
 			owned_programs.append(prog_dup)
+	owned_modules.clear()
+	for path: String in data.owned_module_paths:
+		var mod: DeckModule = load(path) as DeckModule
+		if mod != null:
+			var mod_dup := mod.duplicate()
+			mod_dup.source_path = path
+			owned_modules.append(mod_dup)
 	owned_decks.clear()
 	for entry: Variant in data.owned_deck_entries:
 		if entry is not Dictionary:
@@ -316,6 +392,13 @@ func _load_run() -> void:
 				var prog_dup := prog_src.duplicate()
 				prog_dup.source_path = prog_path
 				deck.installed_programs.append(prog_dup)
+		var installed_module_paths: Array = entry.get("installed_module_paths", [])
+		for mod_path: Variant in installed_module_paths:
+			var mod_src: DeckModule = load(mod_path) as DeckModule
+			if mod_src != null:
+				var mod_dup := mod_src.duplicate()
+				mod_dup.source_path = mod_path
+				deck.installed_modules.append(mod_dup)
 		owned_decks.append(deck)
 	selected_deck = null
 	if data.selected_deck_path != "":

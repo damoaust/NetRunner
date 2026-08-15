@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_toolbox"]
+
+[resource]
+script = ExtResource("1_toolbox")
+program_name = "Toolbox"
+type = 6
+effect_type = 5
+memory_cost = 3
+strength = 4
+price = 500
+description = "Utility booster. Raises your cyberdeck's effective MU ceiling by the program's STR for the rest of the run, letting you copy more files and equip more programs. One active instance."

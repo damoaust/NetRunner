@@ -22,6 +22,7 @@ extends Control
 const BlackIceScene := preload("res://scenes/ui/cp2020_blackice.tscn")
 const NpcNetrunnerScene := preload("res://scenes/ui/cp2020_npc_netrunner.tscn")
 const RezzedProgramScene := preload("res://scenes/ui/cp2020_rezzed_program.tscn")
+const DemonNodeScene := preload("res://scenes/ui/cp2020_demon.tscn")
 
 # Permadeath: if accumulated trace reaches this threshold on jack-out, NetWatch
 # arrests the runner and the run ends in a BUSTED game-over. Tunable — each
@@ -159,8 +160,8 @@ func _ready() -> void:
 	if RunState.selected_deck:
 		var deck := RunState.selected_deck
 		netrunner.deck_name = deck.deck_name
-		netrunner.max_memory_units = deck.max_mu
-		netrunner.interface_rank = deck.interface_rank
+		netrunner.max_memory_units = deck.effective_max_mu()
+		netrunner.interface_rank = deck.effective_interface_rank()
 		netrunner.installed_programs = deck.installed_programs.duplicate()
 		# installed_programs was assigned directly (bypassing install_program),
 		# so seed the program_integrity HP tracker for every loaded program.
@@ -547,6 +548,28 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					if turn_manager:
 						turn_manager.consume_action()
 					_check_actions_exhausted()
+		"command_demon":
+				# Command a rezzed Demon to fire one of its subroutines. `program`
+				# is a 2-element Array [DemonNode, subroutine_index] built by the
+				# interaction handler's Demon command menu (id range 8500+i).
+				# Consumes 1 action. Attack subroutines strike `target_coord`;
+				# SHIELD/ARMOR subroutines self-buff the runner.
+				if program is Array and current_layout:
+					var payload: Array = program
+					if payload.size() >= 2 and payload[0] is DemonNode:
+						var demon_node: DemonNode = payload[0]
+						var sub_idx: int = int(payload[1])
+						if turn_manager and not turn_manager.has_actions():
+							log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
+							return
+						if not is_instance_valid(demon_node):
+							log_to_terminal("That Demon is no longer active.\n")
+							return
+						var ok2 := _command_demon(demon_node, sub_idx, target_coord)
+						if ok2:
+							if turn_manager:
+								turn_manager.consume_action()
+							_check_actions_exhausted()
 		"copy_file":
 			# Copy a single file from a MEMORY_UNIT tile to the deck. File
 			# retrieval is a "free" data action in CP2020 — it does NOT consume
@@ -575,7 +598,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					push_warning("copy_file: file already copied.")
 					return
 				# MU-fit check: free MU = max MU minus programs + carried files.
-				var free_mu: int = netrunner.max_memory_units - netrunner.get_used_memory() if netrunner else 999999
+				var free_mu: int = netrunner.effective_max_memory() - netrunner.get_used_memory() if netrunner else 999999
 				if file.mu_size > free_mu:
 					log_to_terminal("Not enough free deck memory for %s (need %d MU, have %d).\n" % [file.file_name, file.mu_size, free_mu])
 					return
@@ -597,7 +620,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				if tile.files.is_empty():
 					return
 				if netrunner:
-					var free_mu := netrunner.max_memory_units - netrunner.get_used_memory()
+					var free_mu := netrunner.effective_max_memory() - netrunner.get_used_memory()
 					for i in range(tile.files.size()):
 						if str(i) in tile.copied_file_paths:
 							continue
@@ -615,6 +638,41 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 					board_renderer.queue_redraw()
 				update_deck_info()
 				log_to_terminal("Batch copy complete.\n")
+		"loot_tile":
+			# Loot a CONTROL_NODE tile. A free data action — does NOT consume
+			# a turn. Moves loot_programs into RunState.loot (each duplicate()d
+			# so cached .tres files aren't mutated, via RunState.add_loot),
+			# adds loot_credits to RunState.credits, picks up loot_modules via
+			# RunState.add_module_loot, and marks the tile looted.
+			if current_layout:
+				var tile: CP2020TileData = current_layout.get_tile(target_coord, current_floor)
+				if tile == null:
+					push_warning("loot_tile: no tile at %s." % target_coord)
+					return
+				if tile.is_looted:
+					log_to_terminal("Already looted.\n")
+					return
+				var looted_any: bool = false
+				for prog in tile.loot_programs:
+					if prog is NetProgram:
+						RunState.add_loot(prog as NetProgram)
+						log_to_terminal("Looted program: %s\n" % (prog as NetProgram).program_name)
+						looted_any = true
+				if tile.loot_credits > 0:
+					RunState.add_loot_credits(tile.loot_credits)
+					log_to_terminal("Looted %d credits.\n" % tile.loot_credits)
+					looted_any = true
+				if tile.loot_modules.size() > 0:
+					for mod in tile.loot_modules:
+						if mod is DeckModule:
+							RunState.add_module_loot(mod as DeckModule)
+							log_to_terminal("Looted module: %s\n" % (mod as DeckModule).module_name)
+							looted_any = true
+				if looted_any:
+					tile.is_looted = true
+					if board_renderer:
+						board_renderer.queue_redraw()
+					update_deck_info()
 
 func _execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord, current_floor)
@@ -772,6 +830,122 @@ func deploy_watchdog_beacon(program: NetProgram, target_coord: Vector2i) -> void
 func _execute_detection(program: NetProgram, target_coord: Vector2i) -> void:
 	deploy_watchdog_beacon(program, target_coord)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# REVEAL_NODES programs (Sensor / Probe). Detection utilities that lift the
+# fog of war on a region without moving the runner. Sensor sweeps a radius
+# around the runner (STR = radius in tiles, ignoring walls — a sensor ping
+# maps structure behind barriers); Probe identifies a single targeted tile.
+# Both set is_explored=true (persistent fog lift) but leave is_visible to the
+# normal per-turn recalculation, so newly sensed tiles show as "explored not
+# visible" unless the runner has current LoS. Neither consumes movement; both
+# consume 1 action (caller returns true).
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _execute_sensor(program: NetProgram, _target_coord: Vector2i) -> void:
+	if not current_layout or not netrunner:
+		return
+	var radius: int = max(1, program.strength)
+	var center: Vector2i = netrunner.current_position
+	var revealed := 0
+	for x in range(-radius, radius + 1):
+		for y in range(-radius, radius + 1):
+			# Manhattan radius sweep — a sensor ping radiates outward, so we
+			# use Chebyshev (square) coverage to map the full area, including
+			# tiles diagonally adjacent. This intentionally ignores Data
+			# Walls / Code Gates (a sensor maps structure behind barriers).
+			var coord := center + Vector2i(x, y)
+			if coord.x < 0 or coord.x >= current_layout.columns or coord.y < 0 or coord.y >= current_layout.rows:
+				continue
+			var tile = current_layout.get_tile(coord, current_floor)
+			if tile and not tile.is_explored:
+				tile.is_explored = true
+				revealed += 1
+	# Sync entity visibility with the freshly lifted fog on this floor.
+	_sync_entity_visibility()
+	log_to_terminal("Sensor '%s' sweep complete — revealed %d new tile(s) within %d spaces.\n" % [program.program_name, revealed, radius])
+	if board_renderer:
+		board_renderer.queue_redraw()
+
+func _execute_probe(program: NetProgram, target_coord: Vector2i) -> void:
+	if not current_layout:
+		return
+	var tile = current_layout.get_tile(target_coord, current_floor)
+	if tile == null:
+		log_to_terminal("Probe '%s': no node detected at %s.\n" % [program.program_name, target_coord])
+		return
+	# Require LoS to the target (Probe is a focused scan, not a wall-piercing
+	# ping like Sensor) — the runner must already see the tile to probe it.
+	if not current_layout.line_of_sight(netrunner.current_position, target_coord, netrunner.sight_range, current_floor):
+		log_to_terminal("Probe '%s': target at %s is out of line of sight.\n" % [program.program_name, target_coord])
+		return
+	var was_explored: bool = tile.is_explored
+	tile.is_explored = true
+	tile.is_visible = true
+	# Report what the probe found at the node.
+	var type_label: String = CP2020DatafortLayout.TileType.keys()[tile.tile_type] if tile.tile_type < CP2020DatafortLayout.TileType.size() else "UNKNOWN"
+	var detail := ""
+	for ice in ice_nodes:
+		if is_instance_valid(ice) and ice.current_position == target_coord and ice.home_floor == current_floor:
+			detail = " — ICE detected: %s (STR %d)" % [ice.program.program_name, ice.program.strength]
+			break
+	if detail.is_empty():
+		for npc in npc_nodes:
+			if is_instance_valid(npc) and npc.current_position == target_coord and npc.home_floor == current_floor:
+				detail = " — Netrunner detected: %s" % npc.netrunner_name
+				break
+	_sync_entity_visibility()
+	log_to_terminal("Probe '%s' locked onto %s (%s)%s%s\n" % [program.program_name, target_coord, type_label, " [newly revealed]" if not was_explored else "", detail])
+	if board_renderer:
+		board_renderer.queue_redraw()
+
+# Shared helper: refresh entity (ICE/NPC/rezzed) explored/visible flags from
+# the current tile fog state on each entity's home floor. Called after Sensor/
+# Probe lift fog so glyphs appear/disappear consistently with recalculate_fog.
+func _sync_entity_visibility() -> void:
+	for ice in ice_nodes:
+		if is_instance_valid(ice):
+			var ice_tile = current_layout.get_tile(ice.current_position, ice.home_floor)
+			if ice_tile:
+				ice.update_visibility(ice_tile.is_explored, ice_tile.is_visible)
+	for npc in npc_nodes:
+		if is_instance_valid(npc):
+			var npc_tile = current_layout.get_tile(npc.current_position, npc.home_floor)
+			if npc_tile:
+				npc.update_visibility(npc_tile.is_explored, npc_tile.is_visible)
+	for rez in rezzed_program_nodes:
+		if is_instance_valid(rez):
+			var rez_tile = current_layout.get_tile(rez.current_position, rez.home_floor)
+			if rez_tile:
+				rez.update_visibility(rez_tile.is_explored, rez_tile.is_visible)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODIFY_MU programs (Toolbox / Speed). Per-run utility boosts. Toolbox raises
+# the deck's effective MU ceiling (STR = bonus MU) so the runner can copy more
+# files / equip more mid-run; Speed raises the initiative speed bonus (STR =
+# bonus speed). Both last the whole run and are one-active-instance. The
+# netrunner owns the boost state and emits deck_updated so the HUD refreshes.
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _execute_toolbox(program: NetProgram) -> bool:
+	if not netrunner:
+		return false
+	if not netrunner.activate_toolbox(program):
+		log_to_terminal("A Toolbox is already running — boost still active.\n")
+		return false
+	if board_renderer:
+		board_renderer.queue_redraw()
+	return true
+
+func _execute_speed(program: NetProgram) -> bool:
+	if not netrunner:
+		return false
+	if not netrunner.activate_speed(program):
+		log_to_terminal("A Speed booster is already running — boost still active.\n")
+		return false
+	if board_renderer:
+		board_renderer.queue_redraw()
+	return true
+
 # Called when a DETECTION ICE (Watchdog) gains LoS to the netrunner and
 # trips the alarm. Activates all other attack ICE in the datafort by
 # calling activate_alarm() on each non-DETECTION ICE node.
@@ -808,7 +982,15 @@ func _is_program_rezzed(prog: NetProgram) -> bool:
 
 # True if a program's effect_type is an attack type eligible for rezzing.
 func _is_rezzable(prog: NetProgram) -> bool:
-	return prog != null and prog.effect_type in REZZABLE_EFFECT_TYPES
+	if prog == null:
+		return false
+	if prog.effect_type in REZZABLE_EFFECT_TYPES:
+		return true
+	# Demons (EffectType.DEMON / DemonProgram) are rezzed as DemonNodes that
+	# carry their assigned subroutines onto the net.
+	if prog is DemonProgram:
+		return true
+	return false
 
 # Rez an installed attack program onto the net. Spawns a RezzedProgram node at
 # the runner's tile (or nearest walkable adjacent tile), wires its signals, and
@@ -835,6 +1017,36 @@ func _rez_program(prog: NetProgram) -> bool:
 		log_to_terminal("No free tile near the netrunner to rez '%s' onto.\n" % prog.program_name)
 		return false
 	var layout_size := Vector2i(current_layout.columns, current_layout.rows)
+	# Demons rezz as a DemonNode (a RezzedProgram subclass carrying its
+	# assigned subroutines, each STR-overridden to the Demon core's STR).
+	# Plain attack programs rezz as a RezzedProgram. Both live in
+	# rezzed_program_nodes so Killer ICE targeting picks them up.
+	if prog is DemonProgram:
+		var demon: DemonNode = DemonNodeScene.instantiate()
+		add_child(demon)
+		var demon_prog: DemonProgram = prog.duplicate() as DemonProgram
+		demon.program = demon_prog
+		demon.source_program = prog
+		demon.max_integrity = demon_prog.strength
+		demon.home_floor = current_floor
+		demon.cell_size = int(board_renderer.cell_size) if board_renderer else 40
+		demon.grid_offset_y = int(board_renderer.grid_offset_y) if board_renderer else 90
+		demon.setup_subroutines(prog as DemonProgram)
+		demon.initialize(spawn_pos, layout_size)
+		demon.apply_visual_from_program()
+		demon.message_logged.connect(log_to_terminal)
+		demon.moved_to.connect(_on_rezzed_program_moved)
+		demon.destroyed.connect(_on_rezzed_program_destroyed.bind(demon))
+		rezzed_program_nodes.append(demon)
+		if board_renderer:
+			board_renderer.rezzed_program_nodes = rezzed_program_nodes
+			board_renderer.queue_redraw()
+		var sub_names: String = ""
+		for s in demon.get_commandable_subroutines():
+			sub_names += "%s%s" % ["" if sub_names.is_empty() else ", ", s.program_name]
+		log_to_terminal("Rezzing Demon '%s' (STR %d) at %s — subroutines: %s.\n" % [demon_prog.program_name, demon_prog.strength, spawn_pos, sub_names if not sub_names.is_empty() else "(none assigned)"])
+		update_deck_info()
+		return true
 	var rez: RezzedProgram = RezzedProgramScene.instantiate()
 	add_child(rez)
 	# Duplicate the program so the node owns its own instance (never mutate the
@@ -936,6 +1148,52 @@ func _attack_with_rezzed(rez: RezzedProgram, target_coord: Vector2i) -> bool:
 			return true
 		_:
 			log_to_terminal("'%s' has no attack action implemented.\n" % prog.program_name)
+			return false
+
+# Command a rezzed Demon to fire one of its subroutines at `target_coord` (for
+# attack subroutines) or on the runner (for SHIELD/ARMOR self-buffs). The
+# subroutine's effect_type selects the dispatch; the subroutine's strength is
+# already the Demon core's STR (overridden at spawn). Returns true if the
+# command resolved (caller consumes 1 action), false on invalid target.
+func _command_demon(demon: DemonNode, sub_index: int, target_coord: Vector2i) -> bool:
+	if not is_instance_valid(demon):
+		return false
+	var sub: NetProgram = demon.get_subroutine(sub_index)
+	if sub == null:
+		log_to_terminal("That Demon subroutine is no longer loaded.\n")
+		return false
+	# Attack subroutines: beam from the Demon to the target tile. SHIELD/ARMOR
+	# are self-targeted (no beam).
+	if combat_animator and sub.effect_type in [NetProgram.EffectType.DEREZ_ICE, NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.CRASH_CPU]:
+		combat_animator.play_effect(demon.current_position, target_coord, sub.get_attack_visual())
+	match sub.effect_type:
+		NetProgram.EffectType.DEREZ_ICE:
+			_execute_ice_attack(sub, target_coord)
+			return true
+		NetProgram.EffectType.DAMAGE_RUNNER:
+			execute_npc_attack(sub, target_coord)
+			return true
+		NetProgram.EffectType.CRASH_CPU:
+			if is_instance_valid(datafort):
+				datafort.crash_cpu(sub, target_coord)
+			if board_renderer:
+				board_renderer.queue_redraw()
+			return true
+		NetProgram.EffectType.SHIELD:
+			_execute_shield(sub)
+			if board_renderer:
+				board_renderer.queue_redraw()
+			return true
+		NetProgram.EffectType.ARMOR:
+			if is_instance_valid(netrunner):
+				netrunner.raise_armor(sub)
+				log_to_terminal("Demon '%s' raises Armor '%s' (Absorb STR %d).\n" % [demon.program.program_name, sub.program_name, sub.strength])
+				if board_renderer:
+					board_renderer.queue_redraw()
+				return true
+			return false
+		_:
+			log_to_terminal("Demon subroutine '%s' has no command action.\n" % sub.program_name)
 			return false
 
 # Auto-follow: move each rezzed program on the runner's floor to stay adjacent
@@ -1070,7 +1328,7 @@ func update_deck_info(_program: Variant = null) -> void:
 	if deck_name_label:
 		deck_name_label.text = "Deck: %s" % netrunner.deck_name
 	if memory_label:
-		memory_label.text = "Memory: %d / %d MU" % [netrunner.get_used_memory(), netrunner.max_memory_units]
+		memory_label.text = "Memory: %d / %d MU" % [netrunner.get_used_memory(), netrunner.effective_max_memory()]
 	if program_list:
 		program_list.clear()
 		for prog in netrunner.installed_programs:
@@ -1430,7 +1688,7 @@ func _end_player_turn() -> void:
 		return
 	log_to_terminal("--- Netrunner turn ended. Adversaries activating... ---\n")
 	var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
-	var nr_init := netrunner.reflex + (RunState.selected_deck.speed_bonus if RunState.selected_deck != null else 0)
+	var nr_init := netrunner.reflex + (RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0) + netrunner.temp_speed_bonus
 	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
 	# DEREZ_ICE (Killer) ICE is stationary — it never moves, so the moved_to
 	# signal never fires and the board wouldn't redraw after a Worm attack.
@@ -1586,7 +1844,7 @@ func _check_actions_exhausted() -> void:
 	if turn_manager and turn_manager.actions_remaining <= 0 and turn_manager.movement_remaining <= 0:
 		log_to_terminal("Out of actions and movement. Adversaries activating...\n")
 		var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
-		var nr_init := netrunner.reflex + (RunState.selected_deck.speed_bonus if RunState.selected_deck != null else 0)
+		var nr_init := netrunner.reflex + (RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0) + netrunner.temp_speed_bonus
 		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
 
 # Combined adversaries (Datafort + Black ICE + NPC netrunners) for the turn

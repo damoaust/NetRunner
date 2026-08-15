@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_wolfpack"]
+
+[resource]
+script = ExtResource("1_wolfpack")
+program_name = "Wolfpack"
+type = 3
+effect_type = 2
+memory_cost = 5
+strength = 5
+price = 2200
+damage_dice = 6
+damage_dice_count = 2
+description = "Pack-hunting anti-program Killer. A swarm of anti-ICE hounds that tears into rezzed programs for 2D6 damage per hit."

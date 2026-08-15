@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_bastion"]
+
+[resource]
+script = ExtResource("1_bastion")
+program_name = "Bastion"
+type = 8
+effect_type = 6
+memory_cost = 5
+strength = 8
+price = 1200
+description = "Reinforced shield program. Recharges a formidable block that thwarts the next ICE attack on a successful opposed roll."

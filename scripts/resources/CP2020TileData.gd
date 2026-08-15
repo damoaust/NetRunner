@@ -8,6 +8,7 @@ extends Resource
 func _init() -> void:
 	files = []
 	loot_programs = []
+	loot_modules = []
 	npc_programs = []
 	ldl_links = {}
 
@@ -94,6 +95,12 @@ func _init() -> void:
 # inventory) is responsible for duplicate()ing them when moving them into the
 # runner's deck so cached resources aren't mutated across scenes.
 @export var loot_programs: Array[NetProgram] = []
+# Lootable hardware modules (DeckModule) stashed on this tile. Like
+# loot_programs, entries are shared cached .tres references; the consumer
+# (RunState.add_module_loot) duplicates them when moving them into the
+# runner's inventory so cached resources aren't mutated. Picked up via the
+# same loot_tile interaction as loot_programs / loot_credits.
+@export var loot_modules: Array[DeckModule] = []
 # Lootable bonus credits stashed on this tile. This is distinct from
 # reward_credits above, which is legacy/dead data that no live logic reads.
 # loot_credits is the authoritative "lootable credits" value for the

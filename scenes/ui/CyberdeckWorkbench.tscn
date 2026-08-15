@@ -276,6 +276,21 @@ size_flags_horizontal = 3
 tooltip_text = "Clear ALL loaded programs from the deck [C]"
 text = "[C] CLR"
 
+[node name="ConfigureSubroutinesButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182859]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Assign subroutines to a loaded Demon program"
+text = "⚙ SUBS"
+disabled = true
+
+[node name="UpgradesButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182860]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Install/uninstall hardware modules into deck upgrade slots"
+text = "⬡ UPGRADES"
+
 [node name="LibraryCol" type="PanelContainer" parent="Margin/RootVBox/Tabs/Loadout" unique_id=1078315762]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
@@ -598,6 +613,35 @@ size_flags_vertical = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "SELL"
+
+[node name="BuyModulesPanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid" unique_id=296407757]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyModulesPanel" unique_id=910054126]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyModulesPanel/VBox" unique_id=2093200421]
+layout_mode = 2
+theme_type_variation = &"MyHeader"
+text = "BUY MODULES"
+
+[node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyModulesPanel/VBox" unique_id=538742001]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0, 0.45490196, 1, 0.5764706)
+
+[node name="ShopBuyModulesList" type="ItemList" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyModulesPanel/VBox" unique_id=1027445851]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BuyModuleButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyModulesPanel/VBox" unique_id=212743117]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "BUY MODULE"
 
 [node name="SellFilesPanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid" unique_id=343719598]
 layout_mode = 2

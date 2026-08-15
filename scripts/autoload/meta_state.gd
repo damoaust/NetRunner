@@ -99,6 +99,21 @@ func has_deck(path: String) -> bool:
 	return data.unlocked_decks.has(path)
 
 
+func unlock_module(path: String) -> bool:
+	if data == null:
+		_init_default_catalogue()
+	if MetaStateData.dedupe(data.unlocked_modules, path):
+		save()
+		return true
+	return false
+
+
+func has_module(path: String) -> bool:
+	if data == null:
+		return false
+	return data.unlocked_modules.has(path)
+
+
 func has_program(path: String) -> bool:
 	if data == null:
 		return false

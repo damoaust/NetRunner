@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_bulwark"]
+
+[resource]
+script = ExtResource("1_bulwark")
+program_name = "Bulwark"
+type = 6
+effect_type = 8
+memory_cost = 5
+strength = 7
+price = 2500
+description = "Heavy armor program. Absorbs damage point-for-point: its Strength subtracts from each incoming hit before the remainder reaches your health."

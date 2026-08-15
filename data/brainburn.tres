@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_brainburn"]
+
+[resource]
+script = ExtResource("1_brainburn")
+program_name = "Brainburn"
+type = 4
+effect_type = 3
+memory_cost = 4
+strength = 5
+price = 3000
+description = "Anti-personnel attack program. Overloads the runner's cortex with white noise, dealing flat STR damage per hit."

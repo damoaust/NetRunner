@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DeckModule" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_deck_module.gd" id="1_spd2"]
+
+[resource]
+script = ExtResource("1_spd2")
+module_name = "Speed Booster +2"
+effect_type = 1
+bonus_value = 2
+price = 3000
+glyph = "⚡"
+color = Color(1.0, 0.7, 0.1, 1.0)
+description = "Twin overclocked processors. Adds +2 to the deck's effective speed bonus (initiative)."

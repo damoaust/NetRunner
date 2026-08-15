@@ -33,6 +33,11 @@ var _netrunner_node: CP2020Netrunner = null
 # and de-rez menus can reference them by index).
 var _current_rezzed_nodes: Array[RezzedProgram] = []
 
+# Demon command menu entries built per popup. Each entry is a 2-element Array
+# [DemonNode, subroutine_index] referenced by menu id 8500+index. Rebuilt every
+# popup (cleared before construction).
+var _current_demon_commands: Array = []
+
 func handle_input(event: InputEvent, current_mouse_pos: Vector2, layout: CP2020DatafortLayout, available_programs: Array[NetProgram] = [], cell_size: float = 40.0, grid_offset_y: float = 90.0, ice_nodes: Array = [], netrunner_pos: Vector2i = Vector2i(-1, -1), npc_nodes: Array = [], netrunner_node: CP2020Netrunner = null, rezzed_program_nodes: Array = []) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		# Cast the event to InputEventMouseButton so we can safely read event.position
@@ -93,6 +98,9 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	for rez in rezzed_program_nodes:
 		if is_instance_valid(rez) and rez.home_floor == layout.current_floor:
 			_current_rezzed_nodes.append(rez)
+	# Reset the Demon command menu for this popup; rebuilt as Demon command
+	# items are added below (id range 8500+i over this list).
+	_current_demon_commands.clear()
 	
 	print("DEBUG: handle_right_click tile=", target_coord, " type=", tile_data.tile_type, " explored=", tile_data.is_explored, " visible=", tile_data.is_visible)
 	
@@ -188,6 +196,17 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var menu_label = "Attack %s: %s (STR %d)" % [ice_here.program.program_name, rez.program.program_name, rez.program.strength]
 				_dynamic_menu.add_item(menu_label, 8200 + i)
 				added_rezzed = true
+		# Demon subroutines: any rezzed Demon carrying a DEREZ_ICE subroutine
+		# can be commanded to attack this ICE (id 8500+i over
+		# _current_demon_commands). Subroutines use the Demon core's STR.
+		for rez in _current_rezzed_nodes:
+			if is_instance_valid(rez) and rez is DemonNode:
+				var demon: DemonNode = rez as DemonNode
+				for si in range(demon.get_commandable_subroutines().size()):
+					var sub: NetProgram = demon.get_subroutine(si)
+					if sub and sub.effect_type == NetProgram.EffectType.DEREZ_ICE:
+						_add_demon_command_item("Attack %s: %s → %s (STR %d)" % [ice_here.program.program_name, demon.program.program_name, sub.program_name, sub.strength], demon, si)
+						added_rezzed = true
 		if not added_rezzed:
 			_dynamic_menu.add_item("Rez an anti-ICE program first", 0)
 			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
@@ -206,6 +225,16 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var menu_label = "Attack %s: %s (STR %d)" % [npc_here.npc_name, rez.program.program_name, rez.program.strength]
 				_dynamic_menu.add_item(menu_label, 8300 + i)
 				added_attack = true
+		# Demon subroutines: any rezzed Demon carrying a DAMAGE_RUNNER or
+		# DEREZ_ICE subroutine can be commanded to attack this NPC.
+		for rez in _current_rezzed_nodes:
+			if is_instance_valid(rez) and rez is DemonNode:
+				var demon: DemonNode = rez as DemonNode
+				for si in range(demon.get_commandable_subroutines().size()):
+					var sub: NetProgram = demon.get_subroutine(si)
+					if sub and sub.effect_type in [NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE]:
+						_add_demon_command_item("Attack %s: %s → %s (STR %d)" % [npc_here.npc_name, demon.program.program_name, sub.program_name, sub.strength], demon, si)
+						added_attack = true
 		if not added_attack:
 			_dynamic_menu.add_item("Rez an attack program first", 0)
 			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
@@ -225,9 +254,28 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var menu_label = "Krash CPU: %s (STR %d)" % [rez.program.program_name, rez.program.strength]
 				_dynamic_menu.add_item(menu_label, 8400 + i)
 				added_cpu = true
+		# Demon subroutines: any rezzed Demon carrying a CRASH_CPU subroutine
+		# can be commanded to crash this CPU.
+		for rez in _current_rezzed_nodes:
+			if is_instance_valid(rez) and rez is DemonNode:
+				var demon: DemonNode = rez as DemonNode
+				for si in range(demon.get_commandable_subroutines().size()):
+					var sub: NetProgram = demon.get_subroutine(si)
+					if sub and sub.effect_type == NetProgram.EffectType.CRASH_CPU:
+						_add_demon_command_item("Krash CPU: %s → %s (STR %d)" % [demon.program.program_name, sub.program_name, sub.strength], demon, si)
+						added_cpu = true
 		if not added_cpu:
 			_dynamic_menu.add_item("Rez an anti-system program first", 0)
 			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
+		# Loot option — offer when the tile has unlooted loot_programs /
+		# loot_credits / loot_modules. id 5000 (single fixed id, checked
+		# after 8500+i and before 1000+i in _on_menu_action_selected).
+		if not tile_data.is_looted:
+			var has_loot: bool = (tile_data.loot_programs.size() > 0 \
+					or tile_data.loot_credits > 0 \
+					or tile_data.loot_modules.size() > 0)
+			if has_loot:
+				_dynamic_menu.add_item("▼ Loot Node", 5000)
 		options_added = true
 
 	elif target_coord == netrunner_pos and tile_data.is_visible:
@@ -272,6 +320,15 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var rez_id = 8000 + i
 				_dynamic_menu.add_item(rez_label, rez_id)
 				options_added = true
+			elif prog and prog is DemonProgram:
+				# Demon — offer to rez it onto the net (id 8000+i). Its
+				# subroutines are assigned at the workbench; rezzing spawns a
+				# DemonNode carrying them (STR overridden to the Demon's).
+				var demon_prog: DemonProgram = prog as DemonProgram
+				var rez_label = "Rez %s (Demon, %d subroutines, STR %d, %d MU)" % [demon_prog.program_name, demon_prog.max_subroutines, demon_prog.strength, demon_prog.memory_cost]
+				var rez_id = 8000 + i
+				_dynamic_menu.add_item(rez_label, rez_id)
+				options_added = true
 		# De-rez any currently rezzed program (id 8100+i).
 		for j in range(_current_rezzed_nodes.size()):
 			var rez = _current_rezzed_nodes[j]
@@ -279,6 +336,19 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				var derez_label = "De-rez %s (STR %d)" % [rez.program.program_name, rez.program.strength]
 				_dynamic_menu.add_item(derez_label, 8100 + j)
 				options_added = true
+		# Command a rezzed Demon to fire a SHIELD/ARMOR subroutine as a
+		# self-buff (id 8500+i over _current_demon_commands). Attack
+		# subroutines are commanded from target-tile context (ICE/NPC/CPU);
+		# defense subroutines are self-targeted so they live here.
+		for rez in _current_rezzed_nodes:
+			if is_instance_valid(rez) and rez is DemonNode:
+				var demon: DemonNode = rez as DemonNode
+				for si in range(demon.get_commandable_subroutines().size()):
+					var sub: NetProgram = demon.get_subroutine(si)
+					if sub and sub.effect_type in [NetProgram.EffectType.SHIELD, NetProgram.EffectType.ARMOR]:
+						var kind := "Block" if sub.effect_type == NetProgram.EffectType.SHIELD else "Absorb"
+						_add_demon_command_item("%s → %s (%s STR %d)" % [demon.program.program_name, sub.program_name, kind, sub.strength], demon, si)
+						options_added = true
 
 	elif tile_data.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile_data.is_unlocked:
 		for i in range(available_programs.size()):
@@ -335,7 +405,7 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 				# assume every file fits.
 				var free_mu: int = -1
 				if netrunner_node != null and is_instance_valid(netrunner_node):
-					free_mu = netrunner_node.max_memory_units - netrunner_node.get_used_memory()
+					free_mu = netrunner_node.effective_max_memory() - netrunner_node.get_used_memory()
 				var any_copyable: bool = false
 				for i in range(tile_data.files.size()):
 					var file := tile_data.files[i] as NetFile
@@ -380,13 +450,23 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	var click_pos := Vector2i(get_viewport().get_mouse_position())
 	_dynamic_menu.popup_on_parent(Rect2i(click_pos, Vector2i.ZERO))
 
+# Append a Demon command entry: stores [DemonNode, subroutine_index] and adds
+# a menu item at id 8500 + index over _current_demon_commands. Used by the
+# ICE / NPC / CPU / runner-tile contexts to let the runner command a rezzed
+# Demon to fire one of its subroutines.
+func _add_demon_command_item(label: String, demon: DemonNode, sub_index: int) -> void:
+	_current_demon_commands.append([demon, sub_index])
+	var cmd_id := 8500 + (_current_demon_commands.size() - 1)
+	_dynamic_menu.add_item(label, cmd_id)
+
 func _on_menu_action_selected(id: int, target_coord: Vector2i, available_programs: Array[NetProgram]) -> void:
 	# Special-id ordering (checked BEFORE the 1000+i program range to avoid
 	# collision): LDL travel (3000/3001) → vertical travel (3002/3003) → NPC
 	# talk (4000) → copy file (6000+i) / copy all (6999) → Armor-raise
 	# (7000+i) → rez program (8000+i) → de-rez (8100+i) → rezzed anti-ICE
 	# attack (8200+i) → rezzed NPC attack (8300+i) → rezzed CPU crash
-	# (8400+i) → program use (1000+i).
+	# (8400+i) → Demon command subroutine (8500+i) → CONTROL_NODE loot
+	# (5000) → program use (1000+i).
 	# LDL travel actions take priority (their ids collide with the program
 	# id range 1000+, so check them explicitly first).
 	if id == 3000:
@@ -471,6 +551,25 @@ func _on_menu_action_selected(id: int, target_coord: Vector2i, available_program
 		if idx >= 0 and idx < _current_rezzed_nodes.size():
 			var rez = _current_rezzed_nodes[idx]
 			action_triggered.emit("attack_with_rezzed", target_coord, rez)
+		return
+	# Command a rezzed Demon to fire a subroutine — id range 8500+i over
+	# _current_demon_commands (each entry is [DemonNode, subroutine_index]).
+	# Checked AFTER the 8400+i rezzed-CPU range and BEFORE the 1000+i program
+	# range to avoid collision. The payload Array is unpacked by the session's
+	# "command_demon" handler. Consumes 1 action.
+	if id >= 8500 and id < 8600:
+		var idx = id - 8500
+		if idx >= 0 and idx < _current_demon_commands.size():
+			var cmd = _current_demon_commands[idx]
+			action_triggered.emit("command_demon", target_coord, cmd)
+		return
+	# Loot a CONTROL_NODE tile — single fixed id 5000 (the old CPU-crash
+	# 5000+i range was removed in Phase 1, so 5000 is free). Checked after
+	# 8500+i and before 1000+i per the collision-ordering rules. Free action
+	# (no turn consumed). The game session's "loot_tile" handler picks up
+	# loot_programs / loot_credits / loot_modules.
+	if id == 5000:
+		action_triggered.emit("loot_tile", target_coord, null)
 		return
 	if id >= 1000:
 		var idx = id - 1000

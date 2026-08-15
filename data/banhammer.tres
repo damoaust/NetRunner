@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_banhammer"]
+
+[resource]
+script = ExtResource("1_banhammer")
+program_name = "Banhammer"
+type = 3
+effect_type = 2
+memory_cost = 6
+strength = 8
+price = 3000
+damage_dice = 6
+description = "Heavy anti-program Killer. Stationary sentry that smites rezzed programs with overwhelming strength, dealing 1D6 damage per hit."

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NetProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_deathlok"]
+
+[resource]
+script = ExtResource("1_deathlok")
+program_name = "Deathlok"
+type = 4
+effect_type = 3
+memory_cost = 7
+strength = 7
+price = 7000
+damage_dice = 10
+description = "Lethal anti-personnel virus. A relentless neural reaper that deals 1D10 physical damage per hit. Only the strongest runners survive its attention."

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="DemonProgram" format=3]
+
+[ext_resource type="Script" path="res://scripts/programs/demon_program.gd" id="1_succ"]
+
+[resource]
+script = ExtResource("1_succ")
+program_name = "Succubus"
+type = 6
+effect_type = 12
+strength = 6
+memory_cost = 8
+price = 5500
+demon_level = 3
+max_subroutines = 4
+glyph = "⚸"
+color = Color(0.90, 0.30, 0.70, 1.0)
+description = "High Demon class. A program shell carrying up to 4 subroutines. Rezzed as one node; commands fire any loaded subroutine at the Demon's STR 6."

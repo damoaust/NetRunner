@@ -8,6 +8,7 @@ extends Resource
 
 @export var unlocked_decks: Array[String] = []
 @export var unlocked_programs: Array[String] = []
+@export var unlocked_modules: Array[String] = []
 @export var run_history: Array = []
 
 # Add `path` to `arr` if it is not already present. Returns true if added.
