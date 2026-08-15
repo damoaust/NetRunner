@@ -395,6 +395,23 @@ func _flash_floor_label() -> void:
 		board_renderer.flash_floor_label()
 
 func _input(event: InputEvent) -> void:
+	# Track mouse motion for the hover highlight outline. Computes the grid
+	# coord under the cursor and checks whether that tile/entity offers a
+	# right-click context menu; feeds the result to the board renderer.
+	if event is InputEventMouseMotion and board_renderer and current_layout:
+		var mouse_pos: Vector2 = board_renderer.get_global_mouse_position()
+		var cs: float = float(board_renderer.cell_size)
+		var go_y: float = float(board_renderer.grid_offset_y)
+		var grid_x: int = floori(mouse_pos.x / cs)
+		var grid_y: int = floori((mouse_pos.y - go_y) / cs)
+		var coord := Vector2i(grid_x, grid_y)
+		if grid_x >= 0 and grid_x < current_layout.columns and grid_y >= 0 and grid_y < current_layout.rows:
+			board_renderer.hovered_coord = coord
+			board_renderer.hover_interactable = _is_hover_interactable(coord)
+		else:
+			board_renderer.hovered_coord = Vector2i(-1, -1)
+			board_renderer.hover_interactable = false
+
 	# Right-click is handled here in _input (NOT _unhandled_input) because the root
 	# Control node's GUI system consumes mouse events before _unhandled_input fires.
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -447,6 +464,84 @@ func _input(event: InputEvent) -> void:
 				recalculate_fog_of_war(netrunner.current_position)
 				board_renderer.queue_redraw()
 				_check_actions_exhausted()
+
+## Check whether the tile at `coord` would produce a right-click context menu.
+## Mirrors the logic in CP2020InteractionHandler.handle_right_click so the
+## hover highlight only appears for genuinely interactable entities/tiles.
+func _is_hover_interactable(coord: Vector2i) -> bool:
+	if current_layout == null:
+		return false
+	var tile_data := current_layout.get_tile(coord, current_layout.current_floor)
+	if tile_data == null or not tile_data.is_explored:
+		return false
+
+	# LDL link — always interactable (travel menu)
+	if tile_data.is_ldl_link:
+		return true
+
+	# Vertical travel — always interactable
+	if tile_data.can_go_up or tile_data.can_go_down:
+		return true
+
+	# Rezzed program on this tile (same floor) — requires visibility
+	if tile_data.is_visible:
+		for rez in rezzed_program_nodes:
+			if is_instance_valid(rez) and rez.home_floor == current_layout.current_floor and rez.current_position == coord:
+				return true
+
+	# Black ICE on this tile (same floor) — requires visibility
+	if tile_data.is_visible:
+		for ice in ice_nodes:
+			if is_instance_valid(ice) and ice.home_floor == current_layout.current_floor and ice.current_position == coord:
+				return true
+
+	# NPC netrunner on this tile (same floor) — requires visibility
+	if tile_data.is_visible:
+		for npc in npc_nodes:
+			if is_instance_valid(npc) and npc.home_floor == current_layout.current_floor and npc.current_position == coord:
+				return true
+
+	# CONTROL_NODE — requires visibility
+	if tile_data.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE and tile_data.is_visible:
+		return true
+
+	# Netrunner's own tile — requires visibility
+	if netrunner and coord == netrunner.current_position and tile_data.is_visible:
+		return true
+
+	# CODE_GATE (locked) — explored is enough; menu only appears if the
+	# runner has a matching BYPASS_GATE or WORM program available.
+	if tile_data.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile_data.is_unlocked:
+		if _has_available_program_of_type(NetProgram.EffectType.BYPASS_GATE) or _has_available_program_of_type(NetProgram.EffectType.WORM):
+			return true
+
+	# DATAWALL — explored is enough; menu only appears if the runner has a
+	# matching BREACH_WALL or WORM program available.
+	if tile_data.tile_type == CP2020DatafortLayout.TileType.DATAWALL:
+		if _has_available_program_of_type(NetProgram.EffectType.BREACH_WALL) or _has_available_program_of_type(NetProgram.EffectType.WORM):
+			return true
+
+	# MEMORY_UNIT — requires visibility, has files, and is adjacent to the
+	# netrunner (same adjacency rule as the interaction handler).
+	if tile_data.tile_type == CP2020DatafortLayout.TileType.MEMORY_UNIT and tile_data.is_visible and tile_data.files.size() > 0:
+		if netrunner:
+			var dx: int = abs(coord.x - netrunner.current_position.x)
+			var dy: int = abs(coord.y - netrunner.current_position.y)
+			if (dx + dy) <= 1:
+				return true
+
+	return false
+
+## Check whether an installed program with the given effect type is available
+## (not deployed, not rezzed). Used by _is_hover_interactable for CODE_GATE /
+## DATAWALL interactability checks.
+func _has_available_program_of_type(effect_type: NetProgram.EffectType) -> bool:
+	if netrunner == null:
+		return false
+	for prog in netrunner.installed_programs:
+		if prog and prog.effect_type == effect_type and prog not in _deployed_programs and not _is_program_rezzed(prog):
+			return true
+	return false
 
 func _on_action_triggered(action_name: String, target_coord: Vector2i, program = null) -> void:
 	match action_name:
