@@ -17,11 +17,12 @@ var _selected_loaded_idx: int = -1
 var _filter_effects: Array = []
 
 # CP2020Theme companion: palette consts + programmatic StyleBox/node factories
-# for the few controls still built in code (Purchase-Unlocks window, dynamic
+# for the few controls still built in code (dynamic
 # buttons). The look itself comes from themes/cyberpunk_theme.tres set on the
 # scene root.
 const THEME := preload("res://scripts/resources/cp2020_theme.gd")
 const THEME_RES := preload("res://themes/cyberpunk_theme.tres")
+const UNLOCK_WINDOW_SCENE := preload("res://scenes/ui/PurchaseUnlocksWindow.tscn")
 
 # --- UI references (scene-tree nodes; static structure lives in
 # CyberdeckWorkbench.tscn and is grabbed here via unique_name_in_owner) ---
@@ -83,7 +84,7 @@ const THEME_RES := preload("res://themes/cyberpunk_theme.tres")
 @onready var sell_file_button: Button = get_node_or_null("%SellFileButton")
 @onready var sell_all_files_button: Button = get_node_or_null("%SellAllFilesButton")
 @onready var unlock_button: Button = get_node_or_null("%UnlockButton")
-# --- Purchase Unlocks window (built in code — it's a popup) ---
+# --- Purchase Unlocks window (scene-based popup: PurchaseUnlocksWindow.tscn) ---
 var unlock_window: Window
 var unlock_list: ItemList
 var unlock_buy_button: Button
@@ -1042,49 +1043,15 @@ func _open_unlock_window() -> void:
 	unlock_window.popup_centered(Vector2i(420, 520))
 
 func _build_unlock_window() -> void:
-	unlock_window = Window.new()
-	unlock_window.title = "◢ PURCHASE UNLOCKS ◣"
-	unlock_window.min_size = Vector2i(360, 420)
-	unlock_window.wrap_controls = true
+	unlock_window = UNLOCK_WINDOW_SCENE.instantiate()
 	unlock_window.close_requested.connect(_close_unlock_window)
-	# Transparent-ish backdrop matching the workbench theme.
-	unlock_window.add_theme_color_override("embedded_border_bg", COL_BG)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	unlock_window.add_child(margin)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	margin.add_child(col)
-
-	col.add_child(THEME.make_header_label("◢ PURCHASE UNLOCKS ◣", true))
-	unlock_credits_label = THEME.make_label("CREDITS: 0 eb", COL_AMBER, 27)
-	col.add_child(unlock_credits_label)
-	col.add_child(THEME.make_rule())
-
-	unlock_list = ItemList.new()
-	unlock_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	unlock_list.custom_minimum_size = Vector2(0, 300)
+	unlock_credits_label = unlock_window.get_node("%CreditsLabel")
+	unlock_list = unlock_window.get_node("%UnlockList")
 	unlock_list.item_selected.connect(_on_unlock_selected)
-	col.add_child(unlock_list)
-
-	unlock_buy_button = THEME.make_button("UNLOCK", COL_HEADER)
+	unlock_buy_button = unlock_window.get_node("%UnlockButton")
 	unlock_buy_button.pressed.connect(_on_unlock_pressed)
-	unlock_buy_button.disabled = true
-	col.add_child(unlock_buy_button)
-
-	var close_btn := THEME.make_button("CLOSE", COL_DIM)
+	var close_btn: Button = unlock_window.get_node("%CloseButton")
 	close_btn.pressed.connect(_close_unlock_window)
-	col.add_child(close_btn)
-
-	# Inherit the cyberpunk Theme so the runtime-built window picks up the
-	# mono font + ItemList/Button/PanelContainer styles for free.
-	unlock_window.theme = THEME_RES
 
 func _close_unlock_window() -> void:
 	if unlock_window != null and is_instance_valid(unlock_window):
