@@ -133,7 +133,12 @@ func _ready() -> void:
 			turn_manager.movement_changed.connect(_on_movement_changed)
 		if not turn_manager.initiative_rolled.is_connected(_on_initiative_rolled):
 			turn_manager.initiative_rolled.connect(_on_initiative_rolled)
+		# Round 1: the runner just jacked in and acts first (no initiative roll
+		# needed — no adversaries are active yet). The adversary phase is
+		# deferred to after the runner's first turn; end_round then starts
+		# round 2 with a real initiative roll.
 		turn_manager.start_netrunner_turn()
+		turn_manager._post_round_adversary = true
 
 	if netrunner:
 		if not netrunner.message_logged.is_connected(log_to_terminal):
@@ -1875,10 +1880,10 @@ func _end_player_turn() -> void:
 		return
 	if not turn_manager.is_netrunner_turn:
 		return
-	log_to_terminal("--- Netrunner turn ended. Adversaries activating... ---\n")
+	log_to_terminal("--- Netrunner turn ended. ---\n")
 	var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
 	var nr_init := netrunner.reflex + (RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0) + netrunner.temp_speed_bonus
-	turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
+	turn_manager.end_round(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
 	# DEREZ_ICE (Killer) ICE is stationary — it never moves, so the moved_to
 	# signal never fires and the board wouldn't redraw after a Worm attack.
 	# Force a redraw so worm damage / destruction visuals update immediately.
@@ -2046,10 +2051,10 @@ func _check_actions_exhausted() -> void:
 	# lets a runner move freely after using their single program/Net action,
 	# and vice versa, matching the CP2020 action economy.
 	if turn_manager and turn_manager.actions_remaining <= 0 and turn_manager.movement_remaining <= 0:
-		log_to_terminal("Out of actions and movement. Adversaries activating...\n")
+		log_to_terminal("Out of actions and movement. --- Netrunner turn ended. ---\n")
 		var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
 		var nr_init := netrunner.reflex + (RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0) + netrunner.temp_speed_bonus
-		turn_manager.execute_ice_turns(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
+		turn_manager.end_round(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
 
 # Combined adversaries (Datafort + Black ICE + NPC netrunners) for the turn
 # manager. The datafort is prepended so it acts first each round. The turn

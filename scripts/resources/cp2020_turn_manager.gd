@@ -18,6 +18,11 @@ signal initiative_rolled(netrunner_roll: int, system_roll: int, netrunner_first:
 var is_netrunner_turn: bool = true
 var actions_remaining: int = 1
 var movement_remaining: int = 5
+# True when this round's adversary phase is deferred to AFTER the netrunner's
+# turn (the netrunner won or tied initiative, or round 1 where the runner acts
+# first on entry). False when the system won initiative and the adversary
+# phase already ran before the runner's turn.
+var _post_round_adversary: bool = false
 
 
 func start_netrunner_turn() -> void:
@@ -56,14 +61,15 @@ func consume_movement() -> bool:
 func has_movement() -> bool:
 	return is_netrunner_turn and movement_remaining > 0
 
-func _run_adversary_phase(ice_nodes: Array, target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
+# Run each adversary's take_turn once. Coroutine. Does NOT flip the turn flag
+# or emit turn_ended — the caller (start_round / end_round) owns the round
+# framing. Bails early if the tree detaches (e.g. the runner flatlined and the
+# scene changed mid-phase).
+func run_adversary_phase(ice_nodes: Array, target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 	for ice in ice_nodes:
 		if not is_instance_valid(ice) or not ice.has_method("take_turn"):
 			continue
 		await ice.take_turn(target_pos, layout)
-		# An adversary may have flatlined the netrunner, triggering a scene
-		# change that detaches this node from the tree. Bail before touching
-		# get_tree() to avoid a null reference.
 		if not is_inside_tree():
 			return
 		await get_tree().create_timer(0.3).timeout
@@ -71,18 +77,37 @@ func _run_adversary_phase(ice_nodes: Array, target_pos: Vector2i, layout: CP2020
 			return
 		ice_movement_stepped.emit()
 
-func execute_ice_turns(ice_nodes: Array, target_pos: Vector2i, layout: CP2020DatafortLayout, netrunner_int: int = 0, system_int: int = 0) -> void:
-	is_netrunner_turn = false
-	end_player_turn()
-	_run_adversary_phase(ice_nodes, target_pos, layout)
-	if not is_inside_tree():
-		return
-	if system_int > 0:
-		var nr_roll := randi_range(1, 10) + netrunner_int
-		var sys_roll := randi_range(1, 10) + system_int
-		var is_tie := nr_roll == sys_roll
-		var netrunner_first := nr_roll > sys_roll
-		initiative_rolled.emit(nr_roll, sys_roll, netrunner_first, is_tie)
-		if not is_tie and not netrunner_first:
-			_run_adversary_phase(ice_nodes, target_pos, layout)
+# Begin a new round with a CP2020 initiative roll: runner 1D10 + REF + deck
+# speed vs system 1D10 + System INT. If the SYSTEM wins, the adversary phase
+# runs BEFORE the netrunner's turn (adversaries act first). If the RUNNER wins
+# or TIES, the adversary phase is deferred to after the runner's turn — a tie
+# is simultaneous (one phase, no bonus, no ordering). Fire-and-forget
+# coroutine; callers do not await.
+func start_round(ice_nodes: Array, target_pos: Vector2i, layout: CP2020DatafortLayout, netrunner_int: int, system_int: int) -> void:
+	var nr_roll := randi_range(1, 10) + netrunner_int
+	var sys_roll := randi_range(1, 10) + system_int
+	var is_tie := nr_roll == sys_roll
+	var netrunner_first := nr_roll > sys_roll
+	initiative_rolled.emit(nr_roll, sys_roll, netrunner_first, is_tie)
+	if not is_tie and not netrunner_first:
+		# System wins initiative — adversaries act before the runner this round.
+		is_netrunner_turn = false
+		await run_adversary_phase(ice_nodes, target_pos, layout)
+		if not is_inside_tree():
+			return
+	else:
+		# Runner wins or ties — adversary phase runs after the runner's turn.
+		_post_round_adversary = true
 	start_netrunner_turn()
+
+# Resolve the end of the netrunner's turn: run the deferred adversary phase
+# (if the runner won/tied initiative this round), then start the next round
+# with a fresh initiative roll. Fire-and-forget coroutine; callers do not await.
+func end_round(ice_nodes: Array, target_pos: Vector2i, layout: CP2020DatafortLayout, netrunner_int: int, system_int: int) -> void:
+	end_player_turn()
+	if _post_round_adversary:
+		_post_round_adversary = false
+		await run_adversary_phase(ice_nodes, target_pos, layout)
+		if not is_inside_tree():
+			return
+	start_round(ice_nodes, target_pos, layout, netrunner_int, system_int)
