@@ -1,17 +1,20 @@
 [gd_resource type="Resource" script_class="DemonProgram" format=3]
 
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_2dtej"]
 [ext_resource type="Script" path="res://scripts/programs/demon_program.gd" id="1_afreet"]
 
 [resource]
 script = ExtResource("1_afreet")
+demon_level = 2
+max_subroutines = 3
 program_name = "Afreet"
 type = 6
 effect_type = 12
-strength = 5
 memory_cost = 6
+strength = 5
 price = 3000
-demon_level = 2
-max_subroutines = 3
-glyph = "⚚"
-color = Color(0.80, 0.25, 0.50, 1.0)
 description = "Mid Demon class. A program shell carrying up to 3 subroutines. Rezzed as one node; commands fire any loaded subroutine at the Demon's STR 5."
+glyph = "⚚"
+color = Color(0.8, 0.25, 0.5, 1)
+glyph_offset = Vector2(0, -8)
+glyph_auto_center = false

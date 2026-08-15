@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://dbsraorurql1m"]
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://cix824ei0rne4"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_ln41q"]
 
@@ -9,4 +9,6 @@ effect_type = 0
 strength = 3
 price = 380
 description = "Bypasses code gates by cracking node security DV."
+glyph_offset = Vector2(-4, -3)
+glyph_auto_center = false
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

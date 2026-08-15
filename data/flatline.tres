@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://cswmssw4eot6i"]
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://cw63wkhajkup6"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_woyn7"]
 
@@ -10,4 +10,6 @@ effect_type = 3
 strength = 6
 price = 570
 description = "Anti-personnel virus. Damages a runner directly through the net."
+glyph_offset = Vector2(-5, -2)
+glyph_auto_center = false
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

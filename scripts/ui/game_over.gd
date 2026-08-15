@@ -33,6 +33,9 @@ func _ready() -> void:
 	elif cause == "Busted":
 		header_text = "BUSTED"
 		flavour_text = "NetWatch traced your signal and busted you on jack-out. They confiscated everything."
+	elif cause == "Traced":
+		header_text = "TRACED"
+		flavour_text = "A Watchdog locked onto your signal and a meatspace strike team raided your physical location while you were still jacked in. They pulled the plug and confiscated everything — deck, creds, and all."
 
 	if _header:
 		_header.text = "◢ %s ◣" % header_text

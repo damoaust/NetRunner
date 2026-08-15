@@ -6,6 +6,10 @@ extends Resource
 
 @export var credits: int = 0
 @export var accumulated_trace: int = 0
+# Meatspace security-dispatch countdown (turns until a raid arrives while the
+# runner is jacked in). Set when a Watchdog trace check succeeds; ticks down
+# each netrunner turn during datafort gameplay. 0 = no active dispatch.
+@export var security_dispatch_turns: int = 0
 
 @export var selected_deck_path: String = ""
 @export var selected_subnet_path: String = ""

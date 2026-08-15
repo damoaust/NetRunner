@@ -8,7 +8,13 @@
 [sub_resource type="Environment" id="Environment_gmksv"]
 background_mode = 3
 glow_enabled = true
-glow_blend_mode = 0
+glow_normalized = true
+glow_strength = 1.13
+glow_bloom = 0.29
+glow_hdr_threshold = 0.0
+fog_mode = 1
+fog_density = 1.0
+adjustment_enabled = true
 
 [sub_resource type="CameraAttributesPhysical" id="CameraAttributesPhysical_c5ll2"]
 
@@ -72,7 +78,7 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="MarginContainer/VBoxContainer" unique_id=625082329]
 layout_mode = 2
-theme_type_variation = &"MyHeader"
+theme_type_variation = &"MyTitle"
 text = "Datafort Designer"
 
 [node name="TopPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=1642773889]

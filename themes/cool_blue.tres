@@ -1,6 +1,7 @@
 [gd_resource type="Theme" format=4 uid="uid://kphrmsxee22v"]
 
 [ext_resource type="FontFile" uid="uid://bw6p07wapar7s" path="res://whitrabt.ttf" id="1_6qpne"]
+[ext_resource type="FontFile" uid="uid://bf8ebwffw1byl" path="res://Sddystopiandemo-GO7xa.otf" id="2_ivecd"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6qpne"]
 content_margin_left = 4.0
@@ -3893,6 +3894,13 @@ MyHeader/font_sizes/font_size = 20
 MyHeader/fonts/font = ExtResource("1_6qpne")
 MyHeader/styles/focus = SubResource("StyleBoxFlat_o8cvb")
 MyHeader/styles/normal = SubResource("StyleBoxFlat_o8cvb")
+MyTitle/base_type = &"Label"
+MyTitle/colors/font_color = Color(0, 0, 0, 1)
+MyTitle/colors/font_outline_color = Color(0, 1.5638378, 3.2944162, 0.9882353)
+MyTitle/colors/font_shadow_color = Color(0, 0, 0, 1)
+MyTitle/constants/outline_size = 5
+MyTitle/font_sizes/font_size = 71
+MyTitle/fonts/font = ExtResource("2_ivecd")
 OptionButton/colors/font_color = Color(0.875, 0.875, 0.875, 1)
 OptionButton/colors/font_disabled_color = Color(0.875, 0.875, 0.875, 0.5)
 OptionButton/colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)

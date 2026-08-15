@@ -12,6 +12,9 @@ extends Control
 @onready var health_label: Label = $UI/PanelContainer/VBoxContainer/HealthLabel
 @onready var health_bar: ProgressBar = $UI/PanelContainer/VBoxContainer/HealthBar
 @onready var trace_label: Label = $UI/PanelContainer/VBoxContainer/TraceLabel
+# Meatspace security-dispatch countdown HUD. Shown only while a Watchdog has
+# traced the runner and a raid is en route (RunState.security_dispatch_turns > 0).
+@onready var security_dispatch_label: Label = get_node_or_null("UI/PanelContainer/VBoxContainer/SecurityDispatchLabel")
 @onready var datafort_label: Label = $UI/PanelContainer/VBoxContainer/DatafortLabel
 @onready var floor_hud_label: Label = $UI/FloorHudLabel
 @onready var program_list: ItemList = $UI/PanelContainer/VBoxContainer/ProgramList
@@ -183,6 +186,7 @@ func _ready() -> void:
 	update_deck_info()
 	_on_health_changed(netrunner.current_health, netrunner.max_health)
 	_update_trace()
+	_update_security_dispatch_hud()
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
 
 func _update_floor_hud_label() -> void:
@@ -585,6 +589,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 						log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, netrunner.current_position if netrunner else dest_coord])
 					update_deck_info()
 					_update_trace()
+					_update_security_dispatch_hud()
 				else:
 					log_to_terminal("LDL target '%s' could not be loaded.\n" % dest_path)
 		"return_world_map":
@@ -596,6 +601,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 			else:
 				# No city grid recorded (e.g. legacy entry) — fall back to world map.
 				RunState.accumulated_trace = 0
+				RunState.security_dispatch_turns = 0
 				get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 		"travel_up":
 			# Vertical travel within the same datafort (no load_subnet). The
@@ -1050,6 +1056,75 @@ func _on_ice_alarm_triggered() -> void:
 			ice.activate_alarm()
 	if board_renderer:
 		board_renderer.queue_redraw()
+
+# Called when a DETECTION ICE (Watchdog) succeeds at its CP2020 trace check
+# (1D10 + program.strength >= RunState.accumulated_trace) on first LoS
+# detection. The runner's physical location is pinpointed: the datafort's ICE
+# is escalated (all attack ICE woken — no new NPCs are spawned) and a
+# meatspace security-dispatch countdown is rolled by the datafort's security
+# tier. The countdown ticks down each netrunner turn; at 0 the meatspace raid
+# arrives and the runner is Busted (permadeath). Jacking out before 0 escapes
+# the raid (timer cleared), though the existing accumulated_trace bust check
+# still applies on jack-out. Only the first successful trace rolls the timer;
+# later traces are no-ops (the raid is already en route).
+func _on_ice_trace_succeeded(program: NetProgram) -> void:
+	log_to_terminal("=== TRACE LOCKED: %s pinpointed your physical location! ===\n" % (program.program_name if program != null else "Watchdog"))
+	# Escalate the datafort's ICE (idempotent — safe even if already alarmed).
+	_on_ice_alarm_triggered()
+	if RunState.security_dispatch_turns > 0:
+		log_to_terminal("Meatspace security already dispatched — %d turn(s) to raid.\n" % RunState.security_dispatch_turns)
+		_update_security_dispatch_hud()
+		return
+	# Roll the physical-response timer by corporate security zone classification.
+	# Lower tiers take longer to scramble a meatspace team.
+	var dispatch_turns: int = 0
+	match _current_security_tier:
+		CP2020SecurityTier.Tier.GREY, CP2020SecurityTier.Tier.LEVEL_1:
+			dispatch_turns = randi_range(1, 6) + randi_range(1, 6)
+		CP2020SecurityTier.Tier.LEVEL_2, CP2020SecurityTier.Tier.LEVEL_3:
+			dispatch_turns = randi_range(1, 10)
+		CP2020SecurityTier.Tier.BLACK:
+			dispatch_turns = randi_range(1, 6)
+		_:
+			dispatch_turns = randi_range(1, 10)
+	RunState.security_dispatch_turns = dispatch_turns
+	log_to_terminal("MEATSPACE RAID DISPATCHED — corporate security ETA %d turn(s). Jack out before they arrive!\n" % dispatch_turns)
+	_update_security_dispatch_hud()
+
+# Updates the security-dispatch HUD label. Shown only while a raid is en route.
+func _update_security_dispatch_hud() -> void:
+	if security_dispatch_label == null:
+		return
+	if RunState.security_dispatch_turns > 0:
+		security_dispatch_label.text = "⚠ SECURITY DISPATCH: %d turn(s) to raid" % RunState.security_dispatch_turns
+		security_dispatch_label.visible = true
+	else:
+		security_dispatch_label.visible = false
+
+# Meatspace raid arrived while the runner was still jacked in — Busted
+# permadeath. Mirrors the busted path in _on_jack_out_pressed with a distinct
+# death cause. Guarded by _game_over_queued so a deferred adversary coroutine
+# can't double-fire it after the scene swap.
+func _trigger_security_raid() -> void:
+	if _game_over_queued:
+		return
+	_game_over_queued = true
+	log_to_terminal("=== BUSTED — meatspace security raided your location while jacked in. They confiscated everything. ===\n")
+	var summary: Dictionary = {
+		"cause": "Traced",
+		"trace": RunState.accumulated_trace,
+		"credits": RunState.credits,
+		"loot_count": RunState.loot.size(),
+		"files_count": RunState.carried_files.size(),
+		"datafort": RunState.selected_subnet_path,
+		"security_tier": RunState.selected_security_tier,
+	}
+	MetaState.record_run(summary)
+	RunState.last_death_cause = "Traced"
+	RunState.last_run_summary = summary
+	RunState.security_dispatch_turns = 0
+	if is_inside_tree():
+		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Rezzed attack programs (Phase 1). Attack programs (DEREZ_ICE / DAMAGE_RUNNER
@@ -1528,6 +1603,12 @@ func spawn_black_ice() -> void:
 				# DETECTION ICE (Watchdog) emits alarm_triggered when it detects
 				# the netrunner. The game session activates all other attack ICE.
 				ice.alarm_triggered.connect(_on_ice_alarm_triggered)
+				# DETECTION ICE (Watchdog) emits trace_succeeded when its CP2020
+				# trace check (1D10+STR vs RunState.accumulated_trace) succeeds
+				# on first detection. The game session starts the meatspace
+				# security-dispatch countdown + escalates the datafort's ICE.
+				if not ice.trace_succeeded.is_connected(_on_ice_trace_succeeded):
+					ice.trace_succeeded.connect(_on_ice_trace_succeeded)
 				ice_nodes.append(ice)
 				log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program.program_name, coord])
 
@@ -1829,6 +1910,21 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
 			turn_manager.movement_changed.emit(turn_manager.movement_remaining, turn_manager.max_movement)
 			log_to_terminal("STUNNED — unconscious! Cannot act, move, or jack out. Black ICE auto-hits!\n")
+		# Meatspace security-dispatch tick: if a Watchdog traced the runner,
+		# countdown the raid ETA each netrunner turn. At 0 the raid arrives
+		# while the runner is still jacked in → Busted permadeath. Ticking at
+		# the start of the turn gives the runner the full rolled window to
+		# finish up and jack out (which clears the timer — escaping the raid).
+		if RunState.security_dispatch_turns > 0:
+			RunState.security_dispatch_turns -= 1
+			if RunState.security_dispatch_turns > 0:
+				log_to_terminal("⚠ SECURITY DISPATCH: %d turn(s) until meatspace raid arrives.\n" % RunState.security_dispatch_turns)
+				_update_security_dispatch_hud()
+			else:
+				log_to_terminal("⚠ SECURITY DISPATCH: meatspace team is at your door!\n")
+				_update_security_dispatch_hud()
+				_trigger_security_raid()
+				return
 
 # Tick all worm-active tiles: decrement worm_turns_remaining and open the tile
 # when the counter reaches 0 (DATAWALL -> EMPTY, CODE_GATE -> is_unlocked).
@@ -2070,6 +2166,7 @@ func _on_flatlined() -> void:
 	MetaState.record_run(summary)
 	RunState.last_death_cause = "Flatlined"
 	RunState.last_run_summary = summary
+	RunState.security_dispatch_turns = 0
 	if is_inside_tree():
 		get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
 
@@ -2103,6 +2200,7 @@ func _on_jack_out_pressed() -> void:
 	# Ends the run: trace + run context cleared, back to the Workbench.
 	log_to_terminal("Jacking out...\n")
 	RunState.accumulated_trace = 0
+	RunState.security_dispatch_turns = 0
 	RunState.selected_subnet_path = ""
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0

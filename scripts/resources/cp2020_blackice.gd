@@ -13,6 +13,12 @@ signal attacked_netrunner(strength: int)
 # rezzed programs are passive defenders during the adversary phase.
 signal attacked_program(attacker_str: int, tile_coord: Vector2i)
 signal alarm_triggered
+# Emitted by a tracing DETECTION ICE (Watchdog) when its trace check
+# (1D10 + program.strength >= RunState.accumulated_trace) succeeds on first
+# LoS detection. Carries the tracing program so the game session can log /
+# resolve the trace. The game session starts the meatspace security-dispatch
+# countdown on this signal.
+signal trace_succeeded(program: NetProgram)
 signal destroyed
 # Emitted when a dormant ICE's opposed roll pierces the netrunner's active
 # Invisibility cloak. The game session clears the cloak globally (on all
@@ -167,6 +173,12 @@ func emit_attack_program(atk_str: int, coord: Vector2i) -> void:
 
 func emit_alarm() -> void:
 	alarm_triggered.emit()
+
+# Emit hook for the trace-success signal (Watchdog tracing programs). Mirrors
+# emit_alarm so NetProgram behavior can fire it without reaching into the
+# Node's signal list directly.
+func emit_trace_succeeded(prog: NetProgram) -> void:
+	trace_succeeded.emit(prog)
 
 func emit_log(msg: String) -> void:
 	message_logged.emit(msg)

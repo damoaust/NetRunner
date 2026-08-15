@@ -1,17 +1,20 @@
 [gd_resource type="Resource" script_class="DemonProgram" format=3]
 
 [ext_resource type="Script" path="res://scripts/programs/demon_program.gd" id="1_bal"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_f5uik"]
 
 [resource]
 script = ExtResource("1_bal")
+demon_level = 4
+max_subroutines = 5
 program_name = "Balron"
 type = 6
 effect_type = 12
-strength = 8
 memory_cost = 10
+strength = 8
 price = 9000
-demon_level = 4
-max_subroutines = 5
-glyph = "⛧"
-color = Color(0.70, 0.10, 0.10, 1.0)
 description = "Apex Demon class. A program shell carrying up to 5 subroutines. Rezzed as one node; commands fire any loaded subroutine at the Demon's STR 8."
+glyph = "⛧"
+color = Color(0.7, 0.1, 0.1, 1)
+glyph_offset = Vector2(0, -6)
+glyph_auto_center = false

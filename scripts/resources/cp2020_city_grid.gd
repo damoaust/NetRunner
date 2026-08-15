@@ -475,6 +475,7 @@ func _return_to_world_map() -> void:
 	# Leaving the city grid entirely aborts the run.
 	print("CITY GRID: Returning to World Map. Run trace reset.")
 	RunState.accumulated_trace = 0
+	RunState.security_dispatch_turns = 0
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
@@ -484,6 +485,7 @@ func _jack_out_to_hub() -> void:
 	# End the run and return to the Workbench to fence loot/files and gear up.
 	print("CITY GRID: Jack Out to Hub. Run trace reset.")
 	RunState.accumulated_trace = 0
+	RunState.security_dispatch_turns = 0
 	RunState.selected_subnet_path = ""
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
@@ -501,6 +503,8 @@ func _update_hud() -> void:
 		credits_label.text = "CREDITS: %d eb" % RunState.credits
 	if trace_label:
 		trace_label.text = "TRACE: %d" % RunState.accumulated_trace
+		if RunState.security_dispatch_turns > 0:
+			trace_label.text += "  ⚠ RAID: %d turn(s)" % RunState.security_dispatch_turns
 	if location_label:
 		var df: Variant = _datafort_at(runner_pos)
 		if df != null:

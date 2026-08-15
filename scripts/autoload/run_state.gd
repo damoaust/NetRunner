@@ -23,6 +23,12 @@ var credits: int = STARTING_CREDITS
 # Total Trace Value of all LDLs passed through in the current Net run. Drives
 # tracing-program rolls during the datafort session; reset per run.
 var accumulated_trace: int = 0
+# Meatspace security-dispatch countdown (turns until a raid arrives while the
+# runner is jacked in). Set when a Watchdog's trace check succeeds; ticks down
+# each netrunner turn during datafort gameplay. Preserved across in-datafort
+# LDL travel + the datafort->City Grid return (mid-run); cleared on run-end,
+# flatline, and successful jack-out (escaping the raid). 0 = no active raid.
+var security_dispatch_turns: int = 0
 # City Grid currently in play (set by the world map ENTER action). The
 # datafort LDL-return uses this to go back to the right city grid.
 var selected_city_grid_path: String = ""
@@ -65,6 +71,7 @@ func reset() -> void:
 	selected_subnet_path = ""
 	credits = STARTING_CREDITS
 	accumulated_trace = 0
+	security_dispatch_turns = 0
 	selected_city_grid_path = ""
 	selected_security_tier = 0
 	loot.clear()
@@ -287,6 +294,7 @@ func save_run() -> void:
 	var data := RunStateData.new()
 	data.credits = credits
 	data.accumulated_trace = accumulated_trace
+	data.security_dispatch_turns = security_dispatch_turns
 	data.selected_subnet_path = selected_subnet_path
 	data.selected_city_grid_path = selected_city_grid_path
 	data.selected_security_tier = selected_security_tier
@@ -353,6 +361,7 @@ func _load_run() -> void:
 	var data: RunStateData = loaded as RunStateData
 	credits = data.credits
 	accumulated_trace = data.accumulated_trace
+	security_dispatch_turns = data.security_dispatch_turns
 	selected_subnet_path = data.selected_subnet_path
 	selected_city_grid_path = data.selected_city_grid_path
 	selected_security_tier = data.selected_security_tier

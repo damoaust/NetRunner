@@ -1,0 +1,1411 @@
+[gd_resource type="Resource" script_class="CP2020DatafortLayout" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CP2020Floor.gd" id="1_gqdbs"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_net_file.gd" id="2_ra75s"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_deck_module.gd" id="3_tvvdi"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="4_ucwta"]
+[ext_resource type="Script" path="res://scripts/resources/CP2020TileData.gd" id="5_m3ewl"]
+[ext_resource type="Resource" path="res://data/aegis.tres" id="6_c0x60"]
+[ext_resource type="Resource" path="res://data/afreet.tres" id="7_em6qc"]
+[ext_resource type="Resource" path="res://data/armor.tres" id="8_uxyum"]
+[ext_resource type="Resource" path="res://data/balron.tres" id="9_85qal"]
+[ext_resource type="Resource" path="res://data/banhammer.tres" id="10_3ownv"]
+[ext_resource type="Resource" path="res://data/bastion.tres" id="11_doaqy"]
+[ext_resource type="Resource" path="res://data/Black_Dahli.tres" id="12_yfls8"]
+[ext_resource type="Resource" path="res://data/brainburn.tres" id="13_itnsu"]
+[ext_resource type="Resource" path="res://data/bulwark.tres" id="14_fuj0w"]
+[ext_resource type="Resource" path="res://data/cinder.tres" id="15_ymxnr"]
+[ext_resource type="Resource" path="res://data/codecracker.tres" id="16_w0jo8"]
+[ext_resource type="Resource" path="res://data/deathlok.tres" id="17_3bino"]
+[ext_resource type="Resource" path="res://data/flatline.tres" id="18_shab7"]
+[ext_resource type="Script" path="res://scripts/resources/CP2020DatafortLayout.gd" id="19_aq4gv"]
+
+[sub_resource type="Resource" id="Resource_2o2gp"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jxefq"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8sxbn"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_pcqyp"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ahcmc"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_dx53d"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_umexc"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_44ogd"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_frpk3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2kkgo"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3pmav"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5v888"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_dd23l"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_nto0h"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rkaik"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_v858d"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_a4s53"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_egnqx"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_yoqmc"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_eaj10"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_e4ap1"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_qw07h"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_13sl1"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1y2n8"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ghj63"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_en0rm"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3ytd3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_qr0v1"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vsr2m"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_bn0i4"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0aru5"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_mgfk7"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_74waj"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_70yes"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_n7fbv"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_03tpl"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6gss5"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4v3er"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_repmi"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_n84y2"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jsc6j"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_orf0o"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_pxw6b"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_fadv4"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_33tdh"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jisj7"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_f36fp"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_52dx8"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_j0ptw"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rgumh"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_obaxa"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_k2ygy"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1lyc1"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1y2iy"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_o20ls"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_438n2"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_27385"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_a1x5m"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jg8rg"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2i8w3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_qo7ti"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_7qtik"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_an18j"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t5oop"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_syah0"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_xis5g"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_m7red"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8jwdq"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3d4dr"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_upe7x"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_53yx4"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wra6n"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vm3ge"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1kwgv"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3mv3b"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6g6ja"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_i1c8t"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_64n48"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_qglt6"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_crku3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_724rb"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_tyvet"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6jm0v"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ry47j"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_teycq"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6bc2p"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_60vxp"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_gad3b"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vj1og"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rt7ti"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_f5mm8"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_chbhn"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_j2dp6"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0alkh"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8e608"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4yjao"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_cum40"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8w8sv"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_cfqwr"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5blyq"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1pysg"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_pcu2v"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_fn58l"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_apy2s"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6cdfw"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_fsfhi"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_gisdu"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_l63e2"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_f5mbj"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3ha63"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_cn00v"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_204dy"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_qkd1k"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_a0342"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jn8mp"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vfnmf"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_71d6t"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_gntun"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t60jv"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_504xg"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_cyx6p"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_vjp4w"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_n44ji"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_huay5"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_736bw"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_bc1e4"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wdrba"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_b0dsw"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3bh6d"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_r2401"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_c6msr"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_g6lg7"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5aqxh"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_w1rap"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_v31tt"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_b20gi"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_76gbn"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1665x"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_egnh2"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5bxgf"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_bovoh"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_j1rdj"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_d7i4l"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_a1onp"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_46asj"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8ixun"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_qev48"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rvs2x"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_xbmka"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_feqs3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_iklvh"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3p4rt"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2ba0k"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jq4j1"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6ejyi"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8shp6"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_tukby"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rx53w"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_3uiko"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_b84yt"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_siaxx"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wi1ug"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_6bhos"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_balv3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_68qti"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ffkmy"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_scxa0"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_5wwj2"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_uu6nx"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jko3y"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_t6vxt"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_oy4s0"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2fm7t"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_q5syb"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_gpbit"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ipbad"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hijmk"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_83wr7"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_a02gy"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_tpw8b"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_e7x81"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_waqq0"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ofj1e"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ahc0x"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_dwxda"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_idj8l"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8f8yc"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_2633t"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_50704"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_o5mbt"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_dj1un"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_65nc6"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ebq01"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_e2rhg"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_i4hat"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_etpbm"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_aemp2"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wsdhw"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_cbpsb"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_gwep3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_7x6f5"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_avqlh"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0l8mu"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_u1hg8"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_aa2t1"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_udjep"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4bctp"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rj1o3"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_w6sru"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_r2caf"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ogan4"]
+script = ExtResource("5_m3ewl")
+tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hf88x"]
+script = ExtResource("5_m3ewl")
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+is_primary_entry = true
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rh35o"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("6_c0x60")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_d16ed"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("7_em6qc")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_ql1b4"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("8_uxyum")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1jy45"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("9_85qal")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_15qyq"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("10_3ownv")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1bojj"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("11_doaqy")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rfwle"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("12_yfls8")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_w6et1"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("13_itnsu")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_s0xp3"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("14_fuj0w")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jomcd"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("15_ymxnr")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_q0cue"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("16_w0jo8")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_qff68"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("17_3bino")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0big2"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("18_shab7")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_wkng7"]
+script = ExtResource("1_gqdbs")
+tiles = {
+Vector2i(0, 0): SubResource("Resource_2o2gp"),
+Vector2i(0, 1): SubResource("Resource_jxefq"),
+Vector2i(0, 2): SubResource("Resource_8sxbn"),
+Vector2i(0, 3): SubResource("Resource_pcqyp"),
+Vector2i(0, 4): SubResource("Resource_ahcmc"),
+Vector2i(0, 5): SubResource("Resource_dx53d"),
+Vector2i(0, 6): SubResource("Resource_umexc"),
+Vector2i(0, 7): SubResource("Resource_44ogd"),
+Vector2i(0, 8): SubResource("Resource_frpk3"),
+Vector2i(0, 9): SubResource("Resource_2kkgo"),
+Vector2i(0, 10): SubResource("Resource_3pmav"),
+Vector2i(0, 11): SubResource("Resource_5v888"),
+Vector2i(0, 12): SubResource("Resource_dd23l"),
+Vector2i(0, 13): SubResource("Resource_nto0h"),
+Vector2i(0, 14): SubResource("Resource_rkaik"),
+Vector2i(1, 0): SubResource("Resource_v858d"),
+Vector2i(1, 1): SubResource("Resource_a4s53"),
+Vector2i(1, 2): SubResource("Resource_egnqx"),
+Vector2i(1, 3): SubResource("Resource_yoqmc"),
+Vector2i(1, 4): SubResource("Resource_eaj10"),
+Vector2i(1, 5): SubResource("Resource_e4ap1"),
+Vector2i(1, 6): SubResource("Resource_qw07h"),
+Vector2i(1, 7): SubResource("Resource_13sl1"),
+Vector2i(1, 8): SubResource("Resource_rh35o"),
+Vector2i(1, 9): SubResource("Resource_1y2n8"),
+Vector2i(1, 10): SubResource("Resource_ghj63"),
+Vector2i(1, 11): SubResource("Resource_en0rm"),
+Vector2i(1, 12): SubResource("Resource_3ytd3"),
+Vector2i(1, 13): SubResource("Resource_qr0v1"),
+Vector2i(1, 14): SubResource("Resource_vsr2m"),
+Vector2i(2, 0): SubResource("Resource_bn0i4"),
+Vector2i(2, 1): SubResource("Resource_0aru5"),
+Vector2i(2, 2): SubResource("Resource_mgfk7"),
+Vector2i(2, 3): SubResource("Resource_74waj"),
+Vector2i(2, 4): SubResource("Resource_70yes"),
+Vector2i(2, 5): SubResource("Resource_n7fbv"),
+Vector2i(2, 6): SubResource("Resource_03tpl"),
+Vector2i(2, 7): SubResource("Resource_6gss5"),
+Vector2i(2, 8): SubResource("Resource_d16ed"),
+Vector2i(2, 9): SubResource("Resource_4v3er"),
+Vector2i(2, 10): SubResource("Resource_repmi"),
+Vector2i(2, 11): SubResource("Resource_n84y2"),
+Vector2i(2, 12): SubResource("Resource_jsc6j"),
+Vector2i(2, 13): SubResource("Resource_orf0o"),
+Vector2i(2, 14): SubResource("Resource_pxw6b"),
+Vector2i(3, 0): SubResource("Resource_fadv4"),
+Vector2i(3, 1): SubResource("Resource_33tdh"),
+Vector2i(3, 2): SubResource("Resource_jisj7"),
+Vector2i(3, 3): SubResource("Resource_f36fp"),
+Vector2i(3, 4): SubResource("Resource_52dx8"),
+Vector2i(3, 5): SubResource("Resource_j0ptw"),
+Vector2i(3, 6): SubResource("Resource_rgumh"),
+Vector2i(3, 7): SubResource("Resource_obaxa"),
+Vector2i(3, 8): SubResource("Resource_ql1b4"),
+Vector2i(3, 9): SubResource("Resource_k2ygy"),
+Vector2i(3, 10): SubResource("Resource_1lyc1"),
+Vector2i(3, 11): SubResource("Resource_1y2iy"),
+Vector2i(3, 12): SubResource("Resource_o20ls"),
+Vector2i(3, 13): SubResource("Resource_438n2"),
+Vector2i(3, 14): SubResource("Resource_27385"),
+Vector2i(4, 0): SubResource("Resource_a1x5m"),
+Vector2i(4, 1): SubResource("Resource_jg8rg"),
+Vector2i(4, 2): SubResource("Resource_2i8w3"),
+Vector2i(4, 3): SubResource("Resource_qo7ti"),
+Vector2i(4, 4): SubResource("Resource_7qtik"),
+Vector2i(4, 5): SubResource("Resource_an18j"),
+Vector2i(4, 6): SubResource("Resource_t5oop"),
+Vector2i(4, 7): SubResource("Resource_syah0"),
+Vector2i(4, 8): SubResource("Resource_1jy45"),
+Vector2i(4, 9): SubResource("Resource_xis5g"),
+Vector2i(4, 10): SubResource("Resource_m7red"),
+Vector2i(4, 11): SubResource("Resource_8jwdq"),
+Vector2i(4, 12): SubResource("Resource_3d4dr"),
+Vector2i(4, 13): SubResource("Resource_upe7x"),
+Vector2i(4, 14): SubResource("Resource_53yx4"),
+Vector2i(5, 0): SubResource("Resource_wra6n"),
+Vector2i(5, 1): SubResource("Resource_vm3ge"),
+Vector2i(5, 2): SubResource("Resource_1kwgv"),
+Vector2i(5, 3): SubResource("Resource_3mv3b"),
+Vector2i(5, 4): SubResource("Resource_6g6ja"),
+Vector2i(5, 5): SubResource("Resource_i1c8t"),
+Vector2i(5, 6): SubResource("Resource_64n48"),
+Vector2i(5, 7): SubResource("Resource_qglt6"),
+Vector2i(5, 8): SubResource("Resource_15qyq"),
+Vector2i(5, 9): SubResource("Resource_crku3"),
+Vector2i(5, 10): SubResource("Resource_724rb"),
+Vector2i(5, 11): SubResource("Resource_tyvet"),
+Vector2i(5, 12): SubResource("Resource_6jm0v"),
+Vector2i(5, 13): SubResource("Resource_ry47j"),
+Vector2i(5, 14): SubResource("Resource_teycq"),
+Vector2i(6, 0): SubResource("Resource_6bc2p"),
+Vector2i(6, 1): SubResource("Resource_60vxp"),
+Vector2i(6, 2): SubResource("Resource_gad3b"),
+Vector2i(6, 3): SubResource("Resource_vj1og"),
+Vector2i(6, 4): SubResource("Resource_rt7ti"),
+Vector2i(6, 5): SubResource("Resource_f5mm8"),
+Vector2i(6, 6): SubResource("Resource_chbhn"),
+Vector2i(6, 7): SubResource("Resource_j2dp6"),
+Vector2i(6, 8): SubResource("Resource_1bojj"),
+Vector2i(6, 9): SubResource("Resource_0alkh"),
+Vector2i(6, 10): SubResource("Resource_8e608"),
+Vector2i(6, 11): SubResource("Resource_4yjao"),
+Vector2i(6, 12): SubResource("Resource_cum40"),
+Vector2i(6, 13): SubResource("Resource_8w8sv"),
+Vector2i(6, 14): SubResource("Resource_cfqwr"),
+Vector2i(7, 0): SubResource("Resource_5blyq"),
+Vector2i(7, 1): SubResource("Resource_1pysg"),
+Vector2i(7, 2): SubResource("Resource_pcu2v"),
+Vector2i(7, 3): SubResource("Resource_fn58l"),
+Vector2i(7, 4): SubResource("Resource_apy2s"),
+Vector2i(7, 5): SubResource("Resource_6cdfw"),
+Vector2i(7, 6): SubResource("Resource_fsfhi"),
+Vector2i(7, 7): SubResource("Resource_gisdu"),
+Vector2i(7, 8): SubResource("Resource_rfwle"),
+Vector2i(7, 9): SubResource("Resource_l63e2"),
+Vector2i(7, 10): SubResource("Resource_f5mbj"),
+Vector2i(7, 11): SubResource("Resource_3ha63"),
+Vector2i(7, 12): SubResource("Resource_cn00v"),
+Vector2i(7, 13): SubResource("Resource_hf88x"),
+Vector2i(7, 14): SubResource("Resource_204dy"),
+Vector2i(8, 0): SubResource("Resource_qkd1k"),
+Vector2i(8, 1): SubResource("Resource_a0342"),
+Vector2i(8, 2): SubResource("Resource_jn8mp"),
+Vector2i(8, 3): SubResource("Resource_vfnmf"),
+Vector2i(8, 4): SubResource("Resource_71d6t"),
+Vector2i(8, 5): SubResource("Resource_gntun"),
+Vector2i(8, 6): SubResource("Resource_t60jv"),
+Vector2i(8, 7): SubResource("Resource_504xg"),
+Vector2i(8, 8): SubResource("Resource_w6et1"),
+Vector2i(8, 9): SubResource("Resource_cyx6p"),
+Vector2i(8, 10): SubResource("Resource_vjp4w"),
+Vector2i(8, 11): SubResource("Resource_n44ji"),
+Vector2i(8, 12): SubResource("Resource_huay5"),
+Vector2i(8, 13): SubResource("Resource_736bw"),
+Vector2i(8, 14): SubResource("Resource_bc1e4"),
+Vector2i(9, 0): SubResource("Resource_wdrba"),
+Vector2i(9, 1): SubResource("Resource_b0dsw"),
+Vector2i(9, 2): SubResource("Resource_3bh6d"),
+Vector2i(9, 3): SubResource("Resource_r2401"),
+Vector2i(9, 4): SubResource("Resource_c6msr"),
+Vector2i(9, 5): SubResource("Resource_g6lg7"),
+Vector2i(9, 6): SubResource("Resource_5aqxh"),
+Vector2i(9, 7): SubResource("Resource_w1rap"),
+Vector2i(9, 8): SubResource("Resource_s0xp3"),
+Vector2i(9, 9): SubResource("Resource_v31tt"),
+Vector2i(9, 10): SubResource("Resource_b20gi"),
+Vector2i(9, 11): SubResource("Resource_76gbn"),
+Vector2i(9, 12): SubResource("Resource_1665x"),
+Vector2i(9, 13): SubResource("Resource_egnh2"),
+Vector2i(9, 14): SubResource("Resource_5bxgf"),
+Vector2i(10, 0): SubResource("Resource_bovoh"),
+Vector2i(10, 1): SubResource("Resource_j1rdj"),
+Vector2i(10, 2): SubResource("Resource_d7i4l"),
+Vector2i(10, 3): SubResource("Resource_a1onp"),
+Vector2i(10, 4): SubResource("Resource_46asj"),
+Vector2i(10, 5): SubResource("Resource_8ixun"),
+Vector2i(10, 6): SubResource("Resource_qev48"),
+Vector2i(10, 7): SubResource("Resource_rvs2x"),
+Vector2i(10, 8): SubResource("Resource_jomcd"),
+Vector2i(10, 9): SubResource("Resource_xbmka"),
+Vector2i(10, 10): SubResource("Resource_feqs3"),
+Vector2i(10, 11): SubResource("Resource_iklvh"),
+Vector2i(10, 12): SubResource("Resource_3p4rt"),
+Vector2i(10, 13): SubResource("Resource_2ba0k"),
+Vector2i(10, 14): SubResource("Resource_jq4j1"),
+Vector2i(11, 0): SubResource("Resource_6ejyi"),
+Vector2i(11, 1): SubResource("Resource_8shp6"),
+Vector2i(11, 2): SubResource("Resource_tukby"),
+Vector2i(11, 3): SubResource("Resource_rx53w"),
+Vector2i(11, 4): SubResource("Resource_3uiko"),
+Vector2i(11, 5): SubResource("Resource_b84yt"),
+Vector2i(11, 6): SubResource("Resource_siaxx"),
+Vector2i(11, 7): SubResource("Resource_wi1ug"),
+Vector2i(11, 8): SubResource("Resource_q0cue"),
+Vector2i(11, 9): SubResource("Resource_6bhos"),
+Vector2i(11, 10): SubResource("Resource_balv3"),
+Vector2i(11, 11): SubResource("Resource_68qti"),
+Vector2i(11, 12): SubResource("Resource_ffkmy"),
+Vector2i(11, 13): SubResource("Resource_scxa0"),
+Vector2i(11, 14): SubResource("Resource_5wwj2"),
+Vector2i(12, 0): SubResource("Resource_uu6nx"),
+Vector2i(12, 1): SubResource("Resource_jko3y"),
+Vector2i(12, 2): SubResource("Resource_t6vxt"),
+Vector2i(12, 3): SubResource("Resource_oy4s0"),
+Vector2i(12, 4): SubResource("Resource_2fm7t"),
+Vector2i(12, 5): SubResource("Resource_q5syb"),
+Vector2i(12, 6): SubResource("Resource_gpbit"),
+Vector2i(12, 7): SubResource("Resource_ipbad"),
+Vector2i(12, 8): SubResource("Resource_qff68"),
+Vector2i(12, 9): SubResource("Resource_hijmk"),
+Vector2i(12, 10): SubResource("Resource_83wr7"),
+Vector2i(12, 11): SubResource("Resource_a02gy"),
+Vector2i(12, 12): SubResource("Resource_tpw8b"),
+Vector2i(12, 13): SubResource("Resource_e7x81"),
+Vector2i(12, 14): SubResource("Resource_waqq0"),
+Vector2i(13, 0): SubResource("Resource_ofj1e"),
+Vector2i(13, 1): SubResource("Resource_ahc0x"),
+Vector2i(13, 2): SubResource("Resource_dwxda"),
+Vector2i(13, 3): SubResource("Resource_idj8l"),
+Vector2i(13, 4): SubResource("Resource_8f8yc"),
+Vector2i(13, 5): SubResource("Resource_2633t"),
+Vector2i(13, 6): SubResource("Resource_50704"),
+Vector2i(13, 7): SubResource("Resource_o5mbt"),
+Vector2i(13, 8): SubResource("Resource_0big2"),
+Vector2i(13, 9): SubResource("Resource_dj1un"),
+Vector2i(13, 10): SubResource("Resource_65nc6"),
+Vector2i(13, 11): SubResource("Resource_ebq01"),
+Vector2i(13, 12): SubResource("Resource_e2rhg"),
+Vector2i(13, 13): SubResource("Resource_i4hat"),
+Vector2i(13, 14): SubResource("Resource_etpbm"),
+Vector2i(14, 0): SubResource("Resource_aemp2"),
+Vector2i(14, 1): SubResource("Resource_wsdhw"),
+Vector2i(14, 2): SubResource("Resource_cbpsb"),
+Vector2i(14, 3): SubResource("Resource_gwep3"),
+Vector2i(14, 4): SubResource("Resource_7x6f5"),
+Vector2i(14, 5): SubResource("Resource_avqlh"),
+Vector2i(14, 6): SubResource("Resource_0l8mu"),
+Vector2i(14, 7): SubResource("Resource_u1hg8"),
+Vector2i(14, 8): SubResource("Resource_aa2t1"),
+Vector2i(14, 9): SubResource("Resource_udjep"),
+Vector2i(14, 10): SubResource("Resource_4bctp"),
+Vector2i(14, 11): SubResource("Resource_rj1o3"),
+Vector2i(14, 12): SubResource("Resource_w6sru"),
+Vector2i(14, 13): SubResource("Resource_r2caf"),
+Vector2i(14, 14): SubResource("Resource_ogan4")
+}
+floor_name = "ICE Test Map"
+
+[resource]
+script = ExtResource("19_aq4gv")
+fort_name = "New Datafort"
+floors = Array[ExtResource("1_gqdbs")]([SubResource("Resource_wkng7")])
