@@ -8,18 +8,18 @@ extends Control
 var current_layout: CP2020DatafortLayout
 
 # --- Grid canvas (child node that handles drawing + input) ---
-@onready var grid_canvas: CP2020DatafortGridCanvas = $GridCanvas
+@onready var grid_canvas: CP2020DatafortGridCanvas = $%GridCanvas
 
 # --- Toolbar (scene-tree nodes) ---
-@onready var dynamic_button_row: HBoxContainer = $TopPanel/DynamicButtonRow
-@onready var columns_spinbox: SpinBox = $TopPanel/SettingsRow/ColumnsSpinBox
-@onready var rows_spinbox: SpinBox = $TopPanel/SettingsRow/RowsSpinBox
-@onready var apply_size_button: Button = $TopPanel/SettingsRow/ApplyButton
+@onready var dynamic_button_row: HBoxContainer = $%TopPanel/DynamicButtonRow
+@onready var columns_spinbox: SpinBox = $%TopPanel/SettingsRow/ColumnsSpinBox
+@onready var rows_spinbox: SpinBox = $%TopPanel/SettingsRow/RowsSpinBox
+@onready var apply_size_button: Button = $%TopPanel/SettingsRow/ApplyButton
 # --- Floor management (multi-floor datafort authoring) ---
-@onready var floor_spinbox: SpinBox = $TopPanel/SettingsRow/FloorSpinBox
-@onready var add_floor_button: Button = $TopPanel/SettingsRow/AddFloorButton
-@onready var remove_floor_button: Button = $TopPanel/SettingsRow/RemoveFloorButton
-@onready var floor_name_edit: LineEdit = $TopPanel/SettingsRow/FloorNameEdit
+@onready var floor_spinbox: SpinBox = $%TopPanel/SettingsRow/FloorSpinBox
+@onready var add_floor_button: Button = $%TopPanel/SettingsRow/AddFloorButton
+@onready var remove_floor_button: Button = $%TopPanel/SettingsRow/RemoveFloorButton
+@onready var floor_name_edit: LineEdit = $%TopPanel/SettingsRow/FloorNameEdit
 
 # --- File dialogs (scene-tree nodes) ---
 @onready var save_dialog: FileDialog = $SaveDialog

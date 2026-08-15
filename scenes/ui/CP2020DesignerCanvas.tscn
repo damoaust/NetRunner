@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://bh3haiox7nrx3"]
 
 [ext_resource type="Script" uid="uid://c5bhyhegsspuo" path="res://scripts/resources/cp2020_datafort_designer.gd" id="1_4q7o0"]
-[ext_resource type="Texture2D" uid="uid://cqy2kicjbrgpd" path="res://themes/dead-copy2.png" id="2_feun2"]
+[ext_resource type="Texture2D" uid="uid://dc13kp1hi7m4e" path="res://background_city.jpg" id="2_feun2"]
 [ext_resource type="Script" uid="uid://5hwxt0jx342i" path="res://scripts/resources/cp2020_datafort_grid_canvas.gd" id="2_grid"]
-[ext_resource type="Theme" uid="uid://c2myk4yt270q6" path="res://themes/cyberpunk_theme.tres" id="3_n21rt"]
+[ext_resource type="Theme" uid="uid://yv4oys2uo6v" path="res://themes/cyberpunk_theme.tres" id="3_n21rt"]
 
 [sub_resource type="Environment" id="Environment_gmksv"]
 background_mode = 3
@@ -57,131 +57,148 @@ layout_mode = 0
 offset_right = 11.0
 offset_bottom = 22.0
 
-[node name="TopPanel" type="VBoxContainer" parent="." unique_id=1642773889]
-layout_mode = 0
-offset_left = 20.0
-offset_top = 20.0
-offset_right = 1122.0
-offset_bottom = 86.0
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=868258700]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 50
 
-[node name="DynamicButtonRow" type="HBoxContainer" parent="TopPanel" unique_id=1560721362]
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=1794804672]
 layout_mode = 2
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer" unique_id=625082329]
+layout_mode = 2
+theme_type_variation = &"MyHeader"
+text = "Datafort Designer"
+
+[node name="TopPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=1642773889]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="DynamicButtonRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer/TopPanel" unique_id=1560721362]
+layout_mode = 2
+size_flags_horizontal = 0
 size_flags_vertical = 3
 
-[node name="SelectButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=701072679]
+[node name="SelectButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=701072679]
 layout_mode = 2
 text = "Select"
 
-[node name="EntryButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1197000539]
+[node name="EntryButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=1197000539]
 layout_mode = 2
 text = "Entry"
 
-[node name="DatawallButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=476126121]
+[node name="DatawallButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=476126121]
 layout_mode = 2
 text = "Datawall"
 
-[node name="CodeGateButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=882736822]
+[node name="CodeGateButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=882736822]
 layout_mode = 2
 text = "Code Gate"
 
-[node name="MemoryUnitButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1860610956]
+[node name="MemoryUnitButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=1860610956]
 layout_mode = 2
 text = "Memory Unit"
 
-[node name="ControlNodeButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=268445121]
+[node name="ControlNodeButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=268445121]
 layout_mode = 2
 text = "Control Node"
 
-[node name="BlackIceButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=95510724]
+[node name="BlackIceButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=95510724]
 layout_mode = 2
 text = "Black ICE"
 
-[node name="NetWatchButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1361008382]
+[node name="NetWatchButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=1361008382]
 layout_mode = 2
 text = "NetWatch"
 
-[node name="NetrunnerButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=330772354]
+[node name="NetrunnerButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=330772354]
 layout_mode = 2
 text = "Netrunner"
 
-[node name="LdlLinkButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=600844701]
+[node name="LdlLinkButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=600844701]
 layout_mode = 2
 text = "LDL Link"
 
-[node name="EraserButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=1468648411]
+[node name="EraserButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=1468648411]
 layout_mode = 2
 text = "Eraser"
 
-[node name="VSeparator" type="VSeparator" parent="TopPanel/DynamicButtonRow" unique_id=46559369]
+[node name="VSeparator" type="VSeparator" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=46559369]
 layout_mode = 2
 
-[node name="SaveButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=509870804]
+[node name="SaveButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=509870804]
 layout_mode = 2
 text = "Save Map"
 
-[node name="LoadButton" type="Button" parent="TopPanel/DynamicButtonRow" unique_id=2110119155]
+[node name="LoadButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/DynamicButtonRow" unique_id=2110119155]
 layout_mode = 2
 text = "Load Map"
 
-[node name="SettingsRow" type="HBoxContainer" parent="TopPanel" unique_id=1863061141]
+[node name="SettingsRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer/TopPanel" unique_id=1863061141]
 layout_mode = 2
 
-[node name="ColumnsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow" unique_id=1380758939]
-layout_mode = 2
-min_value = 20.0
-step = 5.0
-value = 20.0
-
-[node name="RowsSpinBox" type="SpinBox" parent="TopPanel/SettingsRow" unique_id=387652543]
+[node name="ColumnsSpinBox" type="SpinBox" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=1380758939]
 layout_mode = 2
 min_value = 20.0
 step = 5.0
 value = 20.0
 
-[node name="ApplyButton" type="Button" parent="TopPanel/SettingsRow" unique_id=1900782836]
+[node name="RowsSpinBox" type="SpinBox" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=387652543]
+layout_mode = 2
+min_value = 20.0
+step = 5.0
+value = 20.0
+
+[node name="ApplyButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=1900782836]
 layout_mode = 2
 text = "Apply"
 
-[node name="FloorSep" type="VSeparator" parent="TopPanel/SettingsRow" unique_id=120000001]
+[node name="FloorSep" type="VSeparator" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=120000001]
 layout_mode = 2
 
-[node name="FloorLabel" type="Label" parent="TopPanel/SettingsRow" unique_id=120000002]
+[node name="FloorLabel" type="Label" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=120000002]
 layout_mode = 2
 text = "Floor:"
 
-[node name="FloorSpinBox" type="SpinBox" parent="TopPanel/SettingsRow" unique_id=120000003]
+[node name="FloorSpinBox" type="SpinBox" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=120000003]
 layout_mode = 2
 min_value = 1.0
 max_value = 1.0
 value = 1.0
 
-[node name="AddFloorButton" type="Button" parent="TopPanel/SettingsRow" unique_id=120000004]
+[node name="AddFloorButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=120000004]
 layout_mode = 2
 text = "Add Floor"
 
-[node name="RemoveFloorButton" type="Button" parent="TopPanel/SettingsRow" unique_id=120000005]
+[node name="RemoveFloorButton" type="Button" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=120000005]
 layout_mode = 2
 disabled = true
 text = "Remove Floor"
 
-[node name="FloorNameLabel" type="Label" parent="TopPanel/SettingsRow" unique_id=120000006]
+[node name="FloorNameLabel" type="Label" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=120000006]
 layout_mode = 2
 text = "Name:"
 
-[node name="FloorNameEdit" type="LineEdit" parent="TopPanel/SettingsRow" unique_id=120000007]
+[node name="FloorNameEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/TopPanel/SettingsRow" unique_id=120000007]
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Floor name"
 
-[node name="GridCanvas" type="Control" parent="." unique_id=699164242]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 27.0
-offset_top = 123.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer" unique_id=834592384]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_top = 25
+
+[node name="GridCanvas" type="Control" parent="MarginContainer/VBoxContainer/MarginContainer" unique_id=699164242]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
 script = ExtResource("2_grid")
 
 [node name="LDLLinkPanel" type="PanelContainer" parent="." unique_id=1044561562]
@@ -397,6 +414,7 @@ offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
+grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="NpcEditorPanel" unique_id=857158766]
 layout_mode = 2
@@ -496,6 +514,7 @@ offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
+grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="CpuEditorPanel" unique_id=950852854]
 layout_mode = 2
@@ -524,6 +543,7 @@ offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
+grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="LootEditorPanel" unique_id=1944745855]
 layout_mode = 2
@@ -583,6 +603,7 @@ offset_left = -300.0
 offset_top = 90.0
 offset_right = -10.0
 offset_bottom = -10.0
+grow_horizontal = 0
 
 [node name="VBox" type="VBoxContainer" parent="FilesEditorPanel" unique_id=952427870]
 layout_mode = 2
@@ -713,7 +734,6 @@ text = "Show / Hide programs editor"
 
 [node name="SaveDialog" type="FileDialog" parent="." unique_id=1705406050]
 title = "Save Datafort Layout"
-file_mode = 4
 filters = PackedStringArray("*.tres ; CP2020 Datafort Resource")
 
 [node name="LoadDialog" type="FileDialog" parent="." unique_id=184065023]
@@ -740,8 +760,3 @@ filters = PackedStringArray("*.tres ; Program resource")
 title = "Open a File"
 file_mode = 0
 filters = PackedStringArray("*.tres ; Program resource")
-
-[node name="MarginContainer" type="MarginContainer" parent="." unique_id=868258700]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
