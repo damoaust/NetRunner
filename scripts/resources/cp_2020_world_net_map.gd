@@ -509,10 +509,6 @@ func _build_ldl_panel() -> void:
 	var title := Label.new()
 	title.text = "LDL LINKS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_color_override("font_color", COLOR_GRID_BRIGHT)
-	title.add_theme_color_override("font_outline_color", Color(0.0, 0.3, 0.4, 1.0))
-	title.add_theme_constant_override("outline_size", 4)
-	title.add_theme_font_size_override("font_size", 20)
 	col.add_child(title)
 
 	var sep := HSeparator.new()
@@ -523,14 +519,11 @@ func _build_ldl_panel() -> void:
 	_ldl_enter_button = Button.new()
 	_ldl_enter_button.text = "ENTER CITY GRID"
 	_ldl_enter_button.custom_minimum_size = Vector2(0, 36)
-	_ldl_enter_button.add_theme_font_size_override("font_size", 14)
 	_ldl_enter_button.pressed.connect(_on_enter_button_pressed)
 	col.add_child(_ldl_enter_button)
 
 	var list_label := Label.new()
 	list_label.text = "HACKABLE LINKS (within 5)"
-	list_label.add_theme_color_override("font_color", COLOR_TEXT_LABEL)
-	list_label.add_theme_font_size_override("font_size", 12)
 	col.add_child(list_label)
 
 	# Scrollable list container for the per-LDL rows.
@@ -549,8 +542,6 @@ func _build_ldl_panel() -> void:
 	var jack_button := Button.new()
 	jack_button.text = "> JACK OUT TO HUB"
 	jack_button.custom_minimum_size = Vector2(0, 36)
-	jack_button.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4, 1.0))
-	jack_button.add_theme_font_size_override("font_size", 14)
 	jack_button.pressed.connect(_jack_out_to_hub)
 	col.add_child(jack_button)
 
@@ -579,8 +570,6 @@ func _refresh_ldl_panel() -> void:
 	if _ldl_panel_hubs.is_empty():
 		var empty := Label.new()
 		empty.text = "(no LDLs in range)"
-		empty.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55, 0.8))
-		empty.add_theme_font_size_override("font_size", 12)
 		_ldl_list_container.add_child(empty)
 		return
 
@@ -590,7 +579,6 @@ func _refresh_ldl_panel() -> void:
 		row.text = "%s\nSec %d  +Trace %d" % [dest.name, int(dest.security_code), int(dest.trace_value)]
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.custom_minimum_size = Vector2(0, 48)
-		row.add_theme_font_size_override("font_size", 13)
 		row.pressed.connect(_hack_jump.bind(dest))
 		_ldl_list_container.add_child(row)
 
