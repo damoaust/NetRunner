@@ -729,9 +729,11 @@ func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 	log_to_terminal("Executing Anti-ICE Program '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_ice.program.program_name, target_coord])
 
 	# Opposed roll (CP2020 anti-program combat): Attacker STR + 1D10 vs
-	# Defender STR + 1D10. The loser takes 1D6 damage to STR. Ties → no
-	# damage (standoff). Both sides can lose — if the runner's program loses
-	# and integrity drops to 0, it crashes and clogs MU (see damage_specific_program).
+	# Defender STR + 1D10. The roll determines whether the attack succeeds.
+	# Attacker wins → defender takes 1D6 damage to STR. Defender wins or ties
+	# → attack fails, no damage to either side (the defender does NOT
+	# counterstrike). If the runner's program is reduced to 0 integrity by
+	# other means (e.g. Killer ICE), it crashes and clogs MU.
 	var prog_roll := randi_range(1, 10) + program.strength
 	var ice_roll := randi_range(1, 10) + target_ice.program.strength
 	log_to_terminal("Roll: you %d (1D10+%d) vs %s %d (1D10+%d)\n" % [prog_roll, program.strength, target_ice.program.program_name, ice_roll, target_ice.program.strength])
@@ -742,10 +744,7 @@ func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 		if target_ice.take_damage(dmg):
 			ice_nodes.erase(target_ice)
 	elif ice_roll > prog_roll:
-		var dmg := randi_range(1, 6)
-		log_to_terminal("%s repels the attack and counterstrikes for %d!\n" % [target_ice.program.program_name, dmg])
-		if is_instance_valid(netrunner):
-			netrunner.damage_specific_program(program, dmg, target_ice.program.program_name)
+		log_to_terminal("%s repels the attack — no damage.\n" % target_ice.program.program_name)
 	else:
 		log_to_terminal("Standoff — both sides hold, no damage.\n")
 
