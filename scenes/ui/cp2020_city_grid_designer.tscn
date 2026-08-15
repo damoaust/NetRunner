@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://b3h4ylbet0dwm"]
 
 [ext_resource type="Script" uid="uid://b2win86jayaji" path="res://scripts/resources/cp2020_city_grid_designer.gd" id="1_cgdesigner"]
+[ext_resource type="Script" path="res://scripts/resources/cp2020_city_grid_renderer.gd" id="2_cgrenderer"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tl46i"]
 content_margin_left = 8.0
@@ -538,6 +539,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_cgdesigner")
+
+[node name="GridRenderer" type="Node2D" parent="."]
+script = ExtResource("2_cgrenderer")
 
 [node name="TopPanel" type="VBoxContainer" parent="." unique_id=1856608715]
 layout_mode = 1
