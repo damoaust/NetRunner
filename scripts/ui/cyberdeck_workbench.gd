@@ -422,7 +422,7 @@ func _refresh_loaded() -> void:
 		# Row text now only includes: chip + name + [tag] + (MU). The
 		# ProgramType short code (A-P / UTL etc.) lived in the Library list
 		# only and made the rows too wide to read.
-		loaded_list.add_item("%s  %s  [%s]  (%d MU)" % [String.chr(0x258E), prog.program_name, EFFECT_TAGS_COMPACT.get(prog.effect_type, "?"), prog.memory_cost], icon, false)
+		loaded_list.add_item("%s  %s  [%s]  (%d MU)" % [String.chr(0x258E), prog.program_name, EFFECT_TAGS_COMPACT.get(prog.effect_type, "?"), prog.memory_cost], icon, true)
 		loaded_list.set_item_custom_fg_color(loaded_list.item_count - 1, Color(col.r, col.g, col.b, 1.0))
 	if unload_button:
 		unload_button.disabled = (_selected_loaded_idx < 0)
@@ -448,7 +448,7 @@ func _refresh_library() -> void:
 		elif not fits:
 			suffix = "  [—]"
 		# Tighter row text — ProgramType short was eating horizontal space.
-		library_list.add_item("%s  %s  [%s]  (%d MU)%s" % [String.chr(0x258E), prog.program_name, EFFECT_TAGS_COMPACT.get(prog.effect_type, "?"), prog.memory_cost, suffix], icon, false)
+		library_list.add_item("%s  %s  [%s]  (%d MU)%s" % [String.chr(0x258E), prog.program_name, EFFECT_TAGS_COMPACT.get(prog.effect_type, "?"), prog.memory_cost, suffix], icon, true)
 		var idx := library_list.item_count - 1
 		library_list.set_item_metadata(idx, prog)
 		if not fits:
