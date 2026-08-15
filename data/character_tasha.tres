@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="NetrunnerCharacter" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_character.gd" id="1_char"]
+[ext_resource type="Texture2D" uid="uid://dhaxan5rh0fqb" path="res://char_2.jpg" id="2_port"]
+
+[resource]
+script = ExtResource("1_char")
+character_name = "Tasha"
+callsign = "TASHA"
+role = "NETRUNNER"
+description = "A hotshot deck-jockey built for speed. Lightning reflexes make her first on the wire, but her fragile body can't take many hits."
+reflex = 10
+intelligence = 7
+body = 5
+luck = 5
+max_health = 18
+sight_range = 20
+portrait_texture = ExtResource("2_port")

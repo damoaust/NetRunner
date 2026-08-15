@@ -18,6 +18,12 @@ const STARTING_PROGRAM_PATHS: Array[String] = [
 const RUN_SAVE_PATH: String = "user://run_state.tres"
 
 var selected_deck: Cyberdeck = null
+# The netrunner character equipped for this life (selected at the workbench).
+# Read by the game session at jack-in to apply REF/INT/BODY/HP/sight to the
+# netrunner node. Per-life like selected_deck; defaults from the MetaState
+# preferred character on a new life. The resource is read-only at runtime so
+# we store/restore it by path (no duplication needed).
+var selected_character: NetrunnerCharacter = null
 var selected_subnet_path: String = ""
 var credits: int = STARTING_CREDITS
 # Total Trace Value of all LDLs passed through in the current Net run. Drives
@@ -68,6 +74,7 @@ func _ready() -> void:
 # by any explicit hard-reset path.
 func reset() -> void:
 	selected_deck = null
+	selected_character = null
 	selected_subnet_path = ""
 	credits = STARTING_CREDITS
 	accumulated_trace = 0
@@ -107,6 +114,17 @@ func start_new_life() -> void:
 			owned_programs.append(prog_dup)
 		else:
 			push_error("RunState: failed to load starting program '%s'." % path)
+	# Default character — the player's last-chosen runner (persisted in
+	# MetaState across deaths), falling back to the first roster entry so a
+	# fresh life always has a runner equipped. Can be swapped at the workbench.
+	var char_path := MetaState.data.selected_character_path if MetaState.data != null else ""
+	if char_path == "":
+		char_path = "res://data/character_shadow.tres"
+	var character: NetrunnerCharacter = load(char_path) as NetrunnerCharacter
+	if character:
+		selected_character = character
+	else:
+		push_error("RunState: failed to load starting character '%s'." % char_path)
 
 # --- Loot helpers (used by the loot interaction) ---
 # Appends a duplicate of prog to loot (duplicate to avoid mutating cached
@@ -302,6 +320,8 @@ func save_run() -> void:
 	data.last_run_summary = last_run_summary.duplicate()
 	if selected_deck != null:
 		data.selected_deck_path = selected_deck.resource_path if selected_deck.resource_path != "" else selected_deck.source_path
+	if selected_character != null and selected_character.resource_path != "":
+		data.selected_character_path = selected_character.resource_path
 	for deck: Cyberdeck in owned_decks:
 		if deck == null:
 			continue
@@ -415,6 +435,14 @@ func _load_run() -> void:
 			if deck.source_path == data.selected_deck_path:
 				selected_deck = deck
 				break
+	# Restore the equipped character by path (read-only resource, no duplicate).
+	selected_character = null
+	if data.selected_character_path != "":
+		var ch: NetrunnerCharacter = load(data.selected_character_path) as NetrunnerCharacter
+		if ch != null:
+			selected_character = ch
+		else:
+			push_warning("RunState: saved character '%s' could not be loaded." % data.selected_character_path)
 	loot.clear()
 	for path: String in data.loot_paths:
 		var prog: NetProgram = load(path) as NetProgram

@@ -24,6 +24,16 @@ const THEME := preload("res://scripts/resources/cp2020_theme.gd")
 const THEME_RES := preload("res://themes/cyberpunk_theme.tres")
 const UNLOCK_WINDOW_SCENE := preload("res://scenes/ui/PurchaseUnlocksWindow.tscn")
 
+# Runner character roster (fixed 3 starters). Clicking the workbench portrait
+# cycles through these; the selected character's stats drive gameplay and its
+# callsign/portrait/role are shown in the panel. The chosen character persists
+# in MetaState.data.selected_character_path across deaths.
+const RUNNER_CHARACTERS: Array[NetrunnerCharacter] = [
+	preload("res://data/character_shadow.tres"),
+	preload("res://data/character_tasha.tres"),
+	preload("res://data/character_jax.tres"),
+]
+
 # --- UI references (scene-tree nodes; static structure lives in
 # CyberdeckWorkbench.tscn and is grabbed here via unique_name_in_owner) ---
 @onready var deck_selector: OptionButton = get_node_or_null("%DeckSelector")
@@ -42,7 +52,7 @@ const UNLOCK_WINDOW_SCENE := preload("res://scenes/ui/PurchaseUnlocksWindow.tscn
 @onready var filter_option: OptionButton = get_node_or_null("%FilterOption")
 @onready var detail_name: Label = get_node_or_null("%DetailName")
 # Netrunner Status column
-@onready var runner_portrait_label: Label = get_node_or_null("%RunnerPortraitLabel")
+@onready var runner_portrait: TextureRect = get_node_or_null("%RunnerPortrait")
 @onready var callsign_label: Label = get_node_or_null("%CallsignLabel")
 @onready var role_label: Label = get_node_or_null("%RoleLabel")
 @onready var stat_ref_label: Label = get_node_or_null("%StatRefLabel")
@@ -213,6 +223,18 @@ func _ready() -> void:
 		active_deck = RunState.selected_deck
 	elif not decks.is_empty():
 		active_deck = decks[0]
+	# Ensure a character is equipped. A fresh life seeds one in start_new_life,
+	# but guard against a null (e.g. older save) by defaulting to the MetaState
+	# preferred character, then the first roster entry.
+	if RunState.selected_character == null:
+		var pref_path := MetaState.data.selected_character_path if MetaState.data != null else ""
+		var ch: NetrunnerCharacter = null
+		if pref_path != "":
+			ch = load(pref_path) as NetrunnerCharacter
+		if ch == null and not RUNNER_CHARACTERS.is_empty():
+			ch = RUNNER_CHARACTERS[0]
+		if ch != null:
+			RunState.selected_character = ch
 	_refresh_deck_selector()
 	update_deck_ui()
 	_refresh_shop()
@@ -286,6 +308,10 @@ func _connect_signals() -> void:
 	var tabs := get_node_or_null("%Tabs") as TabContainer
 	if tabs:
 		tabs.tab_changed.connect(_on_tab_changed)
+	# Clicking the runner portrait cycles to the next character face and
+	# persists the selection via MetaState so it survives across lives.
+	if runner_portrait:
+		runner_portrait.gui_input.connect(_on_runner_portrait_gui_input)
 
 # ---------------------------------------------------------------------------
 # MU bar
@@ -300,14 +326,8 @@ func _set_mu_bar_color(ratio: float) -> void:
 		return
 	fill.bg_color = THEME.mu_bar_fill_color(ratio)
 
-# Tiny ASCII face generated from the callsign initial. Cheap visual identity
-# without depending on external sprites.
-func _runner_ascii_portrait(handle: String) -> String:
-	var ch := "?"
-	if handle.length() > 0:
-		ch = handle.substr(0, 1).to_upper()
-	return "  ┏━━━━━━━━━━┓\n  ┃  ▄▀▀▀▀▄  ┃\n  ┃  █ %s █  ┃\n  ┃  ▀▄  ▄▀  ┃\n  ┃    ██    ┃\n  ┗━━━━━━━━━━┛" % ch
-
+# ---------------------------------------------------------------------------
+# Refresh / update
 # ---------------------------------------------------------------------------
 # Refresh / update
 # ---------------------------------------------------------------------------
@@ -358,12 +378,16 @@ func _refresh_summary() -> void:
 		loaded_summary_label.add_theme_color_override("font_color", COL_TEXT)
 
 func _refresh_netrunner_panel() -> void:
-	if not runner_portrait_label:
+	var ch: NetrunnerCharacter = RunState.selected_character
+	if ch == null and not RUNNER_CHARACTERS.is_empty():
+		ch = RUNNER_CHARACTERS[0]
+	if ch == null:
+		# No character roster available — nothing to display.
 		return
-	var callsign := _run_caller_id("SHADOW")
-	callsign_label.text = "// CALLSIGN: %s" % callsign
-	role_label.text = "// ROLE: NETRUNNER"
-	runner_portrait_label.text = _runner_ascii_portrait(callsign)
+	if runner_portrait:
+		runner_portrait.texture = ch.portrait_texture
+	callsign_label.text = "// CALLSIGN: %s" % ch.callsign
+	role_label.text = "// ROLE: %s" % ch.role
 	var kills := 0
 	var runs := 0
 	if MetaState.data != null:
@@ -372,17 +396,13 @@ func _refresh_netrunner_panel() -> void:
 		if "run_history" in MetaState.data:
 			runs = (MetaState.data.run_history as Array).size()
 	meta_label.text = "// TOTAL KILLS: %d\n// DATAJACK: OFFLINE\n// SUBNETS CLEARED: %d" % [kills, runs]
-	# Stats are sourced from the active deck (interface_rank feeds INT for
-	# initiative) plus standard CP2020 runner defaults: REF = deck speed + 2,
-	# INT = interface_rank, BODY = static 6. Adjusted live if the player's
-	# runner gets modified later.
-	var ref := active_deck.effective_speed_bonus() + 2
-	var int_val := active_deck.effective_interface_rank()
-	var body := 6
-	stat_ref_label.text = "REF/INT/BODY: %d / %d / %d" % [ref, int_val, body]
-	stat_luck_label.text = "LUCK: %d" % active_deck.effective_interface_rank()
-	var max_hp := 40 + active_deck.effective_data_wall_strength() * 2
-	hp_label.text = "HP: %d / %d" % [max_hp, max_hp]
+	# Stats come from the equipped character (REF/INT/BODY/LUCK/HP/sight).
+	# REF is the runner's meat-space reflexes; the deck's speed bonus is added
+	# separately at initiative time (shown in Speed Bonus above). interface_rank
+	# is a deck property, not a character stat, so it is not shown here.
+	stat_ref_label.text = "REF/INT/BODY: %d / %d / %d" % [ch.reflex, ch.intelligence, ch.body]
+	stat_luck_label.text = "LUCK: %d" % ch.luck
+	hp_label.text = "HP: %d / %d" % [ch.max_health, ch.max_health]
 	wounds_label.text = "WOUNDS: NONE"
 	trace_label.text = "TRACE: %d / 100" % int(RunState.accumulated_trace)
 	net_cred_label.text = "EBANK: %d eb" % RunState.credits
@@ -402,12 +422,30 @@ func _refresh_destination() -> void:
 		destination_label.text = "→ World Map → City Grid → Datafort"
 		destination_label.add_theme_color_override("font_color", COL_DIM)
 
-func _run_caller_id(fallback: String) -> String:
-	if MetaState == null or MetaState.data == null:
-		return fallback
-	if "callsign" in MetaState.data and MetaState.data.callsign != "":
-		return String(MetaState.data.callsign)
-	return fallback
+# Click the portrait to cycle runner characters; persist the choice in
+# MetaState so it carries across deaths and equip it into RunState for the
+# current life (read by the game session at jack-in).
+func _on_runner_portrait_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	var count := RUNNER_CHARACTERS.size()
+	if count <= 0:
+		return
+	# Find the index of the currently equipped character (match by resource
+	# path so it works across save/load cycles); default to 0 if not found.
+	var cur_path := RunState.selected_character.resource_path if RunState.selected_character != null else ""
+	var idx := 0
+	for i in range(count):
+		if RUNNER_CHARACTERS[i].resource_path == cur_path:
+			idx = i
+			break
+	var next_idx := (idx + 1) % count
+	var ch: NetrunnerCharacter = RUNNER_CHARACTERS[next_idx]
+	RunState.selected_character = ch
+	if MetaState.data != null:
+		MetaState.data.selected_character_path = ch.resource_path
+		MetaState.save()
+	_refresh_netrunner_panel()
 
 func _refresh_loaded() -> void:
 	loaded_list.clear()

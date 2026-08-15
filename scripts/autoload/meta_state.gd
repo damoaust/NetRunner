@@ -14,6 +14,10 @@ const STARTING_PROGRAMS: Array[String] = [
 	"res://data/codecracker.tres",
 	"res://data/shield.tres",
 ]
+# Default character for a brand-new player (the first roster entry). Seeded into
+# MetaStateData.selected_character_path on first launch so a runner is always
+# equipped even before the workbench is opened.
+const STARTING_CHARACTER: String = "res://data/character_shadow.tres"
 
 var data: MetaStateData = null
 
@@ -46,6 +50,7 @@ func _init_default_catalogue() -> void:
 	data = MetaStateData.new()
 	data.unlocked_decks = [STARTING_DECK]
 	data.unlocked_programs = STARTING_PROGRAMS.duplicate()
+	data.selected_character_path = STARTING_CHARACTER
 	data.run_history = []
 
 

@@ -15,6 +15,10 @@ extends Resource
 @export var selected_subnet_path: String = ""
 @export var selected_city_grid_path: String = ""
 @export var selected_security_tier: int = 0
+# Resource path of the equipped NetrunnerCharacter .tres for this life. Saved/
+# restored across app restarts like selected_deck_path (the character resource
+# is read-only at runtime, so we store the path directly, no duplication).
+@export var selected_character_path: String = ""
 
 # Each owned deck is stored as a dictionary: { "path": deck_resource_path,
 # "installed_program_paths": [path, ...], "installed_module_paths":

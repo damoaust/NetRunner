@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="NetrunnerCharacter" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_character.gd" id="1_char"]
+[ext_resource type="Texture2D" uid="uid://bgtkl4i0uj830" path="res://char_jax.jpg" id="2_port"]
+
+[resource]
+script = ExtResource("1_char")
+character_name = "Jax"
+callsign = "JAX"
+role = "NETRUNNER"
+description = "A veteran info-broker. Slower off the line but brilliant and tough — his deep game sense and thick hide keep him alive when the ICE bites."
+reflex = 6
+intelligence = 9
+body = 8
+luck = 7
+max_health = 24
+sight_range = 22
+portrait_texture = ExtResource("2_port")

@@ -11,6 +11,11 @@ extends Resource
 @export var unlocked_modules: Array[String] = []
 @export var run_history: Array = []
 
+# Resource path of the runner's last-chosen character .tres. A persistent meta
+# preference — survives permadeath so the player keeps their chosen runner face
+# across lives. Seeded by MetaState._init_default_catalogue on first launch.
+@export var selected_character_path: String = ""
+
 # Add `path` to `arr` if it is not already present. Returns true if added.
 static func dedupe(arr: Array[String], path: String) -> bool:
 	if arr.has(path):

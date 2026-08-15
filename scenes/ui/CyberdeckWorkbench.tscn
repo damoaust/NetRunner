@@ -3,12 +3,12 @@
 [ext_resource type="Script" uid="uid://xi7762rglqiw" path="res://scripts/ui/cyberdeck_workbench.gd" id="1_ih6ts"]
 [ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_gys0u"]
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="3_prog"]
-[ext_resource type="Resource" uid="uid://dt3gwefaesqv7" path="res://data/aegis.tres" id="4_aegis"]
-[ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="5_codecracker"]
-[ext_resource type="Resource" uid="uid://cswmssw4eot6i" path="res://data/flatline.tres" id="6_flatline"]
+[ext_resource type="Resource" uid="uid://cpi7fj6m5xvmw" path="res://data/aegis.tres" id="4_aegis"]
+[ext_resource type="Resource" uid="uid://cix824ei0rne4" path="res://data/codecracker.tres" id="5_codecracker"]
+[ext_resource type="Resource" uid="uid://cw63wkhajkup6" path="res://data/flatline.tres" id="6_flatline"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="7_hammer"]
 [ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="8_jackhammer"]
-[ext_resource type="Resource" uid="uid://ct4eov1q47oe2" path="res://data/killer2.tres" id="9_killer"]
+[ext_resource type="Resource" uid="uid://bxf3rnkpngeh3" path="res://data/killer2.tres" id="9_killer"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="10_shield"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="11_wizbook"]
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="12_worm"]
@@ -17,6 +17,8 @@
 [ext_resource type="Resource" uid="uid://ycvcc1ghp56k" path="res://data/ziggurat.tres" id="15_ziggurat"]
 [ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="16_killer4"]
 [ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="17_killer6"]
+[ext_resource type="Shader" uid="uid://dl6jm380sqnxn" path="res://scenes/ui/char_profile.gdshader" id="19_4btsc"]
+[ext_resource type="Texture2D" uid="uid://wqtn14d5k56f" path="res://char_1.jpg" id="20_2c18i"]
 [ext_resource type="FontFile" uid="uid://bf8ebwffw1byl" path="res://Sddystopiandemo-GO7xa.otf" id="20_ldt4r"]
 
 [sub_resource type="Environment" id="Environment_dbyrx"]
@@ -28,6 +30,15 @@ glow_bloom = 0.15
 [sub_resource type="CameraAttributesPhysical" id="CameraAttributesPhysical_va62j"]
 
 [sub_resource type="Compositor" id="Compositor_4btsc"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_c5ll2"]
+shader = ExtResource("19_4btsc")
+shader_parameter/scanline_count = 313.114014397915
+shader_parameter/scanline_intensity = 0.22400001064
+shader_parameter/scanline_speed = 0.10000000475
+shader_parameter/curvature = 6.5730002884675
+shader_parameter/vignette_intensity = 1.1470000544825
+shader_parameter/chromatic_aberration = 0.0010000000475
 
 [node name="CyberdeckWorkbench" type="Control" unique_id=997511488]
 layout_mode = 3
@@ -101,10 +112,9 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-current_tab = 1
+current_tab = 0
 
 [node name="Loadout" type="HBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=702334731]
-visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -281,8 +291,8 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Assign subroutines to a loaded Demon program"
-text = "⚙ SUBS"
 disabled = true
+text = "⚙ SUBS"
 
 [node name="UpgradesButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182860]
 unique_name_in_owner = true
@@ -412,10 +422,20 @@ layout_mode = 2
 
 [node name="RunnerPortraitLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox/PortraitBox" unique_id=1904667378]
 unique_name_in_owner = true
+visible = false
 custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
 size_flags_horizontal = 4
 horizontal_alignment = 1
+
+[node name="RunnerPortrait" type="TextureRect" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox/PortraitBox" unique_id=1430860604]
+unique_name_in_owner = true
+material = SubResource("ShaderMaterial_c5ll2")
+layout_mode = 2
+tooltip_text = "Click to cycle runner portrait"
+mouse_filter = 0
+texture = ExtResource("20_2c18i")
+expand_mode = 5
 
 [node name="CallsignLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/RunnerCol/VBox" unique_id=1704441172]
 unique_name_in_owner = true
@@ -497,6 +517,7 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="SHOP" type="VBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=940278441]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 metadata/_tab_index = 1

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="NetrunnerCharacter" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_character.gd" id="1_char"]
+[ext_resource type="Texture2D" uid="uid://wqtn14d5k56f" path="res://char_1.jpg" id="2_port"]
+
+[resource]
+script = ExtResource("1_char")
+character_name = "Shadow"
+callsign = "SHADOW"
+role = "NETRUNNER"
+description = "A balanced netrunner. Steady reflexes, sharp mind, average constitution. The reliable all-rounder."
+reflex = 8
+intelligence = 8
+body = 6
+luck = 6
+max_health = 20
+sight_range = 20
+portrait_texture = ExtResource("2_port")

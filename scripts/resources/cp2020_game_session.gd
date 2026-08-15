@@ -170,6 +170,20 @@ func _ready() -> void:
 		# so seed the program_integrity HP tracker for every loaded program.
 		netrunner.seed_program_integrity()
 
+	# Apply the selected runner character's meat-space stat block. The
+	# netrunner node's @export defaults are overwritten here so each character
+	# plays differently. current_health must be set explicitly because
+	# CP2020Netrunner._ready() (which runs before this session's _ready) already
+	# set it to the old max_health default. intelligence_lost starts at 0.
+	if RunState.selected_character:
+		var ch := RunState.selected_character
+		netrunner.reflex = ch.reflex
+		netrunner.intelligence = ch.intelligence
+		netrunner.body = ch.body
+		netrunner.max_health = ch.max_health
+		netrunner.current_health = ch.max_health
+		netrunner.sight_range = ch.sight_range
+
 	# Combat effect animator — child of the board renderer so its beams render
 	# on top of the grid. Lives in the scene tree as a BoardRenderer child
 	# (CombatAnimator node); we look it up and sync grid geometry from the
