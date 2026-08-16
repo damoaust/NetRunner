@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c07fig008mde3" path="res://scripts/resources/cp_2020_world_net_map.gd" id="1_2v4ka"]
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="2_tm"]
-[ext_resource type="Resource" path="res://data/world_map_default.tres" id="3_layout"]
+[ext_resource type="Resource" uid="uid://bsbr8oowtnbbg" path="res://data/world_map_default.tres" id="3_layout"]
 
 [node name="Cp2020WorldNetMap" type="Node2D" unique_id=1270201602]
 script = ExtResource("1_2v4ka")
@@ -24,6 +24,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_right = 1920.0
 offset_bottom = 1080.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 
 [node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=32687854]
@@ -74,40 +76,41 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
 text = "TRACE: 0"
 
-[node name="TerminalPanel" type="PanelContainer" parent="HUDLayer/HUDOverlay"]
-layout_mode = 3
-anchor_left = 0.0
+[node name="TerminalPanel" type="PanelContainer" parent="HUDLayer/HUDOverlay" unique_id=1414592619]
+layout_mode = 1
+anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 30.0
-offset_top = -190.0
+offset_top = -200.0
 offset_right = -30.0
 offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 0
 
-[node name="TerminalMargin" type="MarginContainer" parent="HUDLayer/HUDOverlay/TerminalPanel"]
+[node name="TerminalMargin" type="MarginContainer" parent="HUDLayer/HUDOverlay/TerminalPanel" unique_id=2029006121]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 10
 
-[node name="TerminalVBox" type="VBoxContainer" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin"]
+[node name="TerminalVBox" type="VBoxContainer" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin" unique_id=1097711837]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="TerminalHeader" type="Label" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox"]
+[node name="TerminalHeader" type="Label" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox" unique_id=1168340746]
 layout_mode = 2
-horizontal_alignment = 1
 text = "/// TERMINAL ///"
+horizontal_alignment = 1
 
-[node name="TerminalScroll" type="ScrollContainer" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox"]
+[node name="TerminalScroll" type="ScrollContainer" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox" unique_id=134870956]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="TerminalLog" type="RichTextLabel" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalScroll"]
+[node name="TerminalLog" type="RichTextLabel" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalScroll" unique_id=156005875]
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
-text = ""
