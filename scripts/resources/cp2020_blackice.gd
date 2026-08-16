@@ -164,7 +164,15 @@ func next_step_to(target_pos: Vector2i) -> Vector2i:
 # lives here on the Node2D.
 func move_to_step(coord: Vector2i) -> void:
 	update_visual_position()
-	await get_tree().create_timer(0.3).timeout
+	# Guard: if the ICE was freed/removed from the tree mid-turn (e.g.
+	# derezzed by a rezzed program during its movement loop), get_tree()
+	# returns null. Skip the animation timer and emit immediately so the
+	# awaiting caller resumes cleanly instead of crashing.
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		moved_to.emit(current_position)
+		return
+	await tree.create_timer(0.3).timeout
 	moved_to.emit(current_position)
 
 # Emit hooks so NetProgram behavior can fire ICE signals without reaching
