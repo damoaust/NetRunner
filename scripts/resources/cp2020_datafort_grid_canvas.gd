@@ -334,19 +334,27 @@ func _draw() -> void:
 							else:
 								# Glyph path: draw the program's glyph at the tile
 								# center + glyph_offset, tinted with the program's color.
-								# Uses the theme default font (proven to render in @tool).
+								# Always draw the placeholder circle behind the glyph so
+								# the tile is clearly visible even if the font is missing
+								# in @tool mode (which would make draw_string crash and
+								# disable the script's _gui_input, breaking clicks).
+								draw_circle(center, 12, Color(0.3, 0, 0))
+								draw_arc(center, 10, 0, TAU, 16, Color.CRIMSON, 2)
 								var vis: Dictionary = prog.get_visual()
 								var gly: String = vis.get("glyph", "\u2620")
 								var gly_col: Color = vis.get("color", Color.CRIMSON)
 								var font_size: int = 28
 								var font: Font = get_theme_default_font()
-								var auto_offset: Vector2 = NetProgram.compute_glyph_centering(gly, font, font_size, cell_size)
-								if auto_offset == Vector2.ZERO:
-									auto_offset = Vector2(-2, -4)
-								if not prog.glyph_auto_center:
-									auto_offset = Vector2.ZERO
-								var label_pos: Vector2 = cell_rect.position + auto_offset + prog.glyph_offset
-								draw_string(font, label_pos, gly, HORIZONTAL_ALIGNMENT_CENTER, cell_size, font_size, gly_col)
+								if font != null:
+									var auto_offset: Vector2 = NetProgram.compute_glyph_centering(gly, font, font_size, cell_size)
+									if auto_offset == Vector2.ZERO:
+										auto_offset = Vector2(-2, -4)
+									if not prog.glyph_auto_center:
+										auto_offset = Vector2.ZERO
+									var label_pos: Vector2 = cell_rect.position + auto_offset + prog.glyph_offset
+									draw_string(font, label_pos, gly, HORIZONTAL_ALIGNMENT_CENTER, cell_size, font_size, gly_col)
+								else:
+									draw_circle(center, 3, Color.CRIMSON)
 						else:
 							# No program assigned: draw the placeholder circle.
 							draw_circle(center, 12, Color(0.3, 0, 0))
