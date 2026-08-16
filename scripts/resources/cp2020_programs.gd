@@ -95,6 +95,11 @@ const DEFAULT_VISUALS: Dictionary = {
 @export var sprite_texture: Texture2D
 @export var sprite_frame: int = 0
 @export var sprite_frame_size: int = 128
+# Per-program pixel nudge for the on-map sprite, applied on top of the
+# Sprite2D's automatic tile-centring. Use this in the Inspector when a
+# sprite's art sits off-centre within its frame (mirrors `glyph_offset`).
+# In screen pixels: 1.0 = one pixel on the grid (cell_size = 40).
+@export var sprite_offset: Vector2 = Vector2.ZERO
 # Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
 # as damage (existing behaviour for all current programs). >0 = roll
 # 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.
