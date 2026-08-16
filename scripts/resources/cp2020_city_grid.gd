@@ -45,6 +45,7 @@ var _pulse_time: float = 0.0
 
 
 func _ready() -> void:
+	RunState.net_time_seconds = 0.0
 	_build_grid()
 	runner_pos = _resolve_entry()
 	if turn_manager:

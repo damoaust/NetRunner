@@ -85,6 +85,7 @@ var _pulse_time: float = 0.0
 
 
 func _ready() -> void:
+	RunState.net_time_seconds = 0.0
 	_build_world()
 	# Spawn runner on the layout's configured spawn hub (Night City fallback).
 	var spawn_name: String = "Night City"

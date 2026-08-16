@@ -119,6 +119,7 @@ const TIER_NPC_TEMPLATES: Dictionary = {
 }
 
 func _ready() -> void:
+	RunState.net_time_seconds = 0.0
 	if interaction_handler:
 		if not interaction_handler.action_triggered.is_connected(_on_action_triggered):
 			interaction_handler.action_triggered.connect(_on_action_triggered)
