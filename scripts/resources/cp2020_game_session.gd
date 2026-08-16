@@ -1318,6 +1318,12 @@ func _derez_program(rez: RezzedProgram) -> void:
 	if not is_instance_valid(rez):
 		return
 	var name := rez.program.program_name if rez.program else "program"
+	# Explosion VFX — capture position + color before freeing the node.
+	var rez_pos := rez.current_position
+	var rez_color: Color = Color(1, 0.3, 0.1)
+	if rez.program:
+		rez_color = rez.program.get_visual().get("color", rez_color)
+	_spawn_derez_explosion(rez_pos, rez_color)
 	rezzed_program_nodes.erase(rez)
 	rez.queue_free()
 	if board_renderer:
@@ -1325,6 +1331,19 @@ func _derez_program(rez: RezzedProgram) -> void:
 		board_renderer.queue_redraw()
 	log_to_terminal("De-rezzing '%s' — returned to deck memory.\n" % name)
 	update_deck_info()
+
+# Spawn a fire-and-forget de-rez explosion effect at `grid_pos`. The effect
+# node is added as a child of the BoardRenderer (same parent as the
+# CombatAnimator), syncs grid geometry, plays the shader animation, and
+# auto-frees when done. `base_color` should come from the program's visual.
+func _spawn_derez_explosion(grid_pos: Vector2i, base_color: Color) -> void:
+	if not board_renderer:
+		return
+	var fx := CP2020ExplosionEffect.new()
+	fx.cell_size = int(board_renderer.cell_size)
+	fx.grid_offset_y = int(board_renderer.grid_offset_y)
+	board_renderer.add_child(fx)
+	fx.play(grid_pos, base_color)
 
 # Command a rezzed attack program to strike a target tile. Dispatches by
 # effect_type to the existing execute_* helpers, sourcing stats from the
@@ -1453,7 +1472,14 @@ func _on_rezzed_program_moved(_new_pos: Vector2i) -> void:
 		board_renderer.queue_redraw()
 
 func _on_rezzed_program_destroyed(rez: RezzedProgram) -> void:
+	# The destroyed signal fires before queue_free() in take_damage(), so the
+	# node is still valid here — capture position + color for the explosion.
 	if is_instance_valid(rez):
+		var rez_pos := rez.current_position
+		var rez_color: Color = Color(1, 0.3, 0.1)
+		if rez.program:
+			rez_color = rez.program.get_visual().get("color", rez_color)
+		_spawn_derez_explosion(rez_pos, rez_color)
 		rezzed_program_nodes.erase(rez)
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
