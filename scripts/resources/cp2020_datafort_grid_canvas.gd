@@ -317,6 +317,11 @@ func _draw() -> void:
 						var center = cell_rect.get_center()
 						if tile_data.ice_program != null:
 							var prog: NetProgram = tile_data.ice_program
+							# Always draw the placeholder circle behind the visual so the
+							# tile is clearly identifiable and position can be checked
+							# against the grid.
+							draw_circle(center, 12, Color(0.3, 0, 0))
+							draw_arc(center, 10, 0, TAU, 16, Color.CRIMSON, 2)
 							var sprite_tex: Texture2D = prog.get_sprite()
 							if sprite_tex != null:
 								# Sprite path: draw the program's sprite frame at the
@@ -334,12 +339,11 @@ func _draw() -> void:
 							else:
 								# Glyph path: draw the program's glyph at the tile
 								# center + glyph_offset, tinted with the program's color.
-								# Always draw the placeholder circle behind the glyph so
-								# the tile is clearly visible even if the font is missing
-								# in @tool mode (which would make draw_string crash and
-								# disable the script's _gui_input, breaking clicks).
-								draw_circle(center, 12, Color(0.3, 0, 0))
-								draw_arc(center, 10, 0, TAU, 16, Color.CRIMSON, 2)
+								# draw_string uses pos.y as the text BASELINE (text grows
+								# upward from it), so we must add the ascent + vertical
+								# centering offset — otherwise the glyph renders in the
+								# cell above. auto_offset is designed for a Label's
+								# top-left, so we convert it to a draw_string baseline.
 								var vis: Dictionary = prog.get_visual()
 								var gly: String = vis.get("glyph", "\u2620")
 								var gly_col: Color = vis.get("color", Color.CRIMSON)
@@ -351,7 +355,11 @@ func _draw() -> void:
 										auto_offset = Vector2(-2, -4)
 									if not prog.glyph_auto_center:
 										auto_offset = Vector2.ZERO
+									var ascent: float = font.get_ascent(font_size)
+									var descent: float = font.get_descent(font_size)
+									var text_box_top: float = (float(cell_size) - ascent - descent) / 2.0
 									var label_pos: Vector2 = cell_rect.position + auto_offset + prog.glyph_offset
+									label_pos.y += text_box_top + ascent
 									draw_string(font, label_pos, gly, HORIZONTAL_ALIGNMENT_CENTER, cell_size, font_size, gly_col)
 								else:
 									draw_circle(center, 3, Color.CRIMSON)
