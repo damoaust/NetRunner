@@ -104,6 +104,11 @@ var glyph_offset_x_spin: SpinBox = null
 var glyph_offset_y_spin: SpinBox = null
 var glyph_save_button: Button = null
 
+# --- Sprite alignment controls (built in code, children of IceEditorPanel/VBox) ---
+var sprite_preview: CP2020SpritePreview = null
+var sprite_offset_x_spin: SpinBox = null
+var sprite_offset_y_spin: SpinBox = null
+
 func _ready() -> void:
 	setup_new_map()
 	_connect_toolbar_signals()
@@ -111,6 +116,7 @@ func _ready() -> void:
 	_connect_grid_signals()
 	_refresh_floor_controls()
 	_build_glyph_align_controls()
+	_build_sprite_align_controls()
 	grid_canvas.queue_redraw()
 
 
@@ -819,9 +825,14 @@ func _open_ice_editor(coord: Vector2i) -> void:
 	_refresh_ice_program_label(tile)
 	if tile.ice_program != null:
 		_populate_glyph_controls(tile.ice_program)
-	elif glyph_preview:
-		glyph_preview.program = null
-		glyph_preview.refresh()
+		_populate_sprite_controls(tile.ice_program)
+	else:
+		if glyph_preview:
+			glyph_preview.program = null
+			glyph_preview.refresh()
+		if sprite_preview:
+			sprite_preview.program = null
+			sprite_preview.refresh()
 	ice_panel.visible = true
 
 func _refresh_ice_program_label(tile: CP2020TileData) -> void:
@@ -860,6 +871,7 @@ func _on_ice_program_picked(path: String) -> void:
 		tile.ice_program = prog
 		_refresh_ice_program_label(tile)
 		_populate_glyph_controls(prog)
+		_populate_sprite_controls(prog)
 		grid_canvas.queue_redraw()
 
 func _clear_ice_program() -> void:
@@ -873,6 +885,9 @@ func _clear_ice_program() -> void:
 	if glyph_preview:
 		glyph_preview.program = null
 		glyph_preview.refresh()
+	if sprite_preview:
+		sprite_preview.program = null
+		sprite_preview.refresh()
 	grid_canvas.queue_redraw()
 
 func _hide_ice_panel() -> void:
@@ -882,7 +897,9 @@ func _hide_ice_panel() -> void:
 	if glyph_preview:
 		glyph_preview.program = null
 		glyph_preview.refresh()
-
+	if sprite_preview:
+		sprite_preview.program = null
+		sprite_preview.refresh()
 
 # ---------------------------------------------------------------------------
 # Glyph alignment controls (built in code inside the ICE editor panel)
@@ -1002,9 +1019,86 @@ func _on_save_program_tres() -> void:
 		return
 	var err = ResourceSaver.save(prog, path)
 	if err == OK:
-		print("[GlyphAlign] Saved %s (glyph_offset=%s, auto_center=%s)" % [path, prog.glyph_offset, prog.glyph_auto_center])
+		print("[GlyphAlign] Saved %s (glyph_offset=%s, auto_center=%s, sprite_offset=%s)" % [path, prog.glyph_offset, prog.glyph_auto_center, prog.sprite_offset])
 	else:
 		print("[GlyphAlign] ERROR saving %s: %d" % [path, err])
+
+
+# ---------------------------------------------------------------------------
+# Sprite alignment controls (built in code inside the ICE editor panel)
+# ---------------------------------------------------------------------------
+
+func _build_sprite_align_controls() -> void:
+	if ice_panel == null:
+		return
+	var vbox = ice_panel.get_node_or_null("VBox")
+	if vbox == null:
+		return
+	# Avoid duplicates on script reload.
+	if vbox.has_node("SpriteSep"):
+		sprite_preview = vbox.get_node_or_null("SpritePreview")
+		sprite_offset_x_spin = vbox.get_node_or_null("SpriteOffsetXSpin")
+		sprite_offset_y_spin = vbox.get_node_or_null("SpriteOffsetYSpin")
+		if sprite_preview:
+			sprite_preview.refresh()
+		return
+	var sep := HSeparator.new()
+	sep.name = "SpriteSep"
+	vbox.add_child(sep)
+	var title := Label.new()
+	title.text = "Sprite Alignment"
+	vbox.add_child(title)
+	sprite_preview = CP2020SpritePreview.new()
+	sprite_preview.name = "SpritePreview"
+	vbox.add_child(sprite_preview)
+	var offset_row := HBoxContainer.new()
+	offset_row.name = "SpriteOffsetRow"
+	var x_label := Label.new()
+	x_label.text = "Offset X:"
+	offset_row.add_child(x_label)
+	sprite_offset_x_spin = SpinBox.new()
+	sprite_offset_x_spin.name = "SpriteOffsetXSpin"
+	sprite_offset_x_spin.min_value = -40
+	sprite_offset_x_spin.max_value = 40
+	sprite_offset_x_spin.step = 1
+	sprite_offset_x_spin.value_changed.connect(_on_sprite_offset_changed)
+	offset_row.add_child(sprite_offset_x_spin)
+	var y_label := Label.new()
+	y_label.text = "Y:"
+	offset_row.add_child(y_label)
+	sprite_offset_y_spin = SpinBox.new()
+	sprite_offset_y_spin.name = "SpriteOffsetYSpin"
+	sprite_offset_y_spin.min_value = -40
+	sprite_offset_y_spin.max_value = 40
+	sprite_offset_y_spin.step = 1
+	sprite_offset_y_spin.value_changed.connect(_on_sprite_offset_changed)
+	offset_row.add_child(sprite_offset_y_spin)
+	vbox.add_child(offset_row)
+
+
+func _populate_sprite_controls(prog: NetProgram) -> void:
+	if sprite_offset_x_spin:
+		sprite_offset_x_spin.set_block_signals(true)
+		sprite_offset_x_spin.value = prog.sprite_offset.x
+		sprite_offset_x_spin.set_block_signals(false)
+	if sprite_offset_y_spin:
+		sprite_offset_y_spin.set_block_signals(true)
+		sprite_offset_y_spin.value = prog.sprite_offset.y
+		sprite_offset_y_spin.set_block_signals(false)
+	if sprite_preview:
+		sprite_preview.program = prog
+		sprite_preview.refresh()
+
+
+func _on_sprite_offset_changed(_value: float) -> void:
+	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ice_coord, current_layout.current_floor)
+	if tile == null or tile.ice_program == null:
+		return
+	tile.ice_program.sprite_offset = Vector2(sprite_offset_x_spin.value, sprite_offset_y_spin.value)
+	if sprite_preview:
+		sprite_preview.refresh()
 
 
 # ---------------------------------------------------------------------------
