@@ -321,39 +321,30 @@ func _draw() -> void:
 							if sprite_tex != null:
 								# Sprite path: draw the program's sprite frame at the
 								# tile center + sprite_offset, scaled to fill the tile
-								# (× sprite_scale). Mirrors BlackICE.apply_visual_from_program.
+								# (× sprite_scale). Uses draw_texture_rect_region for
+								# reliable rendering in @tool _draw (no AtlasTexture).
 								var frame_size: int = prog.sprite_frame_size
 								if frame_size <= 0:
 									frame_size = 128
-								var atlas := AtlasTexture.new()
-								atlas.atlas = sprite_tex
-								atlas.region = Rect2(prog.sprite_frame * frame_size, 0, frame_size, frame_size)
+								var src_rect := Rect2(prog.sprite_frame * frame_size, 0, frame_size, frame_size)
 								var scaled_size: float = cell_size * prog.sprite_scale
 								var draw_pos: Vector2 = center + prog.sprite_offset - Vector2(scaled_size / 2.0, scaled_size / 2.0)
-								draw_texture_rect(atlas, Rect2(draw_pos, Vector2(scaled_size, scaled_size)), false)
+								var dest_rect := Rect2(draw_pos, Vector2(scaled_size, scaled_size))
+								draw_texture_rect_region(sprite_tex, dest_rect, src_rect)
 							else:
 								# Glyph path: draw the program's glyph at the tile
 								# center + glyph_offset, tinted with the program's color.
-								# Mirrors BlackICE.apply_visual_from_program glyph logic.
+								# Uses the theme default font (proven to render in @tool).
 								var vis: Dictionary = prog.get_visual()
 								var gly: String = vis.get("glyph", "\u2620")
 								var gly_col: Color = vis.get("color", Color.CRIMSON)
-								var font_size: int = 30
-								var font: Font = load("res://whitrabt.ttf") as Font
-								if font == null:
-									font = get_theme_default_font()
+								var font_size: int = 28
+								var font: Font = get_theme_default_font()
 								var auto_offset: Vector2 = NetProgram.compute_glyph_centering(gly, font, font_size, cell_size)
 								if auto_offset == Vector2.ZERO:
-									var fb: Font = load("res://data/seguiemj.ttf") as Font
-									if fb != null:
-										var fb_offset: Vector2 = NetProgram.compute_glyph_centering(gly, fb, font_size, cell_size)
-										if fb_offset != Vector2.ZERO:
-											auto_offset = fb_offset
-											font = fb
+									auto_offset = Vector2(-2, -4)
 								if not prog.glyph_auto_center:
 									auto_offset = Vector2.ZERO
-								elif auto_offset == Vector2.ZERO:
-									auto_offset = Vector2(-2, -4)
 								var label_pos: Vector2 = cell_rect.position + auto_offset + prog.glyph_offset
 								draw_string(font, label_pos, gly, HORIZONTAL_ALIGNMENT_CENTER, cell_size, font_size, gly_col)
 						else:
