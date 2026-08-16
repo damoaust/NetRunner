@@ -17,7 +17,7 @@ const STARTING_PROGRAMS: Array[String] = [
 # Default character for a brand-new player (the first roster entry). Seeded into
 # MetaStateData.selected_character_path on first launch so a runner is always
 # equipped even before the workbench is opened.
-const STARTING_CHARACTER: String = "res://data/character_shadow.tres"
+const STARTING_CHARACTER: String = "res://data/characters/character_shadow.tres"
 
 var data: MetaStateData = null
 
@@ -31,10 +31,26 @@ func _load() -> void:
 		var loaded: Resource = load(SAVE_PATH)
 		if loaded is MetaStateData:
 			data = loaded
+			_migrate_paths()
 			return
 		push_warning("MetaState: saved catalogue was not a MetaStateData — falling back to default.")
 	# No save (or load failed) — build a fresh default catalogue.
 	_init_default_catalogue()
+
+# One-time path migrations for resources that moved. Older saves store
+# character .tres paths under res://data/ ; they now live in
+# res://data/characters/. Remap any stale path so existing players keep
+# their equipped character without a manual fix.
+func _migrate_paths() -> void:
+	if data == null:
+		return
+	if data.selected_character_path.begins_with("res://data/character_"):
+		# Character .tres moved into res://data/characters/. Remap any
+		# stale saved path unconditionally — the file is on disk; the
+		# runtime resource scanner will resolve it on next load.
+		var fname: String = data.selected_character_path.get_file()
+		data.selected_character_path = "res://data/characters/%s" % fname
+		save()
 
 
 func save() -> void:

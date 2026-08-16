@@ -29,9 +29,9 @@ const UNLOCK_WINDOW_SCENE := preload("res://scenes/ui/PurchaseUnlocksWindow.tscn
 # callsign/portrait/role are shown in the panel. The chosen character persists
 # in MetaState.data.selected_character_path across deaths.
 const RUNNER_CHARACTERS: Array[NetrunnerCharacter] = [
-	preload("res://data/character_shadow.tres"),
-	preload("res://data/character_tasha.tres"),
-	preload("res://data/character_jax.tres"),
+	preload("res://data/characters/character_shadow.tres"),
+	preload("res://data/characters/character_tasha.tres"),
+	preload("res://data/characters/character_jax.tres"),
 ]
 
 # --- UI references (scene-tree nodes; static structure lives in

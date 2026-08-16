@@ -119,7 +119,7 @@ func start_new_life() -> void:
 	# fresh life always has a runner equipped. Can be swapped at the workbench.
 	var char_path := MetaState.data.selected_character_path if MetaState.data != null else ""
 	if char_path == "":
-		char_path = "res://data/character_shadow.tres"
+		char_path = "res://data/characters/character_shadow.tres"
 	var character: NetrunnerCharacter = load(char_path) as NetrunnerCharacter
 	if character:
 		selected_character = character
@@ -437,12 +437,24 @@ func _load_run() -> void:
 				break
 	# Restore the equipped character by path (read-only resource, no duplicate).
 	selected_character = null
-	if data.selected_character_path != "":
-		var ch: NetrunnerCharacter = load(data.selected_character_path) as NetrunnerCharacter
+	# Migrate stale paths: character .tres moved from res://data/ to
+	# res://data/characters/. Older run saves still store the old location.
+	var saved_char_path := data.selected_character_path
+	if saved_char_path.begins_with("res://data/character_"):
+		saved_char_path = "res://data/characters/%s" % saved_char_path.get_file()
+	if saved_char_path != "":
+		var ch: NetrunnerCharacter = load(saved_char_path) as NetrunnerCharacter
 		if ch != null:
 			selected_character = ch
 		else:
-			push_warning("RunState: saved character '%s' could not be loaded." % data.selected_character_path)
+			# Stale or missing saved path — fall back to the default roster
+			# entry so a run never starts without a character.
+			var fallback: NetrunnerCharacter = load(MetaState.STARTING_CHARACTER) as NetrunnerCharacter
+			if fallback != null:
+				selected_character = fallback
+				push_warning("RunState: saved character '%s' could not be loaded — using default." % saved_char_path)
+			else:
+				push_warning("RunState: saved character '%s' could not be loaded." % saved_char_path)
 	loot.clear()
 	for path: String in data.loot_paths:
 		var prog: NetProgram = load(path) as NetProgram
