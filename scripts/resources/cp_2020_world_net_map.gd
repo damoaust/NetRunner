@@ -69,13 +69,12 @@ var spawn_hub_name: String = ""
 # Terminal log feed (scene-tree node under HUDOverlay). Append colour-coded
 # bbcode lines via _log_terminal(); auto-scrolls via scroll_following.
 @onready var terminal_log: RichTextLabel = get_node_or_null("HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalScroll/TerminalLog")
+@onready var _ldl_list_container: VBoxContainer = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLScroll/LDLList")
+@onready var _ldl_enter_button: Button = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLEnterButton")
 
-# Persistent LDL command panel (built in code, parented to HUDLayer/HUDOverlay).
+# LDL command panel (scene-tree nodes under HUDLayer/HUDOverlay/LDLPanel).
 # Replaces the old right-click popup. The list section rebuilds on every
 # _update_hud() so it stays in sync with the runner's position.
-var _ldl_panel: PanelContainer = null
-var _ldl_list_container: VBoxContainer = null
-var _ldl_enter_button: Button = null
 # Cached nearby-hub dictionaries + the bound dest for each list button, so
 # the button signal callbacks can resolve which hub was clicked.
 var _ldl_panel_hubs: Array = []
@@ -97,7 +96,7 @@ func _ready() -> void:
 		turn_manager.start_netrunner_turn()
 		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
 			turn_manager.actions_changed.connect(_on_actions_changed)
-	_build_ldl_panel()
+	_init_ldl_panel()
 	_log_terminal("NET MAP ONLINE // jackpoint: %s" % spawn_hub_name, COLOR_LOG_SYS)
 	_update_hud()
 	_update_camera_limits()
@@ -510,77 +509,17 @@ func _log_terminal(msg: String, color: Color = COLOR_LOG_SYS) -> void:
 # LDL command panel (replaces the old right-click popup)
 # ---------------------------------------------------------------------------
 
-func _build_ldl_panel() -> void:
-	# Build a persistent panel docked to the right edge of the HUD overlay.
-	# Parented to HUDLayer/HUDOverlay so it stays in screen space (the
-	# RunnerCamera scrolls anything under the Node2D root).
-	var overlay: Control = get_node_or_null("HUDLayer/HUDOverlay")
-	if overlay == null:
-		return
-
-	_ldl_panel = PanelContainer.new()
-	_ldl_panel.name = "LDLPanel"
-	# Dock to the right side, below the top HUD labels.
-	_ldl_panel.anchor_right = 1.0
-	_ldl_panel.anchor_bottom = 1.0
-	_ldl_panel.offset_left = 1530.0
-	_ldl_panel.offset_top = 80.0
-	_ldl_panel.offset_right = -30.0
-	# End above the bottom terminal panel (~190px + margin) so they don't overlap.
-	_ldl_panel.offset_bottom = -214.0
-	_ldl_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	overlay.add_child(_ldl_panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	_ldl_panel.add_child(margin)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
-	margin.add_child(col)
-
-	var title := Label.new()
-	title.text = "LDL LINKS"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(title)
-
-	var sep := HSeparator.new()
-	col.add_child(sep)
-
-	# ENTER button — only meaningful on a hub with a City Grid; its visibility
-	# and label are refreshed by _refresh_ldl_panel().
-	_ldl_enter_button = Button.new()
-	_ldl_enter_button.text = "ENTER CITY GRID"
-	_ldl_enter_button.custom_minimum_size = Vector2(0, 36)
-	_ldl_enter_button.pressed.connect(_on_enter_button_pressed)
-	col.add_child(_ldl_enter_button)
-
-	var list_label := Label.new()
-	list_label.text = "HACKABLE LINKS (within 5)"
-	col.add_child(list_label)
-
-	# Scrollable list container for the per-LDL rows.
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 200)
-	col.add_child(scroll)
-
-	_ldl_list_container = VBoxContainer.new()
-	_ldl_list_container.add_theme_constant_override("separation", 4)
-	scroll.add_child(_ldl_list_container)
-
-	var jack_sep := HSeparator.new()
-	col.add_child(jack_sep)
-
-	var jack_button := Button.new()
-	jack_button.text = "> JACK OUT TO HUB"
-	jack_button.custom_minimum_size = Vector2(0, 36)
-	jack_button.pressed.connect(_jack_out_to_hub)
-	col.add_child(jack_button)
-
+func _init_ldl_panel() -> void:
+	# The LDL panel structure lives in the scene tree (HUDLayer/HUDOverlay/
+	# LDLPanel). Here we only wire the button signals and do the initial
+	# list refresh; the list rows rebuild on every _update_hud().
+	if _ldl_enter_button != null:
+		if not _ldl_enter_button.pressed.is_connected(_on_enter_button_pressed):
+			_ldl_enter_button.pressed.connect(_on_enter_button_pressed)
+	var jack_button: Button = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLJackButton")
+	if jack_button != null:
+		if not jack_button.pressed.is_connected(_jack_out_to_hub):
+			jack_button.pressed.connect(_jack_out_to_hub)
 	_refresh_ldl_panel()
 
 

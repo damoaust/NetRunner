@@ -114,3 +114,58 @@ layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
+
+[node name="LDLPanel" type="PanelContainer" parent="HUDLayer/HUDOverlay"]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1530.0
+offset_top = 80.0
+offset_right = -30.0
+offset_bottom = -214.0
+mouse_filter = 0
+
+[node name="LDLMargin" type="MarginContainer" parent="HUDLayer/HUDOverlay/LDLPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="LDLVBox" type="VBoxContainer" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LDLTitle" type="Label" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+layout_mode = 2
+text = "LDL LINKS"
+horizontal_alignment = 1
+
+[node name="LDLTitleSep" type="HSeparator" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+layout_mode = 2
+
+[node name="LDLEnterButton" type="Button" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+text = "ENTER CITY GRID"
+
+[node name="LDLListHeader" type="Label" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+layout_mode = 2
+text = "HACKABLE LINKS (within 5)"
+
+[node name="LDLScroll" type="ScrollContainer" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 200)
+
+[node name="LDLList" type="VBoxContainer" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLScroll"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LDLJackSep" type="HSeparator" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+layout_mode = 2
+
+[node name="LDLJackButton" type="Button" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+text = "> JACK OUT TO HUB"
