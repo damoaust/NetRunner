@@ -24,15 +24,13 @@ const THEME := preload("res://scripts/resources/cp2020_theme.gd")
 const THEME_RES := preload("res://themes/cyberpunk_theme.tres")
 const UNLOCK_WINDOW_SCENE := preload("res://scenes/ui/PurchaseUnlocksWindow.tscn")
 
-# Runner character roster (fixed 3 starters). Clicking the workbench portrait
-# cycles through these; the selected character's stats drive gameplay and its
-# callsign/portrait/role are shown in the panel. The chosen character persists
-# in MetaState.data.selected_character_path across deaths.
-const RUNNER_CHARACTERS: Array[NetrunnerCharacter] = [
-	preload("res://data/characters/character_shadow.tres"),
-	preload("res://data/characters/character_tasha.tres"),
-	preload("res://data/characters/character_jax.tres"),
-]
+# Runner character roster. Auto-discovered at runtime from
+# res://data/characters/ — drop a new character_*.tres in that folder and it
+# becomes selectable on the workbench with no code change. Clicking the
+# portrait cycles through these; the selected character's stats drive
+# gameplay and its callsign/portrait/role are shown in the panel. The chosen
+# character persists in MetaState.data.selected_character_path across deaths.
+var _runner_characters: Array[NetrunnerCharacter] = []
 
 # --- UI references (scene-tree nodes; static structure lives in
 # CyberdeckWorkbench.tscn and is grabbed here via unique_name_in_owner) ---
@@ -199,7 +197,38 @@ const COL_GREEN := Color(0.2, 1.0, 0.4)
 const COL_RED := Color(1.0, 0.25, 0.25)
 const COL_GREY := Color(0.38, 0.45, 0.42)
 
+# Scan res://data/characters/ for NetrunnerCharacter .tres files and populate
+# _runner_characters (sorted by filename for a stable cycle order). Any
+# resource that fails to load or isn't a NetrunnerCharacter is skipped with a
+# warning so one bad file can't blank the whole roster.
+func _load_runner_characters() -> void:
+	_runner_characters.clear()
+	var dir := DirAccess.open("res://data/characters/")
+	if dir == null:
+		push_warning("CyberdeckWorkbench: could not open res://data/characters/ — roster empty.")
+		return
+	var paths: Array[String] = []
+	dir.list_dir_begin()
+	var file := dir.get_next()
+	while file != "":
+		if not dir.current_is_dir() and file.ends_with(".tres"):
+			paths.append("res://data/characters/%s" % file)
+		file = dir.get_next()
+	dir.list_dir_end()
+	paths.sort()  # deterministic order regardless of OS listing order
+	for path in paths:
+		var res: Resource = load(path)
+		if res is NetrunnerCharacter:
+			_runner_characters.append(res as NetrunnerCharacter)
+		else:
+			push_warning("CyberdeckWorkbench: '%s' is not a NetrunnerCharacter — skipped." % path)
+	if _runner_characters.is_empty():
+		push_warning("CyberdeckWorkbench: no character .tres found in res://data/characters/.")
+
 func _ready() -> void:
+	# Discover all character .tres in res://data/characters/ so newly added
+	# roster entries are selectable without editing this script.
+	_load_runner_characters()
 	# First launch / after permadeath: ensure a life is in progress with
 	# starting gear before building the loadout. RunState autoload already
 	# attempts to load a saved run from the previous session.
@@ -231,8 +260,8 @@ func _ready() -> void:
 		var ch: NetrunnerCharacter = null
 		if pref_path != "":
 			ch = load(pref_path) as NetrunnerCharacter
-		if ch == null and not RUNNER_CHARACTERS.is_empty():
-			ch = RUNNER_CHARACTERS[0]
+		if ch == null and not _runner_characters.is_empty():
+			ch = _runner_characters[0]
 		if ch != null:
 			RunState.selected_character = ch
 	_refresh_deck_selector()
@@ -379,8 +408,8 @@ func _refresh_summary() -> void:
 
 func _refresh_netrunner_panel() -> void:
 	var ch: NetrunnerCharacter = RunState.selected_character
-	if ch == null and not RUNNER_CHARACTERS.is_empty():
-		ch = RUNNER_CHARACTERS[0]
+	if ch == null and not _runner_characters.is_empty():
+		ch = _runner_characters[0]
 	if ch == null:
 		# No character roster available — nothing to display.
 		return
@@ -428,7 +457,7 @@ func _refresh_destination() -> void:
 func _on_runner_portrait_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 		return
-	var count := RUNNER_CHARACTERS.size()
+	var count := _runner_characters.size()
 	if count <= 0:
 		return
 	# Find the index of the currently equipped character (match by resource
@@ -436,11 +465,11 @@ func _on_runner_portrait_gui_input(event: InputEvent) -> void:
 	var cur_path := RunState.selected_character.resource_path if RunState.selected_character != null else ""
 	var idx := 0
 	for i in range(count):
-		if RUNNER_CHARACTERS[i].resource_path == cur_path:
+		if _runner_characters[i].resource_path == cur_path:
 			idx = i
 			break
 	var next_idx := (idx + 1) % count
-	var ch: NetrunnerCharacter = RUNNER_CHARACTERS[next_idx]
+	var ch: NetrunnerCharacter = _runner_characters[next_idx]
 	RunState.selected_character = ch
 	if MetaState.data != null:
 		MetaState.data.selected_character_path = ch.resource_path
