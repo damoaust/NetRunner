@@ -219,11 +219,6 @@ func _draw() -> void:
 
 	draw_rect(Rect2(grid_offset_x, grid_offset_y, total_width, total_height), Color(0.1, 0.1, 0.1))
 
-	for x in range(grid_columns + 1):
-		draw_line(Vector2(grid_offset_x + x * cell_size, grid_offset_y), Vector2(grid_offset_x + x * cell_size, grid_offset_y + total_height), Color(0.4, 0.4, 0.4, 1.0))
-	for y in range(grid_rows + 1):
-		draw_line(Vector2(grid_offset_x, grid_offset_y + (y * cell_size)), Vector2(grid_offset_x + total_width, grid_offset_y + (y * cell_size)), Color(0.4, 0.4, 0.4, 1.0))
-
 	if current_layout:
 		var f := current_layout.current_floor
 		for raw_key in current_layout.get_current_floor_tiles().keys():
@@ -393,6 +388,12 @@ func _draw() -> void:
 							center_nr + Vector2(-4, -1)
 						])
 						draw_polygon(body, PackedColorArray([Color.GOLD]))
+
+	# Grid lines drawn on top of tiles so they remain visible over tile fills.
+	for x in range(grid_columns + 1):
+		draw_line(Vector2(grid_offset_x + x * cell_size, grid_offset_y), Vector2(grid_offset_x + x * cell_size, grid_offset_y + total_height), Color(0.4, 0.4, 0.4, 1.0))
+	for y in range(grid_rows + 1):
+		draw_line(Vector2(grid_offset_x, grid_offset_y + (y * cell_size)), Vector2(grid_offset_x + total_width, grid_offset_y + (y * cell_size)), Color(0.4, 0.4, 0.4, 1.0))
 
 	# Highlight the selected tile (select mode).
 	if select_mode and selected_coord != Vector2i(-1, -1) and not dragging:
