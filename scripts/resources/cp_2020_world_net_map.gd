@@ -69,7 +69,7 @@ var spawn_hub_name: String = ""
 # Terminal log feed (scene-tree node under HUDOverlay). Append colour-coded
 # bbcode lines via _log_terminal(); auto-scrolls via scroll_following.
 @onready var terminal_log: RichTextLabel = get_node_or_null("HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalLog")
-@onready var _ldl_list_container: VBoxContainer = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLScroll/LDLList")
+@onready var _ldl_list: ItemList = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLList")
 @onready var _ldl_enter_button: Button = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLEnterButton")
 
 # LDL command panel (scene-tree nodes under HUDLayer/HUDOverlay/LDLPanel).
@@ -511,8 +511,8 @@ func _log_terminal(msg: String, color: Color = COLOR_LOG_SYS) -> void:
 
 func _init_ldl_panel() -> void:
 	# The LDL panel structure lives in the scene tree (HUDLayer/HUDOverlay/
-	# LDLPanel). Here we only wire the button signals and do the initial
-	# list refresh; the list rows rebuild on every _update_hud().
+	# LDLPanel). Here we only wire the signals and do the initial list
+	# refresh; the list rebuilds on every _update_hud().
 	if _ldl_enter_button != null:
 		if not _ldl_enter_button.pressed.is_connected(_on_enter_button_pressed):
 			_ldl_enter_button.pressed.connect(_on_enter_button_pressed)
@@ -520,11 +520,20 @@ func _init_ldl_panel() -> void:
 	if jack_button != null:
 		if not jack_button.pressed.is_connected(_jack_out_to_hub):
 			jack_button.pressed.connect(_jack_out_to_hub)
+	if _ldl_list != null:
+		if not _ldl_list.item_activated.is_connected(_on_ldl_item_activated):
+			_ldl_list.item_activated.connect(_on_ldl_item_activated)
 	_refresh_ldl_panel()
 
 
+func _on_ldl_item_activated(index: int) -> void:
+	if index < 0 or index >= _ldl_panel_hubs.size():
+		return
+	_hack_jump(_ldl_panel_hubs[index])
+
+
 func _refresh_ldl_panel() -> void:
-	if _ldl_list_container == null:
+	if _ldl_list == null:
 		return
 
 	# ENTER button: visible only when the runner sits on a hub that has a
@@ -537,25 +546,15 @@ func _refresh_ldl_panel() -> void:
 		else:
 			_ldl_enter_button.visible = false
 
-	# Clear the previous list rows.
-	for child in _ldl_list_container.get_children():
-		child.queue_free()
+	_ldl_list.clear()
 	_ldl_panel_hubs = _nearby_hubs(runner_pos)
 
 	if _ldl_panel_hubs.is_empty():
-		var empty := Label.new()
-		empty.text = "(no LDLs in range)"
-		_ldl_list_container.add_child(empty)
+		_ldl_list.add_item("(no LDLs available)")
 		return
 
-	for i in range(_ldl_panel_hubs.size()):
-		var dest: Dictionary = _ldl_panel_hubs[i]
-		var row := Button.new()
-		row.text = "%s\nSec %d  +Trace %d" % [dest.name, int(dest.security_code), int(dest.trace_value)]
-		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		row.custom_minimum_size = Vector2(0, 48)
-		row.pressed.connect(_hack_jump.bind(dest))
-		_ldl_list_container.add_child(row)
+	for dest in _ldl_panel_hubs:
+		_ldl_list.add_item("%s  (Sec %d, +Trace %d)" % [dest.name, int(dest.security_code), int(dest.trace_value)])
 
 
 func _on_enter_button_pressed() -> void:

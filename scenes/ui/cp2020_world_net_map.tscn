@@ -143,14 +143,13 @@ text = "ENTER CITY GRID"
 layout_mode = 2
 text = "HACKABLE LINKS"
 
-[node name="LDLScroll" type="ScrollContainer" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
+[node name="LDLList" type="ItemList" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
 layout_mode = 2
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 200)
-
-[node name="LDLList" type="VBoxContainer" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLScroll"]
-layout_mode = 2
-theme_override_constants/separation = 4
+item_count = 0
+allow_reselect = true
+auto_translate_mode = 1
 
 [node name="LDLJackSep" type="HSeparator" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
 layout_mode = 2
