@@ -17,7 +17,7 @@ extends Node2D
 var _elapsed: float = 0.0
 var _material: ShaderMaterial = null
 # How many tiles (in each direction from center) the drawn rect covers.
-const _radius_tiles: int = 1
+const _radius_tiles: int = 2
 
 static var _shader: Shader = null
 
