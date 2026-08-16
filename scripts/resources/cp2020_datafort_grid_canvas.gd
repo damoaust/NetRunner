@@ -320,9 +320,52 @@ func _draw() -> void:
 
 					CP2020DatafortLayout.TileType.BLACK_ICE:
 						var center = cell_rect.get_center()
-						draw_circle(center, 12, Color(0.3, 0, 0))
-						draw_arc(center, 10, 0, TAU, 16, Color.CRIMSON, 2)
-						draw_circle(center, 3, Color.CRIMSON)
+						if tile_data.ice_program != null:
+							var prog: NetProgram = tile_data.ice_program
+							var sprite_tex: Texture2D = prog.get_sprite()
+							if sprite_tex != null:
+								# Sprite path: draw the program's sprite frame at the
+								# tile center + sprite_offset, scaled to fill the tile
+								# (× sprite_scale). Mirrors BlackICE.apply_visual_from_program.
+								var frame_size: int = prog.sprite_frame_size
+								if frame_size <= 0:
+									frame_size = 128
+								var atlas := AtlasTexture.new()
+								atlas.atlas = sprite_tex
+								atlas.region = Rect2(prog.sprite_frame * frame_size, 0, frame_size, frame_size)
+								var scaled_size: float = cell_size * prog.sprite_scale
+								var draw_pos: Vector2 = center + prog.sprite_offset - Vector2(scaled_size / 2.0, scaled_size / 2.0)
+								draw_texture_rect(atlas, Rect2(draw_pos, Vector2(scaled_size, scaled_size)), false)
+							else:
+								# Glyph path: draw the program's glyph at the tile
+								# center + glyph_offset, tinted with the program's color.
+								# Mirrors BlackICE.apply_visual_from_program glyph logic.
+								var vis: Dictionary = prog.get_visual()
+								var gly: String = vis.get("glyph", "\u2620")
+								var gly_col: Color = vis.get("color", Color.CRIMSON)
+								var font_size: int = 30
+								var font: Font = load("res://whitrabt.ttf") as Font
+								if font == null:
+									font = get_theme_default_font()
+								var auto_offset: Vector2 = NetProgram.compute_glyph_centering(gly, font, font_size, cell_size)
+								if auto_offset == Vector2.ZERO:
+									var fb: Font = load("res://data/seguiemj.ttf") as Font
+									if fb != null:
+										var fb_offset: Vector2 = NetProgram.compute_glyph_centering(gly, fb, font_size, cell_size)
+										if fb_offset != Vector2.ZERO:
+											auto_offset = fb_offset
+											font = fb
+								if not prog.glyph_auto_center:
+									auto_offset = Vector2.ZERO
+								elif auto_offset == Vector2.ZERO:
+									auto_offset = Vector2(-2, -4)
+								var label_pos: Vector2 = cell_rect.position + auto_offset + prog.glyph_offset
+								draw_string(font, label_pos, gly, HORIZONTAL_ALIGNMENT_CENTER, cell_size, font_size, gly_col)
+						else:
+							# No program assigned: draw the placeholder circle.
+							draw_circle(center, 12, Color(0.3, 0, 0))
+							draw_arc(center, 10, 0, TAU, 16, Color.CRIMSON, 2)
+							draw_circle(center, 3, Color.CRIMSON)
 					CP2020DatafortLayout.TileType.NETWATCH:
 						var center_nw = cell_rect.get_center()
 						draw_rect(inner_rect, Color(0.3, 0.05, 0.05), true)

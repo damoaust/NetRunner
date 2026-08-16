@@ -994,6 +994,7 @@ func _on_glyph_auto_center_toggled(pressed: bool) -> void:
 	tile.ice_program.glyph_auto_center = pressed
 	if glyph_preview:
 		glyph_preview.refresh()
+	grid_canvas.queue_redraw()
 
 
 func _on_glyph_offset_changed(_value: float) -> void:
@@ -1005,6 +1006,7 @@ func _on_glyph_offset_changed(_value: float) -> void:
 	tile.ice_program.glyph_offset = Vector2(glyph_offset_x_spin.value, glyph_offset_y_spin.value)
 	if glyph_preview:
 		glyph_preview.refresh()
+	grid_canvas.queue_redraw()
 
 
 func _on_save_program_tres() -> void:
@@ -1119,6 +1121,7 @@ func _on_sprite_offset_changed(_value: float) -> void:
 	tile.ice_program.sprite_offset = Vector2(sprite_offset_x_spin.value, sprite_offset_y_spin.value)
 	if sprite_preview:
 		sprite_preview.refresh()
+	grid_canvas.queue_redraw()
 
 
 func _on_sprite_scale_changed(_value: float) -> void:
@@ -1130,6 +1133,7 @@ func _on_sprite_scale_changed(_value: float) -> void:
 	tile.ice_program.sprite_scale = sprite_scale_spin.value
 	if sprite_preview:
 		sprite_preview.refresh()
+	grid_canvas.queue_redraw()
 
 
 # ---------------------------------------------------------------------------
