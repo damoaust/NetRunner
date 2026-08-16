@@ -10,6 +10,9 @@ extends Resource
 # runner is jacked in). Set when a Watchdog trace check succeeds; ticks down
 # each netrunner turn during datafort gameplay. 0 = no active dispatch.
 @export var security_dispatch_turns: int = 0
+# Cumulative net time (seconds) spent jacked in this run, scaled by grid level
+# (world map action = 60 s, city grid = 1 s, datafort = 1 ns). Reset per run.
+@export var net_time_seconds: float = 0.0
 
 @export var selected_deck_path: String = ""
 @export var selected_subnet_path: String = ""

@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://vr1w6sk3vhkv" path="res://scripts/resources/cp2020_city_grid.gd" id="1_grid"]
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="2_tm"]
-[ext_resource type="Theme" uid="uid://c2myk4yt270q6" path="res://themes/cyberpunk_theme.tres" id="3_theme"]
 
 [node name="Cp2020CityGrid" type="Node2D" unique_id=2083218881]
 script = ExtResource("1_grid")
@@ -23,8 +22,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_right = 1920.0
 offset_bottom = 1080.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
-theme = ExtResource("3_theme")
 
 [node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=1809022192]
 layout_mode = 0
@@ -57,3 +57,11 @@ offset_top = 12.0
 offset_right = 1350.0
 offset_bottom = 60.0
 text = "TRACE: 0"
+
+[node name="ClockLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=1299887712]
+layout_mode = 0
+offset_left = 1380.0
+offset_top = 12.0
+offset_right = 1620.0
+offset_bottom = 60.0
+text = "NET: 0 ns"

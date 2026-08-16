@@ -35,6 +35,11 @@ var accumulated_trace: int = 0
 # LDL travel + the datafort->City Grid return (mid-run); cleared on run-end,
 # flatline, and successful jack-out (escaping the raid). 0 = no active raid.
 var security_dispatch_turns: int = 0
+# Cumulative net time (seconds) spent jacked in this run, scaled by grid level
+# (world map action = 60 s, city grid = 1 s, datafort = 1 ns). Advanced by the
+# turn manager's `action_consumed` signal in each scene. Reset per run like
+# accumulated_trace; persisted across app restarts via RunStateData.
+var net_time_seconds: float = 0.0
 # City Grid currently in play (set by the world map ENTER action). The
 # datafort LDL-return uses this to go back to the right city grid.
 var selected_city_grid_path: String = ""
@@ -79,6 +84,7 @@ func reset() -> void:
 	credits = STARTING_CREDITS
 	accumulated_trace = 0
 	security_dispatch_turns = 0
+	net_time_seconds = 0.0
 	selected_city_grid_path = ""
 	selected_security_tier = 0
 	loot.clear()
@@ -313,6 +319,7 @@ func save_run() -> void:
 	data.credits = credits
 	data.accumulated_trace = accumulated_trace
 	data.security_dispatch_turns = security_dispatch_turns
+	data.net_time_seconds = net_time_seconds
 	data.selected_subnet_path = selected_subnet_path
 	data.selected_city_grid_path = selected_city_grid_path
 	data.selected_security_tier = selected_security_tier
@@ -382,6 +389,7 @@ func _load_run() -> void:
 	credits = data.credits
 	accumulated_trace = data.accumulated_trace
 	security_dispatch_turns = data.security_dispatch_turns
+	net_time_seconds = data.net_time_seconds
 	selected_subnet_path = data.selected_subnet_path
 	selected_city_grid_path = data.selected_city_grid_path
 	selected_security_tier = data.selected_security_tier

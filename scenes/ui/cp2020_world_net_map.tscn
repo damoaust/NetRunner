@@ -76,6 +76,18 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
 text = "TRACE: 0"
 
+[node name="ClockLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=1299887711]
+layout_mode = 0
+offset_left = 1380.0
+offset_top = 12.0
+offset_right = 1620.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(0.6, 0.9, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0.2, 0.4, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 24
+text = "NET: 0 ns"
+
 [node name="TerminalPanel" type="PanelContainer" parent="HUDLayer/HUDOverlay" unique_id=1414592619]
 layout_mode = 0
 offset_left = 30.0

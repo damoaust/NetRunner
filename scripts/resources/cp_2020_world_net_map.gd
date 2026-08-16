@@ -65,6 +65,7 @@ var spawn_hub_name: String = ""
 @onready var credits_label: Label = get_node_or_null("HUDLayer/HUDOverlay/CreditsLabel")
 @onready var location_label: Label = get_node_or_null("HUDLayer/HUDOverlay/LocationLabel")
 @onready var trace_label: Label = get_node_or_null("HUDLayer/HUDOverlay/TraceLabel")
+@onready var clock_label: Label = get_node_or_null("HUDLayer/HUDOverlay/ClockLabel")
 @onready var camera: Camera2D = get_node_or_null("RunnerCamera")
 # Terminal log feed (scene-tree node under HUDOverlay). Append colour-coded
 # bbcode lines via _log_terminal(); auto-scrolls via scroll_following.
@@ -96,6 +97,8 @@ func _ready() -> void:
 		turn_manager.start_netrunner_turn()
 		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
 			turn_manager.actions_changed.connect(_on_actions_changed)
+		if not turn_manager.action_consumed.is_connected(_on_action_consumed):
+			turn_manager.action_consumed.connect(_on_action_consumed)
 	_init_ldl_panel()
 	_log_terminal("NET MAP ONLINE // jackpoint: %s" % spawn_hub_name, COLOR_LOG_SYS)
 	_update_hud()
@@ -485,6 +488,11 @@ func _on_actions_changed(remaining: int, max_actions: int) -> void:
 		actions_label.text = "ACTIONS: %d/%d" % [remaining, max_actions]
 
 
+func _on_action_consumed() -> void:
+	RunState.net_time_seconds += CP2020TimeScale.WORLD_MAP_SECONDS
+	_update_clock_label()
+
+
 # ---------------------------------------------------------------------------
 # Terminal log feed
 # ---------------------------------------------------------------------------
@@ -579,6 +587,7 @@ func _jack_out_to_hub() -> void:
 	_log_terminal("JACK OUT // run trace reset.", COLOR_LOG_SYS)
 	RunState.accumulated_trace = 0
 	RunState.security_dispatch_turns = 0
+	RunState.net_time_seconds = 0.0
 	RunState.selected_subnet_path = ""
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
@@ -586,6 +595,14 @@ func _jack_out_to_hub() -> void:
 
 
 func _hack_jump(dest: Dictionary) -> void:
+	# Hacking an LDL is a Net action — costs one action (1 minute of net
+	# time). The action is spent on the attempt regardless of success.
+	if turn_manager != null and not turn_manager.has_actions():
+		_log_terminal("NO ACTIONS // cannot hack LDL this round.", COLOR_LOG_WARN)
+		return
+	if turn_manager != null and not turn_manager.consume_action():
+		_log_terminal("NO ACTIONS // cannot hack LDL this round.", COLOR_LOG_WARN)
+		return
 	# CP2020 RAW LDL connection check: a raw 1D10 roll must meet or exceed the
 	# LDL's Security Level to scam the connection. No STAT + Skill is added.
 	var roll := randi_range(1, 10)
@@ -597,6 +614,7 @@ func _hack_jump(dest: Dictionary) -> void:
 		_center_camera_on_runner()
 		_log_terminal("JUMP OK -> %s // trace %d." % [dest.name, RunState.accumulated_trace], COLOR_LOG_OK)
 		_update_hud()
+		_check_actions_exhausted()
 		queue_redraw()
 		return
 	# RAW failure: the connection simply fails — the line drops. No trace is
@@ -604,6 +622,8 @@ func _hack_jump(dest: Dictionary) -> void:
 	# node), and NetWatch is not automatically alerted. NetWatch/raids only
 	# arise from in-datafort security programs or a sysop spotting you.
 	_log_terminal("LINE DROPPED // hack failed, no trace.", COLOR_LOG_FAIL)
+	_update_hud()
+	_check_actions_exhausted()
 
 
 func _enter_city_grid(hub: Dictionary) -> void:
@@ -631,6 +651,7 @@ func _update_hud() -> void:
 		trace_label.text = "TRACE: %d" % RunState.accumulated_trace
 		if RunState.security_dispatch_turns > 0:
 			trace_label.text += "  ⚠ RAID: %d turn(s)" % RunState.security_dispatch_turns
+	_update_clock_label()
 	if location_label:
 		var hub: Variant = _hub_at(runner_pos)
 		if hub != null:
@@ -642,3 +663,8 @@ func _update_hud() -> void:
 			else:
 				location_label.text = "LOCATION: %s" % OPEN_OCEAN_NAME
 	_refresh_ldl_panel()
+
+
+func _update_clock_label() -> void:
+	if clock_label:
+		clock_label.text = "NET: %s" % CP2020TimeScale.format_clock(RunState.net_time_seconds)

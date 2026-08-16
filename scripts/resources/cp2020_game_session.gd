@@ -12,6 +12,7 @@ extends Control
 @onready var health_label: Label = $UI/PanelContainer/VBoxContainer/HealthLabel
 @onready var health_bar: ProgressBar = $UI/PanelContainer/VBoxContainer/HealthBar
 @onready var trace_label: Label = $UI/PanelContainer/VBoxContainer/TraceLabel
+@onready var clock_label: Label = get_node_or_null("UI/PanelContainer/VBoxContainer/ClockLabel")
 # Meatspace security-dispatch countdown HUD. Shown only while a Watchdog has
 # traced the runner and a raid is en route (RunState.security_dispatch_turns > 0).
 @onready var security_dispatch_label: Label = get_node_or_null("UI/PanelContainer/VBoxContainer/SecurityDispatchLabel")
@@ -133,6 +134,8 @@ func _ready() -> void:
 			turn_manager.movement_changed.connect(_on_movement_changed)
 		if not turn_manager.initiative_rolled.is_connected(_on_initiative_rolled):
 			turn_manager.initiative_rolled.connect(_on_initiative_rolled)
+		if not turn_manager.action_consumed.is_connected(_on_action_consumed):
+			turn_manager.action_consumed.connect(_on_action_consumed)
 		# Round 1: the runner just jacked in and acts first (no initiative roll
 		# needed — no adversaries are active yet). The adversary phase is
 		# deferred to after the runner's first turn; end_round then starts
@@ -302,6 +305,7 @@ func _update_trace(_unused: Variant = null) -> void:
 		if is_instance_valid(netrunner) and netrunner.cloak != null:
 			txt += "  | CLOAK"
 		trace_label.text = txt
+	_update_clock_label()
 
 func _update_camera_limits() -> void:
 	if not camera or not current_layout or not board_renderer:
@@ -633,6 +637,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				# No city grid recorded (e.g. legacy entry) — fall back to world map.
 				RunState.accumulated_trace = 0
 				RunState.security_dispatch_turns = 0
+				RunState.net_time_seconds = 0.0
 				get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
 		"travel_up":
 			# Vertical travel within the same datafort (no load_subnet). The
@@ -2047,12 +2052,22 @@ func _tick_watchdog_beacons() -> void:
 func _on_actions_changed(remaining: int, max_actions: int) -> void:
 	if actions_label:
 		actions_label.text = "Actions: %d / %d | Move: %d / %d" % [remaining, max_actions, turn_manager.movement_remaining if turn_manager else 0, turn_manager.max_movement if turn_manager else 0]
+	_update_clock_label()
 	log_to_terminal("Actions: %d / %d\n" % [remaining, max_actions])
 
 func _on_movement_changed(remaining: int, max_movement: int) -> void:
 	if actions_label and turn_manager:
 		actions_label.text = "Actions: %d / %d | Move: %d / %d" % [turn_manager.actions_remaining, turn_manager.max_actions, remaining, max_movement]
+	_update_clock_label()
 	log_to_terminal("Move: %d / %d\n" % [remaining, max_movement])
+
+func _on_action_consumed() -> void:
+	RunState.net_time_seconds += CP2020TimeScale.DATAFORT_SECONDS
+	_update_clock_label()
+
+func _update_clock_label() -> void:
+	if clock_label:
+		clock_label.text = "NET: %s" % CP2020TimeScale.format_clock(RunState.net_time_seconds)
 
 func _on_initiative_rolled(netrunner_roll: int, system_roll: int, netrunner_first: bool, is_tie: bool = false) -> void:
 	if is_tie:
@@ -2237,6 +2252,7 @@ func _on_jack_out_pressed() -> void:
 	log_to_terminal("Jacking out...\n")
 	RunState.accumulated_trace = 0
 	RunState.security_dispatch_turns = 0
+	RunState.net_time_seconds = 0.0
 	RunState.selected_subnet_path = ""
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0

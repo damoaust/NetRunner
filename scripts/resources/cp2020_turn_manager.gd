@@ -6,6 +6,11 @@ signal ice_movement_stepped
 signal actions_changed(remaining: int, max_actions: int)
 signal movement_changed(remaining: int, max_movement: int)
 signal initiative_rolled(netrunner_roll: int, system_roll: int, netrunner_first: bool, is_tie: bool)
+# Emitted whenever an action is actually spent (program/Net action via
+# consume_action(), or a completed movement action via _end_movement_action()).
+# Scenes connect to this to advance RunState.net_time_seconds by their grid
+# scale's per-action seconds. NOT emitted on failed/no-action-left calls.
+signal action_consumed
 
 # CP2020 unified action economy: the netrunner gets `max_actions` actions per
 # turn (1 per CPU; mainframes raise this). Each action is EITHER a program/Net
@@ -65,6 +70,7 @@ func consume_action() -> bool:
 	_movement_action_active = false
 	actions_changed.emit(actions_remaining, max_actions)
 	movement_changed.emit(movement_remaining, max_movement)
+	action_consumed.emit()
 	return true
 
 func has_actions() -> bool:
@@ -114,6 +120,7 @@ func _end_movement_action() -> void:
 	actions_remaining -= 1
 	actions_changed.emit(actions_remaining, max_actions)
 	movement_changed.emit(movement_remaining, max_movement)
+	action_consumed.emit()
 
 # Count adversaries in `ice_nodes` that are still valid and can take a turn.
 # Used to skip the adversary phase + initiative roll when there's no one left

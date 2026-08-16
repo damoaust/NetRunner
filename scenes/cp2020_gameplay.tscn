@@ -114,6 +114,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Trace: 0"
 
+[node name="ClockLabel" type="Label" parent="UI/PanelContainer/VBoxContainer" unique_id=1299887713]
+unique_name_in_owner = true
+layout_mode = 2
+text = "NET: 0 ns"
+
 [node name="SecurityDispatchLabel" type="Label" parent="UI/PanelContainer/VBoxContainer" unique_id=900000001]
 unique_name_in_owner = true
 layout_mode = 2

@@ -38,6 +38,7 @@ var city_name: String = "City Grid"
 @onready var credits_label: Label = get_node_or_null("HUDLayer/HUDOverlay/CreditsLabel")
 @onready var location_label: Label = get_node_or_null("HUDLayer/HUDOverlay/LocationLabel")
 @onready var trace_label: Label = get_node_or_null("HUDLayer/HUDOverlay/TraceLabel")
+@onready var clock_label: Label = get_node_or_null("HUDLayer/HUDOverlay/ClockLabel")
 @onready var camera: Camera2D = get_node_or_null("RunnerCamera")
 
 var _pulse_time: float = 0.0
@@ -50,6 +51,8 @@ func _ready() -> void:
 		turn_manager.start_netrunner_turn()
 		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
 			turn_manager.actions_changed.connect(_on_actions_changed)
+		if not turn_manager.action_consumed.is_connected(_on_action_consumed):
+			turn_manager.action_consumed.connect(_on_action_consumed)
 	_update_hud()
 	_update_camera_limits()
 	_center_camera_on_runner()
@@ -422,6 +425,11 @@ func _on_actions_changed(remaining: int, max_actions: int) -> void:
 		actions_label.text = "ACTIONS: %d/%d" % [remaining, max_actions]
 
 
+func _on_action_consumed() -> void:
+	RunState.net_time_seconds += CP2020TimeScale.CITY_GRID_SECONDS
+	_update_clock_label()
+
+
 # ---------------------------------------------------------------------------
 # Right-click popup (Return to World Map only)
 # ---------------------------------------------------------------------------
@@ -476,6 +484,7 @@ func _return_to_world_map() -> void:
 	print("CITY GRID: Returning to World Map. Run trace reset.")
 	RunState.accumulated_trace = 0
 	RunState.security_dispatch_turns = 0
+	RunState.net_time_seconds = 0.0
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
@@ -486,6 +495,7 @@ func _jack_out_to_hub() -> void:
 	print("CITY GRID: Jack Out to Hub. Run trace reset.")
 	RunState.accumulated_trace = 0
 	RunState.security_dispatch_turns = 0
+	RunState.net_time_seconds = 0.0
 	RunState.selected_subnet_path = ""
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
@@ -511,3 +521,9 @@ func _update_hud() -> void:
 			location_label.text = "LOCATION: %s" % df.name.to_upper()
 		else:
 			location_label.text = "LOCATION: %s GRID" % city_name.to_upper()
+	_update_clock_label()
+
+
+func _update_clock_label() -> void:
+	if clock_label:
+		clock_label.text = "NET: %s" % CP2020TimeScale.format_clock(RunState.net_time_seconds)
