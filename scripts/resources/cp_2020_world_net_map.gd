@@ -68,7 +68,7 @@ var spawn_hub_name: String = ""
 @onready var camera: Camera2D = get_node_or_null("RunnerCamera")
 # Terminal log feed (scene-tree node under HUDOverlay). Append colour-coded
 # bbcode lines via _log_terminal(); auto-scrolls via scroll_following.
-@onready var terminal_log: RichTextLabel = get_node_or_null("HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalScroll/TerminalLog")
+@onready var terminal_log: RichTextLabel = get_node_or_null("HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalLog")
 @onready var _ldl_list_container: VBoxContainer = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLScroll/LDLList")
 @onready var _ldl_enter_button: Button = get_node_or_null("HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox/LDLEnterButton")
 

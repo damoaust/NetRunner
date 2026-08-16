@@ -77,17 +77,12 @@ theme_override_font_sizes/font_size = 24
 text = "TRACE: 0"
 
 [node name="TerminalPanel" type="PanelContainer" parent="HUDLayer/HUDOverlay" unique_id=1414592619]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
+layout_mode = 0
 offset_left = 30.0
-offset_top = -200.0
-offset_right = -30.0
-offset_bottom = -12.0
-grow_horizontal = 2
-grow_vertical = 0
+offset_top = 880.0
+offset_right = 1890.0
+offset_bottom = 1068.0
+mouse_filter = 0
 
 [node name="TerminalMargin" type="MarginContainer" parent="HUDLayer/HUDOverlay/TerminalPanel" unique_id=2029006121]
 layout_mode = 2
@@ -105,24 +100,19 @@ layout_mode = 2
 text = "/// TERMINAL ///"
 horizontal_alignment = 1
 
-[node name="TerminalScroll" type="ScrollContainer" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox" unique_id=134870956]
+[node name="TerminalLog" type="RichTextLabel" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox" unique_id=156005875]
 layout_mode = 2
-size_flags_vertical = 3
-
-[node name="TerminalLog" type="RichTextLabel" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalScroll" unique_id=156005875]
-layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
 
 [node name="LDLPanel" type="PanelContainer" parent="HUDLayer/HUDOverlay"]
-layout_mode = 1
-anchor_right = 1.0
-anchor_bottom = 1.0
+layout_mode = 0
 offset_left = 1530.0
 offset_top = 80.0
-offset_right = -30.0
-offset_bottom = -214.0
+offset_right = 1890.0
+offset_bottom = 866.0
 mouse_filter = 0
 
 [node name="LDLMargin" type="MarginContainer" parent="HUDLayer/HUDOverlay/LDLPanel"]
