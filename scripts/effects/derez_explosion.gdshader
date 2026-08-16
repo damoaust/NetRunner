@@ -16,7 +16,7 @@ uniform vec4 base_color : source_color = vec4(1.0, 0.3, 0.1, 1.0);
 uniform float seed = 0.0;
 
 // Max explosion radius in UV space (0.5 = fills the drawn rect).
-uniform float max_radius = 0.45;
+uniform float max_radius = 0.25;
 
 // Overall brightness multiplier.
 uniform float intensity = 1.5;
