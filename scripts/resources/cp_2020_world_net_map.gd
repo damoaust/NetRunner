@@ -34,6 +34,12 @@ const COLOR_HUB_GLOW: Color = Color(0.0, 1.0, 0.9, 0.35)
 const COLOR_TEXT_HEADER: Color = Color(0.85, 0.95, 1.0, 0.95)
 const COLOR_TEXT_LABEL: Color = Color(0.7, 0.9, 1.0, 0.9)
 
+# Terminal log line colours (cyberpunk feed prefixes).
+const COLOR_LOG_SYS: Color = Color(0.0, 0.9, 1.0, 1.0)    # cyan — system/info
+const COLOR_LOG_OK: Color = Color(0.2, 1.0, 0.5, 1.0)     # green — success
+const COLOR_LOG_WARN: Color = Color(1.0, 0.75, 0.2, 1.0)  # amber — warning
+const COLOR_LOG_FAIL: Color = Color(1.0, 0.3, 0.3, 1.0)   # red — failure
+
 # Data source for the world map. Authored by the world map designer and saved
 # as a .tres; the runtime loads it here. If unassigned, falls back to
 # DEFAULT_LAYOUT_PATH.
@@ -60,6 +66,9 @@ var spawn_hub_name: String = ""
 @onready var location_label: Label = get_node_or_null("HUDLayer/HUDOverlay/LocationLabel")
 @onready var trace_label: Label = get_node_or_null("HUDLayer/HUDOverlay/TraceLabel")
 @onready var camera: Camera2D = get_node_or_null("RunnerCamera")
+# Terminal log feed (scene-tree node under HUDOverlay). Append colour-coded
+# bbcode lines via _log_terminal(); auto-scrolls via scroll_following.
+@onready var terminal_log: RichTextLabel = get_node_or_null("HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalScroll/TerminalLog")
 
 # Persistent LDL command panel (built in code, parented to HUDLayer/HUDOverlay).
 # Replaces the old right-click popup. The list section rebuilds on every
@@ -89,6 +98,7 @@ func _ready() -> void:
 		if not turn_manager.actions_changed.is_connected(_on_actions_changed):
 			turn_manager.actions_changed.connect(_on_actions_changed)
 	_build_ldl_panel()
+	_log_terminal("NET MAP ONLINE // jackpoint: %s" % spawn_hub_name, COLOR_LOG_SYS)
 	_update_hud()
 	_update_camera_limits()
 	_center_camera_on_runner()
@@ -457,6 +467,11 @@ func _try_move(target: Vector2i) -> bool:
 			return false
 	runner_pos = target
 	_center_camera_on_runner()
+	# Log arrival when stepping onto a city hub (movement signal without
+	# spamming every ocean tile).
+	var hub: Variant = _hub_at(target)
+	if hub != null:
+		_log_terminal("ARRIVED @ %s" % String(hub.name), COLOR_LOG_SYS)
 	return true
 
 
@@ -469,6 +484,26 @@ func _check_actions_exhausted() -> void:
 func _on_actions_changed(remaining: int, max_actions: int) -> void:
 	if actions_label:
 		actions_label.text = "ACTIONS: %d/%d" % [remaining, max_actions]
+
+
+# ---------------------------------------------------------------------------
+# Terminal log feed
+# ---------------------------------------------------------------------------
+
+# Append a colour-coded line to the on-screen terminal log. No-op if the
+# scene node is missing. Lines are prefixed with a `> ` prompt and capped at
+# ~200 entries so the feed stays bounded over a long session.
+func _log_terminal(msg: String, color: Color = COLOR_LOG_SYS) -> void:
+	if terminal_log == null:
+		return
+	var hex: String = "#%02x%02x%02x" % [int(round(color.r * 255.0)), int(round(color.g * 255.0)), int(round(color.b * 255.0))]
+	terminal_log.text += "[color=%s]> %s[/color]\n" % [hex, msg]
+	# Trim oldest lines once over the cap (drop everything up to the Nth line).
+	const MAX_LINES: int = 200
+	var lines: PackedStringArray = terminal_log.text.split("\n")
+	if lines.size() > MAX_LINES:
+		terminal_log.text = "\n".join(lines.slice(lines.size() - MAX_LINES))
+	terminal_log.scroll_following = true
 
 
 # ---------------------------------------------------------------------------
@@ -491,7 +526,8 @@ func _build_ldl_panel() -> void:
 	_ldl_panel.offset_left = 1530.0
 	_ldl_panel.offset_top = 80.0
 	_ldl_panel.offset_right = -30.0
-	_ldl_panel.offset_bottom = -30.0
+	# End above the bottom terminal panel (~190px + margin) so they don't overlap.
+	_ldl_panel.offset_bottom = -214.0
 	_ldl_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.add_child(_ldl_panel)
 
@@ -605,7 +641,7 @@ func _nearby_hubs(pos: Vector2i) -> Array:
 
 func _jack_out_to_hub() -> void:
 	# End the run and return to the Workbench to fence loot/files and gear up.
-	print("WORLD MAP: Jack Out to Hub. Run trace reset.")
+	_log_terminal("JACK OUT // run trace reset.", COLOR_LOG_SYS)
 	RunState.accumulated_trace = 0
 	RunState.security_dispatch_turns = 0
 	RunState.selected_subnet_path = ""
@@ -618,13 +654,13 @@ func _hack_jump(dest: Dictionary) -> void:
 	# CP2020 RAW LDL connection check: a raw 1D10 roll must meet or exceed the
 	# LDL's Security Level to scam the connection. No STAT + Skill is added.
 	var roll := randi_range(1, 10)
-	print("WORLD MAP: Hack LDL -> %s — 1D10 %d vs Security Code %d." % [dest.name, roll, int(dest.security_code)])
+	_log_terminal("HACK LDL -> %s — 1D10 %d vs Sec %d." % [dest.name, roll, int(dest.security_code)], COLOR_LOG_SYS)
 	if roll >= int(dest.security_code):
 		var trace_reduction: int = RunState.selected_deck.effective_trace_reduction() if RunState.selected_deck != null else 0
 		RunState.accumulated_trace += max(0, int(dest.trace_value) - trace_reduction)
 		runner_pos = dest.pos
 		_center_camera_on_runner()
-		print("WORLD MAP: Jumped to %s. Run trace difficulty: %d" % [dest.name, RunState.accumulated_trace])
+		_log_terminal("JUMP OK -> %s // trace %d." % [dest.name, RunState.accumulated_trace], COLOR_LOG_OK)
 		_update_hud()
 		queue_redraw()
 		return
@@ -632,17 +668,17 @@ func _hack_jump(dest: Dictionary) -> void:
 	# added, the runner does not move (signal stays at the last connected
 	# node), and NetWatch is not automatically alerted. NetWatch/raids only
 	# arise from in-datafort security programs or a sysop spotting you.
-	print("WORLD MAP: LDL hack failed — line dropped. No trace added.")
+	_log_terminal("LINE DROPPED // hack failed, no trace.", COLOR_LOG_FAIL)
 
 
 func _enter_city_grid(hub: Dictionary) -> void:
 	var grid_path: String = String(hub.get("city_grid_path", ""))
 	if grid_path == "":
-		print("WORLD MAP: %s has no City Grid assigned." % hub.name)
+		_log_terminal("%s has no City Grid assigned." % hub.name, COLOR_LOG_WARN)
 		_update_hud()
 		return
 	# Trace is built by inter-city LDL jumps; entering a city adds none.
-	print("WORLD MAP: Entering %s City Grid. Run trace difficulty: %d" % [hub.name, RunState.accumulated_trace])
+	_log_terminal("ENTERING %s CITY GRID // trace %d." % [hub.name, RunState.accumulated_trace], COLOR_LOG_OK)
 	RunState.selected_city_grid_path = grid_path
 	get_tree().change_scene_to_file("res://scenes/ui/cp2020_city_grid.tscn")
 

@@ -3,72 +3,111 @@
 [ext_resource type="Script" uid="uid://c07fig008mde3" path="res://scripts/resources/cp_2020_world_net_map.gd" id="1_2v4ka"]
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="2_tm"]
 [ext_resource type="Resource" path="res://data/world_map_default.tres" id="3_layout"]
-[ext_resource type="Theme" path="res://themes/cyberpunk_theme.tres" id="4_theme"]
 
-[node name="Cp2020WorldNetMap" type="Node2D"]
+[node name="Cp2020WorldNetMap" type="Node2D" unique_id=1270201602]
 script = ExtResource("1_2v4ka")
 world_map_layout = ExtResource("3_layout")
 
-[node name="TurnManager" type="Node" parent="."]
+[node name="TurnManager" type="Node" parent="." unique_id=887293812]
 script = ExtResource("2_tm")
 
-[node name="RunnerCamera" type="Camera2D" parent="."]
-enabled = true
+[node name="RunnerCamera" type="Camera2D" parent="." unique_id=188582832]
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
-zoom = Vector2(1, 1)
 
-[node name="HUDLayer" type="CanvasLayer" parent="."]
+[node name="HUDLayer" type="CanvasLayer" parent="." unique_id=1224767288]
 
-[node name="HUDOverlay" type="Control" parent="HUDLayer"]
+[node name="HUDOverlay" type="Control" parent="HUDLayer" unique_id=1276741513]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_right = 1920.0
 offset_bottom = 1080.0
 mouse_filter = 2
-theme = ExtResource("4_theme")
 
-[node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="LocationLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=32687854]
+layout_mode = 0
 offset_left = 30.0
 offset_top = 12.0
 offset_right = 450.0
 offset_bottom = 60.0
-text = "LOCATION: NIGHT CITY"
 theme_override_colors/font_color = Color(0, 1, 0.85, 1)
 theme_override_colors/font_outline_color = Color(0, 0.3, 0.4, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
+text = "LOCATION: NIGHT CITY"
 
-[node name="ActionsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="ActionsLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=1628120273]
+layout_mode = 0
 offset_left = 480.0
 offset_top = 12.0
 offset_right = 750.0
 offset_bottom = 60.0
-text = "ACTIONS: 5/5"
 theme_override_colors/font_color = Color(1, 1, 0.3, 1)
 theme_override_colors/font_outline_color = Color(0.3, 0.3, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
+text = "ACTIONS: 5/5"
 
-[node name="CreditsLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="CreditsLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=833873266]
+layout_mode = 0
 offset_left = 780.0
 offset_top = 12.0
 offset_right = 1080.0
 offset_bottom = 60.0
-text = "CREDITS: 1000 eb"
 theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
 theme_override_colors/font_outline_color = Color(0.4, 0.2, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
+text = "CREDITS: 1000 eb"
 
-[node name="TraceLabel" type="Label" parent="HUDLayer/HUDOverlay"]
+[node name="TraceLabel" type="Label" parent="HUDLayer/HUDOverlay" unique_id=237522594]
+layout_mode = 0
 offset_left = 1110.0
 offset_top = 12.0
 offset_right = 1350.0
 offset_bottom = 60.0
-text = "TRACE: 0"
 theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
 theme_override_colors/font_outline_color = Color(0.4, 0, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
+text = "TRACE: 0"
+
+[node name="TerminalPanel" type="PanelContainer" parent="HUDLayer/HUDOverlay"]
+layout_mode = 3
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = -190.0
+offset_right = -30.0
+offset_bottom = -12.0
+
+[node name="TerminalMargin" type="MarginContainer" parent="HUDLayer/HUDOverlay/TerminalPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="TerminalVBox" type="VBoxContainer" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TerminalHeader" type="Label" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "/// TERMINAL ///"
+
+[node name="TerminalScroll" type="ScrollContainer" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TerminalLog" type="RichTextLabel" parent="HUDLayer/HUDOverlay/TerminalPanel/TerminalMargin/TerminalVBox/TerminalScroll"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+text = ""
