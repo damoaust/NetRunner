@@ -87,6 +87,14 @@ const DEFAULT_VISUALS: Dictionary = {
 # entirely via `glyph_offset` — useful for glyphs whose metrics produce a bad
 # auto-centre, or when the font lacks the glyph entirely. Toggle in the Inspector.
 @export var glyph_auto_center: bool = true
+# Optional on-map sprite (replaces the glyph on BlackICE / rezzed program
+# nodes when set). Assign a PNG spritesheet in the Inspector. `sprite_frame`
+# selects which square frame to display; `sprite_frame_size` is the frame
+# dimension in pixels (most sheets use 128). Leave sprite_texture null to
+# fall back to the glyph system.
+@export var sprite_texture: Texture2D
+@export var sprite_frame: int = 0
+@export var sprite_frame_size: int = 128
 # Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
 # as damage (existing behaviour for all current programs). >0 = roll
 # 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.
@@ -260,6 +268,13 @@ func get_visual() -> Dictionary:
 		if c.a == 0.0:
 			c = def.get("color", Color.CYAN)
 	return {"glyph": g, "color": c}
+
+# Returns the on-map sprite texture if one is assigned, else null (caller
+# falls back to the glyph system). The caller (BlackICE / RezzedProgram) uses
+# `sprite_frame` + `sprite_frame_size` to extract the correct frame as an
+# AtlasTexture at runtime.
+func get_sprite() -> Texture2D:
+	return sprite_texture
 
 # Auto-centres a glyph within its tile by measuring the glyph's actual bitmap
 # metrics via the TextServer. Returns the offset to add to a Label's position

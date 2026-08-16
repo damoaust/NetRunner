@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://b4jnan1twtjo"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_jwtcu"]
+[ext_resource type="Texture2D" uid="uid://3lwp8vquppq5" path="res://sprites/Samurai/Idle.png" id="2_spr1"]
 
 [resource]
 script = ExtResource("1_jwtcu")
@@ -12,4 +13,5 @@ price = 1400
 description = "Attacks all types, 1D6 damage to target STR. Mobile"
 glyph = "🤖"
 damage_dice = 6
+sprite_texture = ExtResource("2_spr1")
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

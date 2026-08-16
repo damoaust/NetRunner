@@ -76,6 +76,10 @@ var rezzed_programs: Array = []
 @export var label_visual_offset: Vector2 = Vector2(-2, -4)
 
 @onready var skull_label = $SkullLabel
+@onready var sprite = $Sprite2D
+# True when apply_visual_from_program chose the sprite path (program has a
+# sprite_texture). update_visibility uses this to toggle the correct node.
+var _use_sprite: bool = false
 
 func initialize(start_pos: Vector2i, layout_size: Vector2i) -> void:
 	current_position = start_pos
@@ -191,7 +195,31 @@ func emit_log(msg: String) -> void:
 # per-program `glyph_offset` stacks on top for stubborn edge cases. No-op if
 # the label or program is missing. Call after initialize().
 func apply_visual_from_program() -> void:
-	if skull_label == null or program == null:
+	if program == null:
+		return
+	# Sprite path: if the program has a sprite_texture assigned, extract the
+	# selected frame as an AtlasTexture and show it on the Sprite2D. The glyph
+	# label is hidden. This is used by Killer II/IV/VI (character sprites).
+	var sprite_tex: Texture2D = program.get_sprite()
+	if sprite_tex != null and sprite:
+		_use_sprite = true
+		var frame_size: int = program.sprite_frame_size
+		if frame_size <= 0:
+			frame_size = 128
+		var atlas := AtlasTexture.new()
+		atlas.atlas = sprite_tex
+		atlas.region = Rect2(program.sprite_frame * frame_size, 0, frame_size, frame_size)
+		sprite.texture = atlas
+		sprite.scale = Vector2(cell_size / float(frame_size), cell_size / float(frame_size))
+		sprite.visible = true
+		if skull_label:
+			skull_label.visible = false
+		return
+	# Glyph fallback path (existing behavior) for ICE without a sprite.
+	_use_sprite = false
+	if sprite:
+		sprite.visible = false
+	if skull_label == null:
 		return
 	var vis: Dictionary = program.get_visual()
 	var glyph: String = vis.get("glyph", "☠")
@@ -271,9 +299,16 @@ func activate_alarm() -> void:
 		message_logged.emit("ALARM: %s woken and hunting!" % program.program_name)
 
 func update_visibility(_is_explored: bool, p_visible: bool) -> void:
-	if not skull_label:
-		return
-	skull_label.visible = p_visible
+	if _use_sprite:
+		if sprite:
+			sprite.visible = p_visible
+		if skull_label:
+			skull_label.visible = false
+	else:
+		if skull_label:
+			skull_label.visible = p_visible
+		if sprite:
+			sprite.visible = false
 
 func take_damage(amount: int) -> bool:
 	current_integrity -= amount
