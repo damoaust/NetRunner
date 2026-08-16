@@ -3,7 +3,7 @@ extends Node2D
 
 # Grid-based world map. Runner spawns on a city hub and moves tile-by-tile
 # with a 5-action-per-turn limit (no ICE on the world map). A persistent LDL
-# command panel (right side of the HUD) lists hackable LDLs within 5 spaces of
+# command panel (right side of the HUD) lists all hackable LDLs (any range —
 # the runner, plus ENTER City Grid (when on a hub) and Jack Out. Hacking an
 # LDL is a raw 1D10 roll vs the LDL's Security Level (CP2020 RAW: no STAT +
 # Skill added); a failure just drops the line (no trace, no auto-NetWatch).
@@ -564,17 +564,14 @@ func _on_enter_button_pressed() -> void:
 		_enter_city_grid(hub)
 
 
-func _chebyshev(a: Vector2i, b: Vector2i) -> int:
-	return maxi(absi(a.x - b.x), absi(a.y - b.y))
-
-
 func _nearby_hubs(pos: Vector2i) -> Array:
+	# All hubs except the runner's current one are hackable — LDL hacks are
+	# remote signal traces, not movement, so range is not a constraint.
 	var out: Array = []
 	for hub in city_hubs:
 		if hub.pos == pos:
 			continue
-		if _chebyshev(pos, hub.pos) <= 5:
-			out.append(hub)
+		out.append(hub)
 	return out
 
 

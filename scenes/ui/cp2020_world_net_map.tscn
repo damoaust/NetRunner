@@ -141,7 +141,7 @@ text = "ENTER CITY GRID"
 
 [node name="LDLListHeader" type="Label" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
 layout_mode = 2
-text = "HACKABLE LINKS (within 5)"
+text = "HACKABLE LINKS"
 
 [node name="LDLScroll" type="ScrollContainer" parent="HUDLayer/HUDOverlay/LDLPanel/LDLMargin/LDLVBox"]
 layout_mode = 2
