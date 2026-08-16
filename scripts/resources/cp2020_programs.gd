@@ -100,6 +100,10 @@ const DEFAULT_VISUALS: Dictionary = {
 # sprite's art sits off-centre within its frame (mirrors `glyph_offset`).
 # In screen pixels: 1.0 = one pixel on the grid (cell_size = 40).
 @export var sprite_offset: Vector2 = Vector2.ZERO
+# Per-program size multiplier for the on-map sprite. 1.0 = fills one tile
+# (default), 0.5 = half size, 2.0 = double size. Adjust in the Inspector or
+# the datafort designer's sprite alignment panel.
+@export var sprite_scale: float = 1.0
 # Per-hit damage dice for attack programs (Black ICE). 0 = use flat `strength`
 # as damage (existing behaviour for all current programs). >0 = roll
 # 1D{damage_dice} per hit instead. e.g. Sword sets 6 to roll 1D6 per hit.

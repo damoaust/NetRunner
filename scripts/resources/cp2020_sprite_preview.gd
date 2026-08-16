@@ -61,7 +61,7 @@ func _update_sprite() -> void:
 	atlas.atlas = sprite_tex
 	atlas.region = Rect2(program.sprite_frame * frame_size, 0, frame_size, frame_size)
 	_sprite.texture = atlas
-	_sprite.scale = Vector2(PREVIEW_CELL / float(frame_size), PREVIEW_CELL / float(frame_size))
+	_sprite.scale = Vector2(PREVIEW_CELL / float(frame_size), PREVIEW_CELL / float(frame_size)) * program.sprite_scale
 	var tile_center := Vector2(PREVIEW_PAD + PREVIEW_CELL / 2.0, PREVIEW_PAD + PREVIEW_CELL / 2.0)
 	# sprite_offset is in screen pixels at cell_size=40 in-game. The preview
 	# also uses 40px tiles, so the offset maps 1:1.

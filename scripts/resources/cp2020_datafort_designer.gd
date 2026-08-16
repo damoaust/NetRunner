@@ -108,6 +108,7 @@ var glyph_save_button: Button = null
 var sprite_preview: CP2020SpritePreview = null
 var sprite_offset_x_spin: SpinBox = null
 var sprite_offset_y_spin: SpinBox = null
+var sprite_scale_spin: SpinBox = null
 
 func _ready() -> void:
 	setup_new_map()
@@ -1019,7 +1020,7 @@ func _on_save_program_tres() -> void:
 		return
 	var err = ResourceSaver.save(prog, path)
 	if err == OK:
-		print("[GlyphAlign] Saved %s (glyph_offset=%s, auto_center=%s, sprite_offset=%s)" % [path, prog.glyph_offset, prog.glyph_auto_center, prog.sprite_offset])
+		print("[GlyphAlign] Saved %s (glyph_offset=%s, auto_center=%s, sprite_offset=%s, sprite_scale=%s)" % [path, prog.glyph_offset, prog.glyph_auto_center, prog.sprite_offset, prog.sprite_scale])
 	else:
 		print("[GlyphAlign] ERROR saving %s: %d" % [path, err])
 
@@ -1039,6 +1040,7 @@ func _build_sprite_align_controls() -> void:
 		sprite_preview = vbox.get_node_or_null("SpritePreview")
 		sprite_offset_x_spin = vbox.get_node_or_null("SpriteOffsetXSpin")
 		sprite_offset_y_spin = vbox.get_node_or_null("SpriteOffsetYSpin")
+		sprite_scale_spin = vbox.get_node_or_null("SpriteScaleSpin")
 		if sprite_preview:
 			sprite_preview.refresh()
 		return
@@ -1074,6 +1076,20 @@ func _build_sprite_align_controls() -> void:
 	sprite_offset_y_spin.value_changed.connect(_on_sprite_offset_changed)
 	offset_row.add_child(sprite_offset_y_spin)
 	vbox.add_child(offset_row)
+	var scale_row := HBoxContainer.new()
+	scale_row.name = "SpriteScaleRow"
+	var scale_label := Label.new()
+	scale_label.text = "Scale:"
+	scale_row.add_child(scale_label)
+	sprite_scale_spin = SpinBox.new()
+	sprite_scale_spin.name = "SpriteScaleSpin"
+	sprite_scale_spin.min_value = 0.1
+	sprite_scale_spin.max_value = 4.0
+	sprite_scale_spin.step = 0.05
+	sprite_scale_spin.value = 1.0
+	sprite_scale_spin.value_changed.connect(_on_sprite_scale_changed)
+	scale_row.add_child(sprite_scale_spin)
+	vbox.add_child(scale_row)
 
 
 func _populate_sprite_controls(prog: NetProgram) -> void:
@@ -1085,6 +1101,10 @@ func _populate_sprite_controls(prog: NetProgram) -> void:
 		sprite_offset_y_spin.set_block_signals(true)
 		sprite_offset_y_spin.value = prog.sprite_offset.y
 		sprite_offset_y_spin.set_block_signals(false)
+	if sprite_scale_spin:
+		sprite_scale_spin.set_block_signals(true)
+		sprite_scale_spin.value = prog.sprite_scale
+		sprite_scale_spin.set_block_signals(false)
 	if sprite_preview:
 		sprite_preview.program = prog
 		sprite_preview.refresh()
@@ -1097,6 +1117,17 @@ func _on_sprite_offset_changed(_value: float) -> void:
 	if tile == null or tile.ice_program == null:
 		return
 	tile.ice_program.sprite_offset = Vector2(sprite_offset_x_spin.value, sprite_offset_y_spin.value)
+	if sprite_preview:
+		sprite_preview.refresh()
+
+
+func _on_sprite_scale_changed(_value: float) -> void:
+	if not current_layout or selected_ice_coord == Vector2i(-1, -1):
+		return
+	var tile = current_layout.get_tile(selected_ice_coord, current_layout.current_floor)
+	if tile == null or tile.ice_program == null:
+		return
+	tile.ice_program.sprite_scale = sprite_scale_spin.value
 	if sprite_preview:
 		sprite_preview.refresh()
 

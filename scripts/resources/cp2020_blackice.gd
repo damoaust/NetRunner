@@ -210,7 +210,7 @@ func apply_visual_from_program() -> void:
 		atlas.atlas = sprite_tex
 		atlas.region = Rect2(program.sprite_frame * frame_size, 0, frame_size, frame_size)
 		sprite.texture = atlas
-		sprite.scale = Vector2(cell_size / float(frame_size), cell_size / float(frame_size))
+		sprite.scale = Vector2(cell_size / float(frame_size), cell_size / float(frame_size)) * program.sprite_scale
 		# sprite_offset is in screen pixels (same as glyph_offset), applied on
 		# top of the Sprite2D's automatic tile-centring (centered=true at 0,0).
 		sprite.position = program.sprite_offset
