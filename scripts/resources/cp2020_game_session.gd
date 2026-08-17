@@ -49,6 +49,10 @@ var rezzed_program_nodes: Array[RezzedProgram] = []
 # (NetProgram.ATTACK_VISUALS / get_attack_visual()); this node only renders.
 var combat_animator: CombatEffectAnimator = null
 
+# 3D compositing layer — renders extruded walls, 3D ICE, beacons behind the
+# 2D neon overlay. Created in _ready, synced on load_subnet / floor change.
+var board_3d: CP2020Board3D = null
+
 # One-shot guard for end-of-run scene transitions (flatline / busted). An
 # adversary coroutine (notably the datafort's multi-action take_turn loop)
 # can emit a fatal attack AFTER a prior action already flatlined the runner
@@ -203,6 +207,19 @@ func _ready() -> void:
 			combat_animator.cell_size = board_renderer.cell_size
 			combat_animator.grid_offset_y = board_renderer.grid_offset_y
 
+	# 3D compositing layer — SubViewport + Camera3D behind the 2D overlay.
+	# Created programmatically (same pattern as combat_animator). The
+	# TextureRect output is attached to the bg CanvasLayer (layer -1) so
+	# it renders behind the 2D BoardRenderer.
+	if board_3d == null and board_renderer:
+		board_3d = CP2020Board3D.new()
+		board_3d.cell_size = board_renderer.cell_size
+		board_3d.grid_offset_y = board_renderer.grid_offset_y
+		add_child(board_3d)
+		var bg_layer := get_node_or_null("CanvasLayer") as CanvasLayer
+		if bg_layer:
+			board_3d.attach_to_canvas_layer(bg_layer)
+
 	# Load the subnet chosen on the world map (fall back to default)
 	var subnet_path := RunState.selected_subnet_path if RunState.selected_subnet_path != "" else starting_subnet_path
 	load_subnet(subnet_path)
@@ -292,6 +309,10 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		_update_camera_limits()
 		_center_camera_on_runner()
 		board_renderer.request_redraw()
+		# Sync 3D extruded walls for the current floor.
+		if board_3d:
+			board_3d.resize_viewport(int(current_layout.columns * board_renderer.cell_size), int(current_layout.rows * board_renderer.cell_size + board_renderer.grid_offset_y))
+			board_3d.sync_from_layout(current_layout, current_floor)
 	return true
 
 func _update_trace(_unused: Variant = null) -> void:
@@ -316,6 +337,9 @@ func _center_camera_on_runner(_new_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	if not camera or not netrunner:
 		return
 	camera.position = netrunner.position
+	# Sync the 3D camera to match the 2D camera pan.
+	if board_3d and current_layout:
+		board_3d.sync_camera_2d(netrunner.position, Vector2i(current_layout.columns, current_layout.rows))
 
 # Sets the current floor and propagates it to the layout + netrunner so every
 # floor-scoped read (get_tile / line_of_sight / renderer / pathfinding) agrees.
@@ -407,6 +431,9 @@ func _do_travel_vertical(up: bool, clicked_coord: Vector2i) -> void:
 	if board_renderer:
 		board_renderer.request_redraw()
 		_flash_floor_label()
+	# Re-sync 3D walls for the new floor.
+	if board_3d and current_layout:
+		board_3d.sync_from_layout(current_layout, current_floor)
 	var floor_name := current_layout.floors[target_floor].floor_name if current_layout.floors[target_floor].floor_name != "" else "Floor %d" % target_floor
 	log_to_terminal("Travelling %s to %s (entry %s). Trace preserved.\n" % ["up" if up else "down", floor_name, target_coord])
 

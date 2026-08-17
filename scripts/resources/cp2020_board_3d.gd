@@ -1,0 +1,237 @@
+class_name CP2020Board3D
+extends Node3D
+
+# 3D compositing layer for the datafort board. Renders extruded walls, 3D ICE
+# models, volumetric beacons, and other 3D-styled elements behind the 2D neon
+# overlay (CP2020BoardRenderer). The SubViewport output is displayed via a
+# TextureRect on the background CanvasLayer. The 3D Camera3D syncs its position
+# from the 2D RunnerCamera so panning stays aligned.
+#
+# Grid logic (Vector2i, AStarGrid2D, line_of_sight) is untouched — this layer
+# only mirrors tile positions into 3D meshes. The 2D BoardRenderer draws on top
+# for grid lines, fog-of-war, scanlines, vignette, hover, and text.
+
+@export var cell_size: float = 40.0
+@export var grid_offset_y: float = 90.0
+@export var wall_height: float = 24.0
+
+var sub_viewport: SubViewport
+var camera_3d: Camera3D
+var world_root: Node3D
+var texture_rect: TextureRect
+var _floor_mesh: MeshInstance3D
+var _wall_meshes: Array[MeshInstance3D] = []
+var _world_env: WorldEnvironment
+
+# Neon-edge shader for extruded walls: dark fill with emissive cyan edges.
+var _wall_material: ShaderMaterial
+
+
+func _ready() -> void:
+	_create_infrastructure()
+	_create_wall_material()
+	_create_floor_plane()
+
+
+# Build the SubViewport + Camera3D + world root + output TextureRect. The
+# SubViewport is sized to match the board area (columns * cell_size by
+# rows * cell_size + grid_offset_y). The TextureRect goes on the parent
+# CanvasLayer so it renders behind the 2D BoardRenderer.
+func _create_infrastructure() -> void:
+	sub_viewport = SubViewport.new()
+	sub_viewport.name = "Board3DViewport"
+	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	sub_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+	sub_viewport.transparent_bg = true
+	sub_viewport.size = Vector2i(800, 700)
+	add_child(sub_viewport)
+
+	world_root = Node3D.new()
+	world_root.name = "World3D"
+	sub_viewport.add_child(world_root)
+
+	camera_3d = Camera3D.new()
+	camera_3d.name = "Camera3D"
+	camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera_3d.size = 700.0
+	camera_3d.position = Vector3(300, -400, 350)
+	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
+	camera_3d.near = 0.1
+	camera_3d.far = 2000.0
+	world_root.add_child(camera_3d)
+
+	# Ambient light so meshes aren't pitch black.
+	var light := DirectionalLight3D.new()
+	light.position = Vector3(200, -400, 200)
+	light.rotation_degrees = Vector3(-45, 30, 0)
+	light.light_energy = 0.6
+	light.light_color = Color(0.4, 0.6, 0.8)
+	world_root.add_child(light)
+
+	# WorldEnvironment for the 3D scene inside the SubViewport.
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.01, 0.02, 0.04, 0.0)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.05, 0.08, 0.12)
+	env.ambient_light_energy = 0.4
+	env.glow_enabled = true
+	env.glow_intensity = 1.2
+	env.glow_strength = 1.0
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	_world_env = WorldEnvironment.new()
+	_world_env.environment = env
+	world_root.add_child(_world_env)
+
+	# TextureRect on the bg CanvasLayer to display the 3D output. It sits
+	# behind the 2D BoardRenderer (CanvasLayer -1 draws before the default
+	# world 2D canvas).
+	texture_rect = TextureRect.new()
+	texture_rect.name = "Board3DOutput"
+	texture_rect.texture = sub_viewport.get_texture()
+	texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_rect.anchors_preset = Control.PRESET_FULL_RECT
+
+
+# Neon-edge shader: dark fill with emissive cyan edges, matching the
+# cyberpunk aesthetic. Applied to extruded wall meshes.
+func _create_wall_material() -> void:
+	var shader := Shader.new()
+	shader.code = _wall_shader_code()
+	_wall_material = ShaderMaterial.new()
+	_wall_material.shader = shader
+	_wall_material.set_shader_parameter("edge_color", Color(0.0, 0.78, 0.92, 1.0))
+	_wall_material.set_shader_parameter("fill_color", Color(0.02, 0.05, 0.08, 0.85))
+	_wall_material.set_shader_parameter("edge_glow", 2.0)
+
+
+static func _wall_shader_code() -> String:
+	return "
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, unshaded;
+
+uniform vec4 edge_color : source_color;
+uniform vec4 fill_color : source_color;
+uniform float edge_glow : hint_range(0.0, 10.0) = 2.0;
+
+void fragment() {
+	// Edge detection based on UV proximity to edges
+	float edge = 0.0;
+	edge = max(edge, smoothstep(0.92, 1.0, abs(UV.x - 0.5) * 2.0));
+	edge = max(edge, smoothstep(0.92, 1.0, abs(UV.y - 0.5) * 2.0));
+
+	vec3 color = mix(fill_color.rgb, edge_color.rgb, edge);
+	float alpha = mix(fill_color.a, 1.0, edge);
+
+	// Add emissive glow on edges
+	EMISSION = edge_color.rgb * edge * edge_glow;
+	ALBEDO = color;
+	ALPHA = alpha;
+}
+"
+
+
+# A dark floor plane at y=0 — the grid base. Scaled to cover a large area so
+# the board sits on a surface. Uses a subtle grid shader for depth.
+func _create_floor_plane() -> void:
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(2000, 2000)
+	_floor_mesh = MeshInstance3D.new()
+	_floor_mesh.name = "FloorPlane"
+	_floor_mesh.mesh = plane
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.01, 0.02, 0.04, 1.0)
+	mat.roughness = 0.9
+	mat.metalness = 0.1
+	mat.emission_enabled = true
+	mat.emission = Color(0.0, 0.05, 0.08)
+	mat.emission_energy_multiplier = 0.3
+	_floor_mesh.material_override = mat
+	world_root.add_child(_floor_mesh)
+
+
+# Convert a grid coordinate to a 3D world position. The grid maps to the XZ
+# plane; Y is up (walls extrude on Y). Origin matches the 2D renderer's
+# pixel-to-grid math so Camera3D and Camera2D stay aligned.
+func grid_to_3d(coord: Vector2i) -> Vector3:
+	return Vector3(
+		coord.x * cell_size + cell_size / 2.0,
+		0.0,
+		coord.y * cell_size + cell_size / 2.0
+	)
+
+
+# Sync the 3D camera position from the 2D RunnerCamera. The 2D camera follows
+# the netrunner; the 3D camera mirrors that pan with a height + angle offset
+# so the 3D elements sit behind the 2D overlay at the same grid position.
+func sync_camera_2d(cam_2d_pos: Vector2, layout_size: Vector2i) -> void:
+	if camera_3d == null:
+		return
+	# The 3D camera centers on the same grid position as the 2D camera.
+	# cam_2d_pos is in pixel space (origin top-left, +Y down). The 3D world
+	# uses XZ (origin bottom-left of the grid, +Z "down" in grid terms).
+	var center_x := cam_2d_pos.x
+	var center_z := cam_2d_pos.y - grid_offset_y
+	# Position the camera above and behind the focus point, looking down.
+	var cam_size := float(maxi(layout_size.x, layout_size.y)) * cell_size * 0.75
+	camera_3d.size = cam_size
+	camera_3d.position = Vector3(center_x, -cam_size * 0.8, center_z + cam_size * 0.3)
+	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
+
+
+# Clear all 3D wall meshes (call before re-syncing on floor change / load).
+func clear_walls() -> void:
+	for w in _wall_meshes:
+		if is_instance_valid(w):
+			w.queue_free()
+	_wall_meshes.clear()
+
+
+# Spawn an extruded wall mesh at the given grid coordinate. Uses a BoxMesh
+# with the neon-edge shader material. Called by the sync helper for every
+# DATAWALL tile on the current floor.
+func spawn_wall(coord: Vector2i) -> void:
+	if world_root == null:
+		return
+	var box := BoxMesh.new()
+	box.size = Vector3(cell_size * 0.9, wall_height, cell_size * 0.9)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.material_override = _wall_material
+	mesh.position = grid_to_3d(coord)
+	mesh.position.y = -wall_height / 2.0
+	world_root.add_child(mesh)
+	_wall_meshes.append(mesh)
+
+
+# Full sync: clear + rebuild all 3D elements for the current floor. Called
+# by the game session on load_subnet, floor change, and tile mutations.
+func sync_from_layout(layout: CP2020DatafortLayout, p_floor: int) -> void:
+	clear_walls()
+	if layout == null:
+		return
+	var tiles := layout.get_floor_tiles(p_floor)
+	for raw_key in tiles.keys():
+		var coord := CP2020DatafortLayout.parse_coord(raw_key)
+		var tile = layout.get_tile(coord, p_floor)
+		if tile == null:
+			continue
+		match tile.tile_type:
+			CP2020DatafortLayout.TileType.DATAWALL:
+				spawn_wall(coord)
+			CP2020DatafortLayout.TileType.CODE_GATE:
+				if not tile.is_unlocked:
+					spawn_wall(coord)
+
+
+# Attach the TextureRect to a CanvasLayer so it renders behind the 2D board.
+func attach_to_canvas_layer(canvas_layer: CanvasLayer) -> void:
+	if texture_rect and texture_rect.get_parent() == null:
+		canvas_layer.add_child(texture_rect)
+
+
+# Resize the SubViewport to match the board dimensions.
+func resize_viewport(width: int, height: int) -> void:
+	if sub_viewport:
+		sub_viewport.size = Vector2i(width, height)
