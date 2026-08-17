@@ -425,10 +425,12 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 						_dynamic_menu.set_item_disabled(item_idx, true)
 					else:
 						any_copyable = true
-					# "Copy All" — disabled when no copyable+fitting file remains.
-					_dynamic_menu.add_item("Copy All", 6999)
-					var copy_all_idx = _dynamic_menu.get_item_index(6999)
-					_dynamic_menu.set_item_disabled(copy_all_idx, not any_copyable)
+				# "Copy All" — added once (outside the per-file loop) so a tile
+				# with N files shows exactly one Copy All row. Disabled when no
+				# copyable+fitting file remains.
+				_dynamic_menu.add_item("Copy All", 6999)
+				var copy_all_idx = _dynamic_menu.get_item_index(6999)
+				_dynamic_menu.set_item_disabled(copy_all_idx, not any_copyable)
 				# Always open the menu here so the player sees the ✓ state /
 				# visual indicator even when every file is already copied.
 				options_added = true

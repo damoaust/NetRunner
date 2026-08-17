@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WatchdogProgram" format=3 uid="uid://bw471kn1nru5"]
+[gd_resource type="Resource" script_class="WatchdogProgram" format=3 uid="uid://coq4feu0gg8mm"]
 
 [ext_resource type="Script" uid="uid://dkmnxhjk5qo6c" path="res://scripts/programs/watchdog_program.gd" id="1_wd"]
 

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://c2i647ws004kk"]
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://4n2q6jfblrav"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_d6cun"]
 [ext_resource type="Texture2D" uid="uid://bctqql3dnajf2" path="res://sprites/Shinobi/Idle.png" id="2_spr1"]
@@ -13,6 +13,8 @@ strength = 6
 price = 1480
 description = "Attacks all types, 1D6 damage to target STR. Mobile"
 glyph = "🤖"
-damage_dice = 6
 sprite_texture = ExtResource("2_spr1")
+sprite_offset = Vector2(0, -17)
+sprite_scale = 2.0
+damage_dice = 6
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

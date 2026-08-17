@@ -1,5 +1,5 @@
 class_name CP2020NpcNetrunner
-extends Node2D
+extends GridEntityBase
 
 # Full netrunner-entity NPC (unlike Black ICE, which is a contact-attack
 # pathfinder). Carries a cyberdeck (MU + installed programs), health, and
@@ -11,7 +11,6 @@ extends Node2D
 # takes damage.
 
 signal message_logged(msg: String)
-signal moved_to(new_pos: Vector2i)
 signal attacked_netrunner(strength: int)
 signal destroyed
 signal took_damage(amount: int)
@@ -46,19 +45,9 @@ enum Disposition { HOSTILE, NEUTRAL }
 # the programs into the persistent vendor catalogue on defeat.
 var source_program_paths: Array[String] = []
 
-@export var cell_size: int = 40
-@export var grid_offset_y: int = 90
-@export var label_visual_offset: Vector2 = Vector2(-2, -4)
-
-var current_position: Vector2i = Vector2i.ZERO
 var current_integrity: int = 4
 var current_health: int = 10
-var astar_grid: AStarGrid2D
 var _activated: bool = false
-# Floor this NPC was spawned on. Adversaries stay on their floor — they do
-# not follow the runner up/down. The game session gates take_turn by
-# `home_floor == layout.current_floor`. See docs/multi-floor-travel-plan.md §2b.
-var home_floor: int = 0
 # Tracks the previous turn's LoS state so transition messages log only on
 # the seen<->lost change.
 var _had_los: bool = false
@@ -73,33 +62,20 @@ var cloak_program: NetProgram = null
 # Raised shield program (consumed on the next inbound hit), mirroring the
 # player netrunner's raised_shield mechanic.
 var raised_shield: NetProgram = null
+# Shield cooldown: after a shield is consumed (breached or held), the NPC
+# cannot raise another for one turn. Prevents the infinite-shield exploit
+# where a hurt NPC re-raises a fresh shield every turn.
+var _shield_cooldown: bool = false
 
-@onready var glyph_label = $GlyphLabel
+func _ready() -> void:
+	glyph_label = $GlyphLabel
 
 
 func initialize(start_pos: Vector2i, layout_size: Vector2i) -> void:
-	current_position = start_pos
+	super.initialize(start_pos, layout_size)
 	current_integrity = max_integrity
 	current_health = max_health
-
-	if glyph_label:
-		glyph_label.size = Vector2(cell_size, cell_size)
-		glyph_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + label_visual_offset
-		glyph_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		glyph_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_apply_glyph_style()
-
-	update_visual_position()
-
-	if astar_grid:
-		astar_grid.free()
-	astar_grid = AStarGrid2D.new()
-	astar_grid.region = Rect2i(0, 0, layout_size.x, layout_size.y)
-	astar_grid.cell_size = Vector2(1, 1)
-	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
-	astar_grid.update()
-
-	moved_to.emit(current_position)
+	_apply_glyph_style()
 
 
 func _apply_glyph_style() -> void:
@@ -114,12 +90,6 @@ func _apply_glyph_style() -> void:
 			glyph_label.add_theme_color_override("font_color", Color.YELLOW)
 
 
-func update_visual_position() -> void:
-	var center_x = (current_position.x * cell_size) + (cell_size / 2.0)
-	var center_y = grid_offset_y + (current_position.y * cell_size) + (cell_size / 2.0)
-	position = Vector2(center_x, center_y)
-
-
 # Turn driver. The turn manager calls this on every adversary each ICE turn.
 # `target_pos` is the player netrunner's current grid coordinate.
 func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
@@ -132,6 +102,7 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 
 	if disposition == Disposition.NEUTRAL:
 		_wander(layout)
+		_shield_cooldown = false
 		return
 
 	# HOSTILE: sight gating. A hostile NPC can only pursue/attack when it has
@@ -142,6 +113,7 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 		if _had_los:
 			message_logged.emit("%s loses sight of the netrunner — holding position." % npc_name)
 		_had_los = false
+		_shield_cooldown = false
 		return
 
 	# Invisibility cloak gate: a hostile NPC that just gained LoS (not yet
@@ -155,12 +127,12 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 		message_logged.emit("%s reacquires the netrunner!" % npc_name)
 	_had_los = true
 	if cloak_program != null and not was_engaged:
-		var hider_roll := randi_range(1, 10) + cloak_program.strength
-		var seeker_roll := randi_range(1, 10) + strength
-		message_logged.emit("Invisibility check: runner %d (1D10+%d) vs %s %d (1D10+%d)." % [hider_roll, cloak_program.strength, npc_name, seeker_roll, strength])
-		if seeker_roll <= hider_roll:
+		var result := CP2020Dice.roll_opposed(strength, cloak_program.strength)
+		message_logged.emit("Invisibility check: runner %d (1D10+%d) vs %s %d (1D10+%d)." % [result.def_roll, cloak_program.strength, npc_name, result.atk_roll, strength])
+		if not result.attacker_wins:
 			message_logged.emit("Invisibility holds — %s registers you as static and ignores you." % npc_name)
 			_had_los = false
+			_shield_cooldown = false
 			return
 		message_logged.emit("Invisibility pierced by %s! Cloak burned out." % npc_name)
 		cloak_program = null
@@ -168,7 +140,7 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 		# Fall through: this NPC now pursues/attacks normally.
 
 	# HOSTILE: pursue + use programs.
-	_update_obstacles(layout)
+	refresh_pathfinding(layout)
 
 	var ap_remaining = max_ap
 	while ap_remaining > 0:
@@ -180,13 +152,14 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 				break
 			current_position = next_step
 			ap_remaining -= 1
-			update_visual_position()
-			await get_tree().create_timer(0.3).timeout
-			moved_to.emit(current_position)
+			await _guarded_step_timer(0.3)
 		else:
 			# Adjacent or unreachable: act from range if we can.
 			_attack_player()
 			break
+	# Shield cooldown expires at end of the NPC's turn — prevents re-raising
+	# the same round a shield was consumed (see take_damage).
+	_shield_cooldown = false
 
 
 func _wander(layout: CP2020DatafortLayout) -> void:
@@ -212,16 +185,17 @@ func _wander(layout: CP2020DatafortLayout) -> void:
 	if candidates.is_empty():
 		return
 	current_position = candidates[randi() % candidates.size()]
-	update_visual_position()
-	await get_tree().create_timer(0.2).timeout
-	moved_to.emit(current_position)
+	await _guarded_step_timer(0.2)
 
 
 # Resolve an attack against the player. Prefer an anti-personnel program
 # (DAMAGE_RUNNER) for its strength; fall back to the NPC's base strength.
 # If hurt and a shield program is available, raise it instead of attacking.
 func _attack_player() -> void:
-	if current_health < max_health:
+	# Raise a shield when hurt (integrity below max), not on cooldown, and
+	# no shield already raised. The shield is consumed on the next inbound
+	# hit, and the cooldown prevents re-raising every turn.
+	if raised_shield == null and not _shield_cooldown and current_integrity < max_integrity:
 		var shield_prog = _pick_program(NetProgram.EffectType.SHIELD)
 		if shield_prog:
 			raised_shield = shield_prog
@@ -244,21 +218,6 @@ func _pick_program(effect: int) -> NetProgram:
 	return best
 
 
-func _update_obstacles(layout: CP2020DatafortLayout) -> void:
-	astar_grid.fill_solid_region(astar_grid.region, false)
-	for raw_key in layout.get_floor_tiles(home_floor).keys():
-		var coord: Vector2i
-		if raw_key is String:
-			var parts = raw_key.split(",")
-			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-		else:
-			coord = raw_key
-		var tile = layout.get_tile(coord, home_floor)
-		if tile:
-			if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL or (tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked):
-				astar_grid.set_point_solid(coord, true)
-
-
 func update_visibility(_is_explored: bool, p_visible: bool) -> void:
 	if glyph_label:
 		glyph_label.visible = p_visible
@@ -268,15 +227,17 @@ func take_damage(amount: int) -> bool:
 	var damage: int = amount
 	# A raised shield opposes the inbound hit (same opposed roll as the player).
 	if raised_shield != null:
-		var shield_roll := randi_range(1, 10) + raised_shield.strength
-		var attack_roll := randi_range(1, 10) + amount
-		message_logged.emit("%s shield opposes: %d vs attack %d." % [npc_name, shield_roll, attack_roll])
-		if shield_roll >= attack_roll:
+		var result := CP2020Dice.roll_opposed(amount, raised_shield.strength)
+		message_logged.emit("%s shield opposes: %d vs attack %d." % [npc_name, result.def_roll, result.atk_roll])
+		if not result.attacker_wins:
 			message_logged.emit("%s's shield holds. No damage." % npc_name)
 			damage = 0
 		else:
 			message_logged.emit("%s's shield breached! Full damage applies." % npc_name)
 		raised_shield = null
+		# The shield was consumed (held or breached): start the one-turn
+		# cooldown so the NPC can't immediately re-raise a fresh shield.
+		_shield_cooldown = true
 
 	if damage > 0:
 		current_integrity -= damage

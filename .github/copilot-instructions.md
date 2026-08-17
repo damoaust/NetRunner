@@ -57,5 +57,4 @@ The game is a **decoupled component architecture** driven by signals and a singl
 - `scripts/resources/cp2020_npc_netrunner.gd` — NPC netrunner node (NetWatch + random runners).
 - `scripts/resources/CP2020DatafortLayout.gd` + `CP2020TileData.gd` — core data model.
 - `scripts/resources/cp2020_security_tier.gd` — shared tier constants (single source of truth).
-- `scripts/resources/cp2020_datafort_designer.gd`, `cp2020_world_map_designer.gd`, `cp2020_city_grid_designer.gd` — `@tool` authoring tools.
-- `tools/generate_city_grids.gd` — city-grid generator script (run from the editor).
+- `scripts/resources/cp2020_datafort_designer.gd`, `cp2020_world_map_designer.gd`, `cp2020_city_grid_designer.gd` — `@tool` authoring tools. City grids are hand-authored via the city grid designer (no generator script exists).

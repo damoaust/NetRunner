@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://bxf3rnkpngeh3"]
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://ddwd6bm8dh4g7"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_ai1st"]
 [ext_resource type="Texture2D" uid="uid://cuhsug5kgon10" path="res://sprites/Fighter/Idle.png" id="2_spr1"]
@@ -13,7 +13,11 @@ strength = 2
 price = 1320
 description = "Attacks all types, 1D6 damage to target STR. Mobile"
 glyph = "🤖"
-glyph_offset = Vector2(-5, 0)
-damage_dice = 6
+glyph_offset = Vector2(-6, 4)
+glyph_auto_center = false
 sprite_texture = ExtResource("2_spr1")
+sprite_frame_size = 137
+sprite_offset = Vector2(3, -14)
+sprite_scale = 2.0
+damage_dice = 6
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

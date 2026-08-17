@@ -177,3 +177,27 @@ text = "Set as Runner Spawn"
 [node name="DeleteHubButton" type="Button" parent="SidePanel" unique_id=828817965]
 layout_mode = 2
 text = "Delete Hub"
+
+[node name="SaveDialog" type="FileDialog" parent="."]
+title = "Save World Map Layout"
+file_mode = 2
+access = 0
+filters = PackedStringArray("*.tres ; World Map Layout")
+
+[node name="LoadDialog" type="FileDialog" parent="."]
+title = "Open a File"
+file_mode = 0
+access = 0
+filters = PackedStringArray("*.tres ; World Map Layout")
+
+[node name="BrowseDialog" type="FileDialog" parent="."]
+title = "Open a File"
+file_mode = 0
+access = 0
+filters = PackedStringArray("*.tres ; Subnet Resource")
+
+[node name="CityGridBrowseDialog" type="FileDialog" parent="."]
+title = "Open a File"
+file_mode = 0
+access = 0
+filters = PackedStringArray("*.tres ; City Grid Layout")

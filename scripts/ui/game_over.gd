@@ -59,6 +59,9 @@ func _ready() -> void:
 
 
 func _on_new_life_pressed() -> void:
-	RunState.start_new_life()
+	# Clear the dead runner's save BEFORE start_new_life, because
+	# start_new_life() now persists the fresh state via save_run(). Doing it
+	# in the other order would delete the fresh save we just wrote.
 	RunState.clear_run_save()
+	RunState.start_new_life()
 	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")

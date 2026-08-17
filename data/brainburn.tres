@@ -11,5 +11,4 @@ memory_cost = 4
 strength = 5
 price = 3000
 description = "Anti-personnel attack program. Overloads the runner's cortex with white noise, dealing flat STR damage per hit."
-glyph_offset = Vector2(-5, -2)
 glyph_auto_center = false

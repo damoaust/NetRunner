@@ -10,6 +10,12 @@ extends Control
 
 enum Tool { DATAFORT, LDL_ENTRY, ERASER }
 
+# Grid geometry constants (mirror CP2020NeonGridRenderer.CELL and the
+# designer renderer's GRID_OFFSET_X; duplicated locally so this designer
+# script does not depend on the renderer's class-constant resolution).
+const CELL: int = 40
+const GRID_OFFSET_X: int = 20
+
 # Cyberpunk/neon palette for the UI panels (grid palette lives on the renderer).
 const COLOR_UI_BG: Color = Color(0.03, 0.05, 0.08, 0.92)
 const COLOR_UI_BORDER: Color = Color(0.0, 0.85, 1.0, 0.85)
@@ -53,7 +59,6 @@ func _ready() -> void:
 		current_layout = CP2020CityGridLayout.new()
 		current_layout.grid_cols = 20
 		current_layout.grid_rows = 12
-	_setup_file_dialogs_if_missing()
 	_setup_signals()
 	_populate_tier_option()
 	_refresh_side_panel()
@@ -141,30 +146,13 @@ func _make_panel_style(bg: Color, border: Color) -> StyleBoxFlat:
 
 func _sync_renderer() -> void:
 	if grid_renderer:
+		# Derive the grid's vertical offset from the TopPanel's bottom edge so
+		# it tracks the scene layout instead of a hardcoded magic number.
+		if top_panel and top_panel.size.y > 0:
+			grid_renderer.grid_offset_y = int(top_panel.position.y + top_panel.size.y) + 10
 		grid_renderer.current_layout = current_layout
 		grid_renderer.selected_datafort = selected_datafort
 		grid_renderer.queue_redraw()
-
-
-func _setup_file_dialogs_if_missing() -> void:
-	if not save_dialog:
-		save_dialog = FileDialog.new()
-		save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-		save_dialog.access = FileDialog.ACCESS_RESOURCES
-		save_dialog.add_filter("*.tres", "City Grid Layout")
-		add_child(save_dialog)
-	if not load_dialog:
-		load_dialog = FileDialog.new()
-		load_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		load_dialog.access = FileDialog.ACCESS_RESOURCES
-		load_dialog.add_filter("*.tres", "City Grid Layout")
-		add_child(load_dialog)
-	if not browse_dialog:
-		browse_dialog = FileDialog.new()
-		browse_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		browse_dialog.access = FileDialog.ACCESS_RESOURCES
-		browse_dialog.add_filter("*.tres", "Subnet Resource")
-		add_child(browse_dialog)
 
 
 func _setup_signals() -> void:
@@ -356,19 +344,31 @@ func _refresh_side_panel() -> void:
 	side_panel.visible = selected_datafort != null
 	if selected_datafort == null:
 		return
-	if df_name_edit and df_name_edit.text_changed.is_connected(_on_df_name_changed):
+	if df_name_edit:
+		df_name_edit.set_block_signals(true)
 		df_name_edit.text = selected_datafort.name
-	if subnet_path_edit and subnet_path_edit.text_changed.is_connected(_on_subnet_path_changed):
+		df_name_edit.set_block_signals(false)
+	if subnet_path_edit:
+		subnet_path_edit.set_block_signals(true)
 		subnet_path_edit.text = selected_datafort.subnet_path
-	if security_tier_option and security_tier_option.item_selected.is_connected(_on_security_tier_changed):
+		subnet_path_edit.set_block_signals(false)
+	if security_tier_option:
+		security_tier_option.set_block_signals(true)
 		var tier := clampi(int(selected_datafort.security_tier), 0, CP2020SecurityTier.Tier.size() - 1)
 		security_tier_option.select(tier)
-	if ldl_cost_spinbox and ldl_cost_spinbox.value_changed.is_connected(_on_ldl_cost_changed):
+		security_tier_option.set_block_signals(false)
+	if ldl_cost_spinbox:
+		ldl_cost_spinbox.set_block_signals(true)
 		ldl_cost_spinbox.value = selected_datafort.ldl_cost
-	if security_code_spinbox and security_code_spinbox.value_changed.is_connected(_on_security_code_changed):
+		ldl_cost_spinbox.set_block_signals(false)
+	if security_code_spinbox:
+		security_code_spinbox.set_block_signals(true)
 		security_code_spinbox.value = selected_datafort.security_code
-	if trace_value_spinbox and trace_value_spinbox.value_changed.is_connected(_on_trace_value_changed):
+		security_code_spinbox.set_block_signals(false)
+	if trace_value_spinbox:
+		trace_value_spinbox.set_block_signals(true)
 		trace_value_spinbox.value = selected_datafort.trace_value
+		trace_value_spinbox.set_block_signals(false)
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +408,14 @@ func _apply_tool(coord: Vector2i) -> void:
 
 
 func _screen_to_grid(screen_pos: Vector2) -> Vector2i:
-	var x := int((screen_pos.x - CP2020CityGridRenderer.GRID_OFFSET_X) / CP2020CityGridRenderer.CELL)
-	var y := int((screen_pos.y - CP2020CityGridRenderer.GRID_OFFSET_Y) / CP2020CityGridRenderer.CELL)
+	var x := int((screen_pos.x - GRID_OFFSET_X) / CELL)
+	var y := int((screen_pos.y - grid_offset_y_for_input()) / CELL)
 	return Vector2i(clampi(x, 0, current_layout.grid_cols - 1), clampi(y, 0, current_layout.grid_rows - 1))
+
+
+# Grid vertical offset used for mouse→grid conversion. Mirrors the renderer's
+# scene-derived grid_offset_y so input stays aligned with the drawn grid.
+func grid_offset_y_for_input() -> int:
+	if grid_renderer:
+		return grid_renderer.grid_offset_y
+	return 90  # fallback before the designer pushes the scene-derived value

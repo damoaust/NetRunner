@@ -55,7 +55,7 @@ security_tier = 4
 script = ExtResource("1_vo1hh")
 name = "Joey's Pizza"
 pos = Vector2i(7, 7)
-subnet_path = "res://scenes/forts/fort4.tres"
+subnet_path = "res://scenes/forts/ice_test_map.tres"
 security_tier = 0
 
 [resource]

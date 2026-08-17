@@ -47,6 +47,15 @@ enum TileType {
 # Set by the game session and the designer before any floor-scoped read/write.
 var current_floor: int = 0
 
+# Parse a tile-dictionary key into a Vector2i. Serialised .tres files store
+# grid-tile keys as "x,y" strings; runtime code uses Vector2i. This handles
+# both forms so call sites don't repeat the inline split/branch pattern.
+static func parse_coord(raw_key: Variant) -> Vector2i:
+	if raw_key is String:
+		var parts: PackedStringArray = raw_key.split(",")
+		return Vector2i(parts[0].to_int(), parts[1].to_int())
+	return raw_key
+
 # Lazily migrates legacy grid_tiles into floors[0] on first access. Safe to
 # call repeatedly — short-circuits once floors is populated. Handles both
 # truly-new layouts (empty grid_tiles, empty floors) and legacy .tres files
@@ -83,24 +92,72 @@ func get_tile(coord: Vector2i, floor: int) -> CP2020TileData:
 			return null
 
 	var raw_data = tile_dict[key]
-	
+
 	# If it's already a CP2020TileData object, return it directly
 	if raw_data is CP2020TileData:
 		return raw_data
-		
-	# If it's still a raw Dictionary from the .tres file, convert it on the fly!
+
+	# If it's still a raw Dictionary from a legacy .tres file, convert it on
+	# the fly into a proper CP2020TileData, copying EVERY @export field so
+	# nothing is silently dropped. Normalise the storage key to Vector2i
+	# (erasing the legacy "x,y" string key) so subsequent reads are direct
+	# lookups and we never convert the same tile twice.
 	if raw_data is Dictionary:
-		var tile_obj = CP2020TileData.new()
-		tile_obj.tile_type = raw_data.get("tile_type", 0)
-		tile_obj.is_explored = raw_data.get("is_explored", false)
-		tile_obj.is_visible = raw_data.get("is_visible", false)
-		tile_obj.is_unlocked = raw_data.get("is_unlocked", true)
-		
-		# Replace the raw dictionary with the proper object so we only convert once
-		tile_dict[key] = tile_obj
+		push_error("Unexpected raw Dictionary tile at %s — migration may be incomplete" % coord)
+		var tile_obj := _convert_raw_tile(raw_data)
+		tile_dict.erase(key)
+		tile_dict[coord] = tile_obj
 		return tile_obj
-		
+
 	return null
+
+# Converts a legacy raw Dictionary tile (from a pre-typed .tres file) into a
+# proper CP2020TileData, copying every @export field. Any field missing from
+# the dictionary falls back to the CP2020TileData default. Used by get_tile
+# for on-the-fly migration of legacy tiles so no authored data is lost.
+func _convert_raw_tile(raw_data: Dictionary) -> CP2020TileData:
+	var t := CP2020TileData.new()
+	t.tile_type = raw_data.get("tile_type", CP2020DatafortLayout.TileType.EMPTY)
+	t.tile_name = raw_data.get("tile_name", "")
+	t.strength_str = raw_data.get("strength_str", 0)
+	t.memory_units_mu = raw_data.get("memory_units_mu", 0)
+	t.reward_credits = raw_data.get("reward_credits", 0)
+	t.is_unlocked = raw_data.get("is_unlocked", false)
+	t.ldl_links = raw_data.get("ldl_links", {})
+	t.is_visible = raw_data.get("is_visible", false)
+	t.is_explored = raw_data.get("is_explored", false)
+	t.is_ldl_link = raw_data.get("is_ldl_link", false)
+	t.target_subnet_path = raw_data.get("target_subnet_path", "")
+	t.target_entry_coord = raw_data.get("target_entry_coord", Vector2i(-1, -1))
+	t.is_primary_entry = raw_data.get("is_primary_entry", false)
+	t.can_go_up = raw_data.get("can_go_up", false)
+	t.up_target_entry_coord = raw_data.get("up_target_entry_coord", Vector2i(-1, -1))
+	t.can_go_down = raw_data.get("can_go_down", false)
+	t.down_target_entry_coord = raw_data.get("down_target_entry_coord", Vector2i(-1, -1))
+	t.ice_program = raw_data.get("ice_program", null)
+	t.npc_name = raw_data.get("npc_name", "")
+	t.npc_strength = raw_data.get("npc_strength", 0)
+	t.npc_max_ap = raw_data.get("npc_max_ap", 0)
+	t.npc_max_integrity = raw_data.get("npc_max_integrity", 0)
+	t.npc_max_health = raw_data.get("npc_max_health", 0)
+	t.npc_max_mu = raw_data.get("npc_max_mu", 0)
+	t.npc_deck_name = raw_data.get("npc_deck_name", "")
+	t.npc_disposition = raw_data.get("npc_disposition", CP2020NpcNetrunner.Disposition.HOSTILE)
+	t.npc_disposition_override = raw_data.get("npc_disposition_override", false)
+	t.npc_has_override = raw_data.get("npc_has_override", false)
+	t.npc_programs = raw_data.get("npc_programs", [])
+	t.cpu_int = raw_data.get("cpu_int", 0)
+	t.cpu_crashed_turns = raw_data.get("cpu_crashed_turns", 0)
+	t.loot_programs = raw_data.get("loot_programs", [])
+	t.loot_modules = raw_data.get("loot_modules", [])
+	t.loot_credits = raw_data.get("loot_credits", 0)
+	t.is_looted = raw_data.get("is_looted", false)
+	t.files = raw_data.get("files", [])
+	t.copied_file_paths = raw_data.get("copied_file_paths", PackedStringArray())
+	t.worm_turns_remaining = raw_data.get("worm_turns_remaining", 0)
+	t.worm_integrity = raw_data.get("worm_integrity", 0)
+	t.worm_max_integrity = raw_data.get("worm_max_integrity", 0)
+	return t
 
 # Writes a tile at coord using a Vector2i key, first erasing any existing
 # entry under either the Vector2i or "x,y" string key form. Serialised .tres

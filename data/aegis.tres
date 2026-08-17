@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://cpi7fj6m5xvmw"]
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://de803c64n74d3"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_aegis"]
 
@@ -11,4 +11,5 @@ memory_cost = 4
 strength = 6
 price = 650
 description = "Reinforced shield program. Recharges armor to absorb ICE damage."
+glyph_auto_center = false
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

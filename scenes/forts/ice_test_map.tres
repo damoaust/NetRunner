@@ -19,6 +19,7 @@
 [ext_resource type="Resource" path="res://data/deathlok.tres" id="17_3bino"]
 [ext_resource type="Resource" path="res://data/flatline.tres" id="18_shab7"]
 [ext_resource type="Script" path="res://scripts/resources/CP2020DatafortLayout.gd" id="19_aq4gv"]
+[ext_resource type="Resource" path="res://data/killer2.tres" id="19_ra75s"]
 
 [sub_resource type="Resource" id="Resource_2o2gp"]
 script = ExtResource("5_m3ewl")
@@ -135,6 +136,13 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_rh35o"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("6_c0x60")
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_1y2n8"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
@@ -203,6 +211,13 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_6gss5"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_d16ed"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("7_em6qc")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_4v3er"]
@@ -275,6 +290,13 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_ql1b4"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("8_uxyum")
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_k2ygy"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
@@ -343,6 +365,13 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_syah0"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_1jy45"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("9_85qal")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_xis5g"]
@@ -415,6 +444,13 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_15qyq"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("10_3ownv")
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_crku3"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
@@ -485,6 +521,13 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_1bojj"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("11_doaqy")
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_0alkh"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
@@ -550,9 +593,18 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
-[sub_resource type="Resource" id="Resource_gisdu"]
+[sub_resource type="Resource" id="Resource_tvvdi"]
 script = ExtResource("5_m3ewl")
-tile_name = "Empty Path"
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("19_ra75s")
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rfwle"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("12_yfls8")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_l63e2"]
@@ -573,6 +625,14 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_cn00v"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_hf88x"]
+script = ExtResource("5_m3ewl")
+tile_type = 3
+tile_name = "LDL Link"
+is_ldl_link = true
+is_primary_entry = true
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_204dy"]
@@ -618,6 +678,13 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_504xg"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_w6et1"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("13_itnsu")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_cyx6p"]
@@ -690,6 +757,13 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_s0xp3"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("14_fuj0w")
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_v31tt"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
@@ -758,6 +832,13 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_rvs2x"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_jomcd"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("15_ymxnr")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_xbmka"]
@@ -830,6 +911,13 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_q0cue"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("16_w0jo8")
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_6bhos"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
@@ -900,6 +988,13 @@ script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
 copied_file_paths = PackedStringArray()
 
+[sub_resource type="Resource" id="Resource_qff68"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("17_3bino")
+copied_file_paths = PackedStringArray()
+
 [sub_resource type="Resource" id="Resource_hijmk"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
@@ -968,6 +1063,13 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_o5mbt"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
+copied_file_paths = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0big2"]
+script = ExtResource("5_m3ewl")
+tile_type = 7
+tile_name = "Black ICE"
+ice_program = ExtResource("18_shab7")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_dj1un"]
@@ -1073,105 +1175,6 @@ copied_file_paths = PackedStringArray()
 [sub_resource type="Resource" id="Resource_ogan4"]
 script = ExtResource("5_m3ewl")
 tile_name = "Empty Path"
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_hf88x"]
-script = ExtResource("5_m3ewl")
-tile_type = 3
-tile_name = "LDL Link"
-is_ldl_link = true
-is_primary_entry = true
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_rh35o"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("6_c0x60")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_d16ed"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("7_em6qc")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_ql1b4"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("8_uxyum")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_1jy45"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("9_85qal")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_15qyq"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("10_3ownv")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_1bojj"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("11_doaqy")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_rfwle"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("12_yfls8")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_w6et1"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("13_itnsu")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_s0xp3"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("14_fuj0w")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_jomcd"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("15_ymxnr")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_q0cue"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("16_w0jo8")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_qff68"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("17_3bino")
-copied_file_paths = PackedStringArray()
-
-[sub_resource type="Resource" id="Resource_0big2"]
-script = ExtResource("5_m3ewl")
-tile_type = 7
-tile_name = "Black ICE"
-ice_program = ExtResource("18_shab7")
 copied_file_paths = PackedStringArray()
 
 [sub_resource type="Resource" id="Resource_wkng7"]
@@ -1289,7 +1292,7 @@ Vector2i(7, 3): SubResource("Resource_fn58l"),
 Vector2i(7, 4): SubResource("Resource_apy2s"),
 Vector2i(7, 5): SubResource("Resource_6cdfw"),
 Vector2i(7, 6): SubResource("Resource_fsfhi"),
-Vector2i(7, 7): SubResource("Resource_gisdu"),
+Vector2i(7, 7): SubResource("Resource_tvvdi"),
 Vector2i(7, 8): SubResource("Resource_rfwle"),
 Vector2i(7, 9): SubResource("Resource_l63e2"),
 Vector2i(7, 10): SubResource("Resource_f5mbj"),

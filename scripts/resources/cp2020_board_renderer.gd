@@ -101,6 +101,9 @@ var _default_font: Font = null
 # while alpha > 0. A persistent HUD label is always drawn in the header.
 var _floor_flash_alpha: float = 0.0
 var _pulse_time: float = 0.0
+# Set by request_redraw() (callers in the game session) to force one more
+# redraw on the next _process tick. Reset to false right after queue_redraw.
+var _needs_redraw: bool = false
 
 func _get_default_font() -> Font:
 	if _default_font == null:
@@ -151,11 +154,32 @@ func flash_floor_label() -> void:
 	_floor_flash_alpha = 1.0
 	queue_redraw()
 
+func request_redraw() -> void:
+	# Public, cheap (sets a bool) entry point for callers that change board
+	# state (movement, rez/de-rez, fog reveal, loot, ...). The actual
+	# queue_redraw() is issued from _process only when something needs
+	# animating, so a static board no longer redraws every frame.
+	_needs_redraw = true
+
 func _process(delta: float) -> void:
 	_pulse_time += delta
 	if _floor_flash_alpha > 0.0:
 		_floor_flash_alpha = max(0.0, _floor_flash_alpha - delta * 0.7)
-	queue_redraw()
+	# Redraw only when something is actually animating or has been explicitly
+	# requested, instead of unconditionally every frame. The neon grid-line
+	# "breathing" (_pulse_value, used by _draw_neon_grid_lines) is coupled to
+	# these active states — it stays alive while a floor-change flash is
+	# decaying, while watchdog beacons or rezzed programs are deployed (their
+	# halos pulse via Time.get_ticks_msec), or after a request_redraw(). When
+	# the board is truly static (no flash, no beacons, no rezzed nodes, no
+	# pending request) we skip the per-frame full-grid redraw — the main perf
+	# win. To make the breathing always-on, revert queue_redraw() to be
+	# unconditional (and keep _pulse_time advancing above).
+	if _needs_redraw or _floor_flash_alpha > 0.0 \
+			or not watchdog_beacons.is_empty() \
+			or not rezzed_program_nodes.is_empty():
+		_needs_redraw = false
+		queue_redraw()
 
 func _pulse_value() -> float:
 	return 0.5 + 0.5 * sin(_pulse_time * 3.0)

@@ -11,5 +11,4 @@ memory_cost = 5
 strength = 7
 price = 2500
 description = "Heavy armor program. Absorbs damage point-for-point: its Strength subtracts from each incoming hit before the remainder reaches your health."
-glyph_offset = Vector2(-5, -2)
 glyph_auto_center = false

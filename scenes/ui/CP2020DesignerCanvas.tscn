@@ -3,7 +3,8 @@
 [ext_resource type="Script" uid="uid://c5bhyhegsspuo" path="res://scripts/resources/cp2020_datafort_designer.gd" id="1_4q7o0"]
 [ext_resource type="Texture2D" uid="uid://dc13kp1hi7m4e" path="res://background_city.jpg" id="2_feun2"]
 [ext_resource type="Script" uid="uid://5hwxt0jx342i" path="res://scripts/resources/cp2020_datafort_grid_canvas.gd" id="2_grid"]
-[ext_resource type="Theme" uid="uid://yv4oys2uo6v" path="res://themes/cyberpunk_theme.tres" id="3_n21rt"]
+[ext_resource type="Script" uid="uid://cl6qms4h6tigs" path="res://scripts/resources/cp2020_glyph_preview.gd" id="3_glyph"]
+[ext_resource type="Script" uid="uid://s0tjk1r4rtxk" path="res://scripts/resources/cp2020_sprite_preview.gd" id="4_sprite"]
 
 [sub_resource type="Environment" id="Environment_gmksv"]
 background_mode = 3
@@ -283,7 +284,6 @@ offset_left = -262.0
 offset_top = 118.0
 offset_bottom = 958.0
 grow_horizontal = 0
-theme = ExtResource("3_n21rt")
 
 [node name="VBox" type="VBoxContainer" parent="EntryEditorPanel" unique_id=1512423077]
 layout_mode = 2
@@ -378,9 +378,9 @@ anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -570.0
-offset_top = -442.5
-offset_bottom = -217.5
+offset_left = -411.0
+offset_top = -318.0
+offset_bottom = 318.0
 grow_horizontal = 0
 grow_vertical = 2
 
@@ -409,6 +409,99 @@ text = "Assign program .tres..."
 [node name="ClearButton" type="Button" parent="IceEditorPanel/VBox" unique_id=1474811403]
 layout_mode = 2
 text = "Clear assigned program"
+
+[node name="GlyphSep" type="HSeparator" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+
+[node name="GlyphTitle" type="Label" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+text = "Glyph Alignment"
+
+[node name="GlyphPreview" type="Control" parent="IceEditorPanel/VBox"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+script = ExtResource("3_glyph")
+
+[node name="GlyphAutoCenterCheck" type="CheckBox" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+text = "Auto-Center (uncheck for manual offset)"
+
+[node name="GlyphOffsetRow" type="HBoxContainer" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+
+[node name="OffsetXLabel" type="Label" parent="IceEditorPanel/VBox/GlyphOffsetRow"]
+layout_mode = 2
+text = "Offset X:"
+
+[node name="GlyphOffsetXSpin" type="SpinBox" parent="IceEditorPanel/VBox/GlyphOffsetRow"]
+layout_mode = 2
+min_value = -40.0
+max_value = 40.0
+step = 1.0
+
+[node name="OffsetYLabel" type="Label" parent="IceEditorPanel/VBox/GlyphOffsetRow"]
+layout_mode = 2
+text = "Y:"
+
+[node name="GlyphOffsetYSpin" type="SpinBox" parent="IceEditorPanel/VBox/GlyphOffsetRow"]
+layout_mode = 2
+min_value = -40.0
+max_value = 40.0
+step = 1.0
+
+[node name="GlyphSaveButton" type="Button" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+text = "Save program .tres"
+tooltip_text = "Persist glyph_offset / glyph_auto_center to the program's .tres file."
+
+[node name="SpriteSep" type="HSeparator" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+
+[node name="SpriteTitle" type="Label" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+text = "Sprite Alignment"
+
+[node name="SpritePreview" type="Control" parent="IceEditorPanel/VBox"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+script = ExtResource("4_sprite")
+
+[node name="SpriteOffsetRow" type="HBoxContainer" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+
+[node name="SpriteOffsetXLabel" type="Label" parent="IceEditorPanel/VBox/SpriteOffsetRow"]
+layout_mode = 2
+text = "Offset X:"
+
+[node name="SpriteOffsetXSpin" type="SpinBox" parent="IceEditorPanel/VBox/SpriteOffsetRow"]
+layout_mode = 2
+min_value = -40.0
+max_value = 40.0
+step = 1.0
+
+[node name="SpriteOffsetYLabel" type="Label" parent="IceEditorPanel/VBox/SpriteOffsetRow"]
+layout_mode = 2
+text = "Y:"
+
+[node name="SpriteOffsetYSpin" type="SpinBox" parent="IceEditorPanel/VBox/SpriteOffsetRow"]
+layout_mode = 2
+min_value = -40.0
+max_value = 40.0
+step = 1.0
+
+[node name="SpriteScaleRow" type="HBoxContainer" parent="IceEditorPanel/VBox"]
+layout_mode = 2
+
+[node name="SpriteScaleLabel" type="Label" parent="IceEditorPanel/VBox/SpriteScaleRow"]
+layout_mode = 2
+text = "Scale:"
+
+[node name="SpriteScaleSpin" type="SpinBox" parent="IceEditorPanel/VBox/SpriteScaleRow"]
+layout_mode = 2
+min_value = 0.1
+max_value = 4.0
+step = 0.05
+value = 1.0
 
 [node name="NpcEditorPanel" type="PanelContainer" parent="." unique_id=1719441231]
 visible = false

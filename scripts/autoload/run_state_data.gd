@@ -38,3 +38,9 @@ extends Resource
 
 @export var last_death_cause: String = ""
 @export var last_run_summary: Dictionary = {}
+
+# Schema version for forward-compatible save migrations. Increment when the
+# RunStateData layout changes; _load_run / meta_state._migrate_paths branch on
+# this to upgrade older saves in place. Defaults to 1 (the version at which the
+# field was introduced); older saves without the field load as 1.
+@export var schema_version: int = 1

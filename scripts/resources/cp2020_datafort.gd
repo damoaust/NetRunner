@@ -61,12 +61,7 @@ func initialize(layout: CP2020DatafortLayout) -> void:
 		# sight gating / line_of_sight can use the correct floor.
 		for f in range(layout.get_floor_count()):
 			for raw_key in layout.get_floor_tiles(f).keys():
-				var coord: Vector2i
-				if raw_key is String:
-					var parts = raw_key.split(",")
-					coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-				else:
-					coord = raw_key
+				var coord := CP2020DatafortLayout.parse_coord(raw_key)
 				var tile = layout.get_tile(coord, f)
 				if tile and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
 					cpus.append(Cpu.new(coord, tile, f))
@@ -130,10 +125,9 @@ func crash_cpu(program: NetProgram, target_coord: Vector2i) -> bool:
 		return false
 
 	var system_int := total_int()
-	var prog_roll = (randi() % 10) + 1 + program.strength
-	var cpu_roll = (randi() % 10) + 1 + system_int
-	message_logged.emit("Roll: you %d (1d10+%d) vs System %d (1d10+%d)\n" % [prog_roll, program.strength, cpu_roll, system_int])
-	if prog_roll > cpu_roll:
+	var result := CP2020Dice.roll_opposed(program.strength, system_int)
+	message_logged.emit("Roll: you %d (1d10+%d) vs System %d (1d10+%d)\n" % [result.atk_roll, program.strength, result.def_roll, system_int])
+	if result.attacker_wins:
 		var duration := randi_range(1, 6) + 1
 		cpu.tile.cpu_crashed_turns = duration
 		message_logged.emit("CPU at %s CRASHED for %d turns. Datafort INT now %d, %d action(s)/turn, %d MU.\n" % [target_coord, duration, total_int(), actions_per_turn(), total_mu()])
@@ -200,9 +194,15 @@ func take_turn(target_pos: Vector2i, layout: CP2020DatafortLayout) -> void:
 	for i in range(actions):
 		# Alternate between damage and anti-system attacks when both are
 		# loaded; each action runs exactly one program. Indexing by i keeps
-		# the per-action cadence stable across turns.
+		# the per-action cadence stable across turns. When only one category
+		# is loaded, that category runs every action.
+		var use_crash: bool = (i % 2 == 1) and not crash_programs.is_empty()
 		var prog: NetProgram = null
-		if not attack_programs.is_empty():
+		if use_crash:
+			prog = crash_programs[i % crash_programs.size()]
+			message_logged.emit("Datafort '%s' runs %s (STR %d) — anti-system attack on your cyberdeck!\n" % [fort_name, prog.program_name, prog.strength])
+			attacked_runner_deck.emit(prog.strength)
+		elif not attack_programs.is_empty():
 			prog = attack_programs[i % attack_programs.size()]
 			message_logged.emit("Datafort '%s' runs %s (STR %d) at the netrunner!\n" % [fort_name, prog.program_name, prog.strength])
 			attacked_netrunner.emit(prog.strength)

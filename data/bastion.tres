@@ -11,5 +11,4 @@ memory_cost = 5
 strength = 8
 price = 1200
 description = "Reinforced shield program. Recharges a formidable block that thwarts the next ICE attack on a successful opposed roll."
-glyph_offset = Vector2(-4, -2)
 glyph_auto_center = false

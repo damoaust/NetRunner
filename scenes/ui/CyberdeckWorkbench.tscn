@@ -3,12 +3,12 @@
 [ext_resource type="Script" uid="uid://xi7762rglqiw" path="res://scripts/ui/cyberdeck_workbench.gd" id="1_ih6ts"]
 [ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_gys0u"]
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="3_prog"]
-[ext_resource type="Resource" uid="uid://cpi7fj6m5xvmw" path="res://data/aegis.tres" id="4_aegis"]
-[ext_resource type="Resource" uid="uid://cix824ei0rne4" path="res://data/codecracker.tres" id="5_codecracker"]
-[ext_resource type="Resource" uid="uid://cw63wkhajkup6" path="res://data/flatline.tres" id="6_flatline"]
+[ext_resource type="Resource" uid="uid://de803c64n74d3" path="res://data/aegis.tres" id="4_aegis"]
+[ext_resource type="Resource" uid="uid://dfw5c76bl6480" path="res://data/codecracker.tres" id="5_codecracker"]
+[ext_resource type="Resource" uid="uid://bx5a16kubf18e" path="res://data/flatline.tres" id="6_flatline"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="7_hammer"]
 [ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="8_jackhammer"]
-[ext_resource type="Resource" uid="uid://bxf3rnkpngeh3" path="res://data/killer2.tres" id="9_killer"]
+[ext_resource type="Resource" uid="uid://ddwd6bm8dh4g7" path="res://data/killer2.tres" id="9_killer"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="10_shield"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="11_wizbook"]
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="12_worm"]
@@ -16,7 +16,8 @@
 [ext_resource type="Resource" uid="uid://d2g5vsrs436ao" path="res://data/kendachi.tres" id="14_kendachi"]
 [ext_resource type="Resource" uid="uid://ycvcc1ghp56k" path="res://data/ziggurat.tres" id="15_ziggurat"]
 [ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="16_killer4"]
-[ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="17_killer6"]
+[ext_resource type="Resource" uid="uid://4n2q6jfblrav" path="res://data/killer6.tres" id="17_killer6"]
+[ext_resource type="Texture2D" uid="uid://constqjrig5ca" path="res://background_hack.jpg" id="18_ldt4r"]
 [ext_resource type="Shader" uid="uid://dl6jm380sqnxn" path="res://scenes/ui/char_profile.gdshader" id="19_4btsc"]
 [ext_resource type="Texture2D" uid="uid://wqtn14d5k56f" path="res://char_1.jpg" id="20_2c18i"]
 [ext_resource type="FontFile" uid="uid://bf8ebwffw1byl" path="res://Sddystopiandemo-GO7xa.otf" id="20_ldt4r"]
@@ -51,11 +52,6 @@ script = ExtResource("1_ih6ts")
 available_decks = Array[ExtResource("2_gys0u")]([ExtResource("13_startdeck"), ExtResource("14_kendachi"), ExtResource("15_ziggurat")])
 available_programs = Array[ExtResource("3_prog")]([ExtResource("4_aegis"), ExtResource("5_codecracker"), ExtResource("6_flatline"), ExtResource("7_hammer"), ExtResource("8_jackhammer"), ExtResource("9_killer"), ExtResource("16_killer4"), ExtResource("17_killer6"), ExtResource("10_shield"), ExtResource("11_wizbook"), ExtResource("12_worm")])
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2041910377]
-environment = SubResource("Environment_dbyrx")
-camera_attributes = SubResource("CameraAttributesPhysical_va62j")
-compositor = SubResource("Compositor_4btsc")
-
 [node name="Background" type="ColorRect" parent="." unique_id=344016831]
 show_behind_parent = true
 layout_mode = 1
@@ -66,6 +62,20 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0.045, 0.02, 1)
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=384452121]
+self_modulate = Color(1, 1, 1, 0.007843138)
+layout_mode = 0
+offset_right = 2816.0
+offset_bottom = 1536.0
+texture = ExtResource("18_ldt4r")
+expand_mode = 1
+stretch_mode = 2
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2041910377]
+environment = SubResource("Environment_dbyrx")
+camera_attributes = SubResource("CameraAttributesPhysical_va62j")
+compositor = SubResource("Compositor_4btsc")
 
 [node name="Margin" type="MarginContainer" parent="." unique_id=1574270263]
 layout_mode = 1

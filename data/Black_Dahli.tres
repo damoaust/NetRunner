@@ -10,7 +10,6 @@ effect_type = 2
 memory_cost = 7
 strength = 7
 price = 2000
-glyph_offset = Vector2(-5, 0)
 glyph_auto_center = false
 damage_dice = 6
 damage_dice_count = 2

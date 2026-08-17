@@ -11,7 +11,7 @@ extends Resource
 @export var name: String = "New Datafort"
 @export var pos: Vector2i = Vector2i.ZERO
 @export var subnet_path: String = "res://scenes/forts/night_city_subnet.tres"
-@export var security_tier: int = CP2020SecurityTier.Tier.LEVEL_1
+@export var security_tier: CP2020SecurityTier.Tier = CP2020SecurityTier.Tier.LEVEL_1
 @export var ldl_cost: int = 50
 @export var security_code: int = 4
 @export var trace_value: int = 5

@@ -15,5 +15,5 @@ extends Resource
 @export var ldl_cost: int = 50
 @export var security_code: int = 4
 @export var trace_value: int = 5
-@export var security_tier: int = CP2020SecurityTier.Tier.LEVEL_1
+@export var security_tier: CP2020SecurityTier.Tier = CP2020SecurityTier.Tier.LEVEL_1
 @export var city_grid_path: String = ""

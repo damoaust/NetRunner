@@ -142,7 +142,7 @@ func _ready() -> void:
 		# deferred to after the runner's first turn; end_round then starts
 		# round 2 with a real initiative roll.
 		turn_manager.start_netrunner_turn()
-		turn_manager._post_round_adversary = true
+		turn_manager.defer_post_round_adversary()
 
 	if netrunner:
 		if not netrunner.message_logged.is_connected(log_to_terminal):
@@ -235,7 +235,6 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 	current_layout = loaded
 	if board_renderer and current_layout:
 		board_renderer.current_layout = current_layout
-		#reveal_entry_points()
 
 		# Start on floor 0 of the freshly loaded datafort. Sync the layout
 		# and netrunner so every floor-scoped read agrees.
@@ -250,12 +249,7 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		# floors[0] on first access via _ensure_floors_migrated.)
 		for f in range(current_layout.get_floor_count()):
 			for raw_key in current_layout.get_floor_tiles(f).keys():
-				var c: Vector2i
-				if raw_key is String:
-					var p = raw_key.split(",")
-					c = Vector2i(p[0].to_int(), p[1].to_int())
-				else:
-					c = raw_key
+				var c := CP2020DatafortLayout.parse_coord(raw_key)
 				var t = current_layout.get_tile(c, f)
 				if t:
 					t.is_explored = false
@@ -297,7 +291,7 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		recalculate_fog_of_war(netrunner.current_position)
 		_update_camera_limits()
 		_center_camera_on_runner()
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	return true
 
 func _update_trace(_unused: Variant = null) -> void:
@@ -411,7 +405,7 @@ func _do_travel_vertical(up: bool, clicked_coord: Vector2i) -> void:
 	_update_camera_limits()
 	_center_camera_on_runner()
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 		_flash_floor_label()
 	var floor_name := current_layout.floors[target_floor].floor_name if current_layout.floors[target_floor].floor_name != "" else "Floor %d" % target_floor
 	log_to_terminal("Travelling %s to %s (entry %s). Trace preserved.\n" % ["up" if up else "down", floor_name, target_coord])
@@ -497,7 +491,7 @@ func _input(event: InputEvent) -> void:
 				if turn_manager:
 					turn_manager.consume_movement_step()
 				recalculate_fog_of_war(netrunner.current_position)
-				board_renderer.queue_redraw()
+				board_renderer.request_redraw()
 				_check_actions_exhausted()
 
 ## Check whether the tile at `coord` would produce a right-click context menu.
@@ -745,7 +739,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				log_to_terminal("Copied %s to deck memory (%d MU).\n" % [file.file_name, file.mu_size])
 				update_deck_info()
 				if board_renderer:
-					board_renderer.queue_redraw()
+					board_renderer.request_redraw()
 		"copy_all_files":
 			# Batch-copy every fitting file from a MEMORY_UNIT tile to the
 			# deck. Like copy_file, this does NOT consume an action or end
@@ -773,7 +767,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 						else:
 							log_to_terminal("Skipped %s — not enough free deck memory.\n" % f.file_name)
 				if board_renderer:
-					board_renderer.queue_redraw()
+					board_renderer.request_redraw()
 				update_deck_info()
 				log_to_terminal("Batch copy complete.\n")
 		"loot_tile":
@@ -809,7 +803,7 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				if looted_any:
 					tile.is_looted = true
 					if board_renderer:
-						board_renderer.queue_redraw()
+						board_renderer.request_redraw()
 					update_deck_info()
 
 func _execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
@@ -818,7 +812,7 @@ func _execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 		log_to_terminal("Executing Bypass Program '%s' on Code Gate at %s...\n" % [program.program_name, target_coord])
 		tile.is_unlocked = true
 		if board_renderer:
-			board_renderer.queue_redraw()
+			board_renderer.request_redraw()
 
 func _execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord, current_floor)
@@ -828,7 +822,7 @@ func _execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 		tile.tile_type = CP2020DatafortLayout.TileType.EMPTY
 		log_to_terminal("Datawall breached! Path cleared.\n")
 		if board_renderer:
-			board_renderer.queue_redraw()
+			board_renderer.request_redraw()
 
 func _execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
 	# Worm is a stealth opener: it slips behind a DATAWALL or locked CODE_GATE
@@ -851,7 +845,7 @@ func _execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
 	var label := "data wall" if is_wall else "code gate"
 	log_to_terminal("Worm '%s' deployed behind the %s at %s — opening from the inside in 2 turns. No alert triggered.\n" % [program.program_name, label, target_coord])
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 	var target_ice: BlackIce = null
@@ -872,22 +866,21 @@ func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 	# → attack fails, no damage to either side (the defender does NOT
 	# counterstrike). If the runner's program is reduced to 0 integrity by
 	# other means (e.g. Killer ICE), it crashes and clogs MU.
-	var prog_roll := randi_range(1, 10) + program.strength
-	var ice_roll := randi_range(1, 10) + target_ice.program.strength
-	log_to_terminal("Roll: you %d (1D10+%d) vs %s %d (1D10+%d)\n" % [prog_roll, program.strength, target_ice.program.program_name, ice_roll, target_ice.program.strength])
+	var result := CP2020Dice.roll_opposed(program.strength, target_ice.program.strength)
+	log_to_terminal("Roll: you %d (1D10+%d) vs %s %d (1D10+%d)\n" % [result.atk_roll, program.strength, target_ice.program.program_name, result.def_roll, target_ice.program.strength])
 
-	if prog_roll > ice_roll:
+	if result.attacker_wins:
 		var dmg := randi_range(1, 6)
 		log_to_terminal("Hit! %s takes %d damage.\n" % [target_ice.program.program_name, dmg])
 		if target_ice.take_damage(dmg):
 			ice_nodes.erase(target_ice)
-	elif ice_roll > prog_roll:
+	elif not result.tie:
 		log_to_terminal("%s repels the attack — no damage.\n" % target_ice.program.program_name)
 	else:
 		log_to_terminal("Standoff — both sides hold, no damage.\n")
 
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _execute_shield(program: NetProgram) -> void:
 	if not netrunner:
@@ -926,7 +919,7 @@ func _execute_invisibility(program: NetProgram) -> bool:
 				npc.cloak_pierced.connect(_on_cloak_pierced)
 	log_to_terminal("Activating Invisibility '%s' (Cloak STR %d) — overlaying false signal on your trace.\n" % [program.program_name, program.strength])
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	return true
 
 # A dormant adversary won the opposed detection roll: the cloak is pierced.
@@ -944,7 +937,7 @@ func _on_cloak_pierced() -> void:
 			npc.cloak_program = null
 	log_to_terminal("Invisibility pierced — you are visible! Cloak burned out.\n")
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 # Deploy a Watchdog beacon at the netrunner's current position. The beacon
 # monitors a 20-space LoS radius each turn and alerts when enemies approach.
@@ -962,7 +955,7 @@ func deploy_watchdog_beacon(program: NetProgram, target_coord: Vector2i) -> void
 		board_renderer.watchdog_beacons = _watchdog_beacons
 	log_to_terminal("Watchdog beacon '%s' deployed at %s — monitoring 20-space radius.\n" % [program.program_name, target_coord])
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _execute_detection(program: NetProgram, target_coord: Vector2i) -> void:
 	deploy_watchdog_beacon(program, target_coord)
@@ -1001,7 +994,7 @@ func _execute_sensor(program: NetProgram, _target_coord: Vector2i) -> void:
 	_sync_entity_visibility()
 	log_to_terminal("Sensor '%s' sweep complete — revealed %d new tile(s) within %d spaces.\n" % [program.program_name, revealed, radius])
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _execute_probe(program: NetProgram, target_coord: Vector2i) -> void:
 	if not current_layout:
@@ -1033,7 +1026,7 @@ func _execute_probe(program: NetProgram, target_coord: Vector2i) -> void:
 	_sync_entity_visibility()
 	log_to_terminal("Probe '%s' locked onto %s (%s)%s%s\n" % [program.program_name, target_coord, type_label, " [newly revealed]" if not was_explored else "", detail])
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 # Shared helper: refresh entity (ICE/NPC/rezzed) explored/visible flags from
 # the current tile fog state on each entity's home floor. Called after Sensor/
@@ -1070,7 +1063,7 @@ func _execute_toolbox(program: NetProgram) -> bool:
 		log_to_terminal("A Toolbox is already running — boost still active.\n")
 		return false
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	return true
 
 func _execute_speed(program: NetProgram) -> bool:
@@ -1080,7 +1073,7 @@ func _execute_speed(program: NetProgram) -> bool:
 		log_to_terminal("A Speed booster is already running — boost still active.\n")
 		return false
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	return true
 
 # Called when a DETECTION ICE (Watchdog) gains LoS to the netrunner and
@@ -1092,7 +1085,7 @@ func _on_ice_alarm_triggered() -> void:
 		if is_instance_valid(ice) and ice.program.effect_type != NetProgram.EffectType.DETECTION:
 			ice.activate_alarm()
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 # Called when a DETECTION ICE (Watchdog) succeeds at its CP2020 trace check
 # (1D10 + program.strength >= RunState.accumulated_trace) on first LoS
@@ -1246,7 +1239,7 @@ func _rez_program(prog: NetProgram) -> bool:
 		rezzed_program_nodes.append(demon)
 		if board_renderer:
 			board_renderer.rezzed_program_nodes = rezzed_program_nodes
-			board_renderer.queue_redraw()
+			board_renderer.request_redraw()
 		var sub_names: String = ""
 		for s in demon.get_commandable_subroutines():
 			sub_names += "%s%s" % ["" if sub_names.is_empty() else ", ", s.program_name]
@@ -1272,7 +1265,7 @@ func _rez_program(prog: NetProgram) -> bool:
 	rezzed_program_nodes.append(rez)
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	log_to_terminal("Rezzing '%s' (STR %d) onto the net at %s.\n" % [rez.program.program_name, rez.program.strength, spawn_pos])
 	update_deck_info()
 	return true
@@ -1289,7 +1282,7 @@ func _find_rez_spawn_tile(runner_pos: Vector2i) -> Vector2i:
 		if is_instance_valid(ice) and ice.home_floor == current_floor:
 			occupied.append(ice.current_position)
 	for npc in npc_nodes:
-		if is_instance_valid(npc) and npc.current_position != Vector2i(-1, -1):
+		if is_instance_valid(npc) and npc.current_position != Vector2i(-1, -1) and npc.home_floor == current_floor:
 			occupied.append(npc.current_position)
 	# Runner's own tile is a valid spawn (rezzed programs can share it).
 	if runner_pos not in occupied:
@@ -1328,7 +1321,7 @@ func _derez_program(rez: RezzedProgram) -> void:
 	rez.queue_free()
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	log_to_terminal("De-rezzing '%s' — returned to deck memory.\n" % name)
 	update_deck_info()
 
@@ -1369,7 +1362,7 @@ func _attack_with_rezzed(rez: RezzedProgram, target_coord: Vector2i) -> bool:
 			if is_instance_valid(datafort):
 				datafort.crash_cpu(prog, target_coord)
 			if board_renderer:
-				board_renderer.queue_redraw()
+				board_renderer.request_redraw()
 			return true
 		_:
 			log_to_terminal("'%s' has no attack action implemented.\n" % prog.program_name)
@@ -1402,19 +1395,19 @@ func _command_demon(demon: DemonNode, sub_index: int, target_coord: Vector2i) ->
 			if is_instance_valid(datafort):
 				datafort.crash_cpu(sub, target_coord)
 			if board_renderer:
-				board_renderer.queue_redraw()
+				board_renderer.request_redraw()
 			return true
 		NetProgram.EffectType.SHIELD:
 			_execute_shield(sub)
 			if board_renderer:
-				board_renderer.queue_redraw()
+				board_renderer.request_redraw()
 			return true
 		NetProgram.EffectType.ARMOR:
 			if is_instance_valid(netrunner):
 				netrunner.raise_armor(sub)
 				log_to_terminal("Demon '%s' raises Armor '%s' (Absorb STR %d).\n" % [demon.program.program_name, sub.program_name, sub.strength])
 				if board_renderer:
-					board_renderer.queue_redraw()
+					board_renderer.request_redraw()
 				return true
 			return false
 		_:
@@ -1460,8 +1453,12 @@ func _tick_rezzed_programs() -> void:
 			rez.update_visual_position()
 			rez.moved_to.emit(next_step)
 			step_idx += 1
-	if board_renderer:
-		board_renderer.queue_redraw()
+	# No trailing request_redraw() here: every rez.moved_to.emit() above
+	# synchronously fires _on_rezzed_program_moved -> request_redraw(), so
+	# _needs_redraw is already set whenever a program actually moved. When
+	# nothing moved the board is unchanged, so no redraw is needed either.
+	# (Additionally, while any rezzed program exists the renderer's _process
+	# gate already redraws each frame.)
 
 func _is_adjacent(a: Vector2i, b: Vector2i) -> bool:
 	var d := a - b
@@ -1469,7 +1466,7 @@ func _is_adjacent(a: Vector2i, b: Vector2i) -> bool:
 
 func _on_rezzed_program_moved(_new_pos: Vector2i) -> void:
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _on_rezzed_program_destroyed(rez: RezzedProgram) -> void:
 	# The destroyed signal fires before queue_free() in take_damage(), so the
@@ -1483,7 +1480,7 @@ func _on_rezzed_program_destroyed(rez: RezzedProgram) -> void:
 		rezzed_program_nodes.erase(rez)
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	update_deck_info()
 
 # Free and clear all rezzed program nodes (called on load_subnet / fresh dive).
@@ -1509,11 +1506,10 @@ func execute_npc_attack(program: NetProgram, target_coord: Vector2i) -> void:
 		return
 
 	log_to_terminal("Executing '%s' (STR %d) on %s at %s...\n" % [program.program_name, program.strength, target_npc.npc_name, target_coord])
-	var prog_roll = (randi() % 10) + 1 + program.strength
-	var npc_roll = (randi() % 10) + 1 + target_npc.strength
-	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d). Ties go to the attacker.\n" % [prog_roll, program.strength, target_npc.npc_name, npc_roll, target_npc.strength])
-	# CP2020: ties go to the ATTACKER — hit on prog_roll >= npc_roll.
-	if prog_roll >= npc_roll:
+	var result := CP2020Dice.roll_opposed(program.strength, target_npc.strength)
+	log_to_terminal("Roll: you %d (1d10+%d) vs %s %d (1d10+%d). Ties go to the defender.\n" % [result.atk_roll, program.strength, target_npc.npc_name, result.def_roll, target_npc.strength])
+	# CP2020: ties go to the DEFENDER — hit on prog_roll > npc_roll only.
+	if result.attacker_wins:
 		# Damage amount: anti-personnel programs with damage_dice > 0 roll
 		# flat 1D{damage_dice} per hit (e.g. Sword = 1D6); other programs use
 		# the opposed-roll margin. Hit/miss is always decided by the opposed
@@ -1523,14 +1519,14 @@ func execute_npc_attack(program: NetProgram, target_coord: Vector2i) -> void:
 			damage = randi_range(1, program.damage_dice)
 			log_to_terminal("Hit! %s takes %d damage (1D%d).\n" % [target_npc.npc_name, damage, program.damage_dice])
 		else:
-			damage = prog_roll - npc_roll
+			damage = result.margin
 			log_to_terminal("Hit! %s takes %d damage.\n" % [target_npc.npc_name, damage])
 		# take_damage handles destruction (emits destroyed -> _on_npc_destroyed).
 		target_npc.take_damage(damage)
 	else:
 		log_to_terminal("%s repelled the attack.\n" % target_npc.npc_name)
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 # Placeholder talk interaction for neutral netrunners (flavour text for now;
 # future hook for trading / dialogue). Provoking does NOT flip disposition —
@@ -1568,7 +1564,7 @@ func update_deck_info(_program: Variant = null) -> void:
 				continue
 			var integrity := netrunner.program_integrity_for(prog)
 			var crashed := (integrity <= 0)
-			var active := (netrunner.raised_shield == prog and not crashed)
+			var active := ((netrunner.raised_shield == prog or netrunner.active_armor == prog) and not crashed)
 			var rezzed := _is_program_rezzed(prog)
 			var status_prefix := ""
 			if crashed:
@@ -1609,12 +1605,7 @@ func spawn_black_ice() -> void:
 	# not follow the runner between floors.
 	for f in range(current_layout.get_floor_count()):
 		for raw_key in current_layout.get_floor_tiles(f).keys():
-			var coord: Vector2i
-			if raw_key is String:
-				var parts = raw_key.split(",")
-				coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-			else:
-				coord = raw_key
+			var coord := CP2020DatafortLayout.parse_coord(raw_key)
 
 			var tile = current_layout.get_tile(coord, f)
 			if tile and tile.tile_type == CP2020DatafortLayout.TileType.BLACK_ICE:
@@ -1637,7 +1628,7 @@ func spawn_black_ice() -> void:
 				ice.home_floor = f
 				ice.rezzed_programs = rezzed_program_nodes
 				ice.initialize(coord, layout_size)
-				ice.apply_visual_from_program()
+				ice.apply_visual_from_program(ice.program, "☠", Color.RED)
 				ice.message_logged.connect(log_to_terminal)
 				ice.moved_to.connect(_on_ice_moved)
 				# Anti-personnel (DAMAGE_RUNNER) ICE attacks the runner's meat
@@ -1690,12 +1681,7 @@ func spawn_npcs() -> void:
 	# Spawn NPCs on EVERY floor; each NPC remembers its home_floor.
 	for f in range(current_layout.get_floor_count()):
 		for raw_key in current_layout.get_floor_tiles(f).keys():
-			var coord: Vector2i
-			if raw_key is String:
-				var parts = raw_key.split(",")
-				coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-			else:
-				coord = raw_key
+			var coord := CP2020DatafortLayout.parse_coord(raw_key)
 
 			var tile = current_layout.get_tile(coord, f)
 			if tile == null:
@@ -1732,7 +1718,7 @@ func spawn_npcs() -> void:
 					npc.max_memory_units = tile.npc_max_mu
 				if tile.npc_deck_name != "":
 					npc.deck_name = tile.npc_deck_name
-				if tile.npc_disposition == CP2020NpcNetrunner.Disposition.HOSTILE or tile.npc_disposition == CP2020NpcNetrunner.Disposition.NEUTRAL:
+				if tile.npc_disposition_override:
 					npc.disposition = tile.npc_disposition
 				npc.installed_programs = _duplicate_programs(tile.npc_programs)
 				# Capture the original .tres paths of the authored override
@@ -1892,7 +1878,7 @@ func spawn_datafort() -> void:
 
 func _on_cpu_state_changed(_coord: Vector2i) -> void:
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 	update_datafort_info()
 
 
@@ -1926,13 +1912,13 @@ func _end_player_turn() -> void:
 		return
 	log_to_terminal("--- Netrunner turn ended. ---\n")
 	var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
-	var nr_init := netrunner.reflex + (RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0) + netrunner.temp_speed_bonus
+	var nr_init := _netrunner_initiative()
 	turn_manager.end_round(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
 	# DEREZ_ICE (Killer) ICE is stationary — it never moves, so the moved_to
 	# signal never fires and the board wouldn't redraw after a Worm attack.
 	# Force a redraw so worm damage / destruction visuals update immediately.
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _on_turn_ended(is_netrunner_turn: bool) -> void:
 	if is_netrunner_turn:
@@ -1963,8 +1949,7 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 			# Deck crash blocks programs but preserves a movement action so the
 			# runner can flee (CP2020 RAW). actions_remaining stays at full so
 			# movement works; programs_blocked gates program use.
-			turn_manager.programs_blocked = true
-			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
+			turn_manager.block_programs()
 			log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
 		# CP2020 Death Trap: a stunned (unconscious) runner cannot act OR
 		# move. Both action and movement pools are zeroed. Black ICE will
@@ -1973,10 +1958,7 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 		if is_instance_valid(netrunner) and netrunner.is_stunned and turn_manager:
 			# Stun zeroes the action pool — movement now requires an action, so
 			# this blocks both programs AND movement (Death Trap).
-			turn_manager.actions_remaining = 0
-			turn_manager.movement_remaining = 0
-			turn_manager.actions_changed.emit(turn_manager.actions_remaining, turn_manager.max_actions)
-			turn_manager.movement_changed.emit(turn_manager.movement_remaining, turn_manager.max_movement)
+			turn_manager.apply_stun()
 			log_to_terminal("STUNNED — unconscious! Cannot act, move, or jack out. Black ICE auto-hits!\n")
 		# Meatspace security-dispatch tick: if a Watchdog traced the runner,
 		# countdown the raid ETA each netrunner turn. At 0 the raid arrives
@@ -2004,12 +1986,7 @@ func _tick_worm_programs() -> void:
 	# Worms can be deployed on any floor; tick across all of them.
 	for f in range(current_layout.get_floor_count()):
 		for raw_key in current_layout.get_floor_tiles(f).keys():
-			var c: Vector2i
-			if raw_key is String:
-				var p = raw_key.split(",")
-				c = Vector2i(p[0].to_int(), p[1].to_int())
-			else:
-				c = raw_key
+			var c := CP2020DatafortLayout.parse_coord(raw_key)
 			var t: CP2020TileData = current_layout.get_tile(c, f)
 			if t == null or t.worm_turns_remaining <= 0:
 				continue
@@ -2036,7 +2013,7 @@ func _tick_worm_programs() -> void:
 		if is_instance_valid(netrunner):
 			recalculate_fog_of_war(netrunner.current_position)
 		if board_renderer:
-			board_renderer.queue_redraw()
+			board_renderer.request_redraw()
 
 # Tick all deployed Watchdog beacons: for each beacon, check LoS to all
 # ICE nodes and NPC netrunners within 20 spaces. On first detection per
@@ -2074,7 +2051,7 @@ func _tick_watchdog_beacons() -> void:
 				any_alert = true
 				break
 	if any_alert and board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _on_actions_changed(remaining: int, max_actions: int) -> void:
 	if actions_label:
@@ -2112,8 +2089,14 @@ func _check_actions_exhausted() -> void:
 	if turn_manager and turn_manager.actions_remaining <= 0:
 		log_to_terminal("Out of actions — ending turn.\n")
 		var sys_int := datafort.total_int() if is_instance_valid(datafort) else 0
-		var nr_init := netrunner.reflex + (RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0) + netrunner.temp_speed_bonus
+		var nr_init := _netrunner_initiative()
 		turn_manager.end_round(_all_adversaries(), netrunner.current_position, current_layout, nr_init, sys_int)
+
+# Netrunner initiative = REF + cyberdeck speed bonus + temporary speed bonus.
+# Centralised so every end-of-turn roll uses one definition.
+func _netrunner_initiative() -> int:
+	var speed_bonus := RunState.selected_deck.effective_speed_bonus() if RunState.selected_deck != null else 0
+	return netrunner.reflex + speed_bonus + netrunner.temp_speed_bonus
 
 # Combined adversaries (Datafort + Black ICE + NPC netrunners) for the turn
 # manager. The datafort is prepended so it acts first each round. The turn
@@ -2147,11 +2130,11 @@ func _on_health_changed(current: int, max_hp: int) -> void:
 
 func _on_ice_stepped() -> void:
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _on_ice_moved(_new_pos: Vector2i) -> void:
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 func _on_ice_attacked(strength: int, attacker_name: String, is_anti_personnel: bool, prog: NetProgram = null) -> void:
 	# Shared by Black ICE, NPC netrunners, and datafort resident programs —
@@ -2190,17 +2173,16 @@ func _on_ice_attacked_program(attacker_str: int, tile_coord: Vector2i, ice: Blac
 	if target_rez == null:
 		log_to_terminal("%s's anti-program attack finds no target at %s.\n" % [attacker_name, tile_coord])
 		return
-	var atk_roll := randi_range(1, 10) + attacker_str
-	var def_roll := randi_range(1, 10) + target_rez.current_integrity
-	log_to_terminal("WARNING: %s attacks '%s' at %s — opposed roll: Killer %d (1D10+%d) vs Program %d (1D10+%d).\n" % [attacker_name, target_rez.program.program_name, tile_coord, atk_roll, attacker_str, def_roll, target_rez.current_integrity])
-	if atk_roll > def_roll:
+	var result := CP2020Dice.roll_opposed(attacker_str, target_rez.current_integrity)
+	log_to_terminal("WARNING: %s attacks '%s' at %s — opposed roll: Killer %d (1D10+%d) vs Program %d (1D10+%d).\n" % [attacker_name, target_rez.program.program_name, tile_coord, result.atk_roll, attacker_str, result.def_roll, target_rez.current_integrity])
+	if result.attacker_wins:
 		var dmg := randi_range(1, 6)
 		log_to_terminal("Killer wins! '%s' takes %d damage.\n" % [target_rez.program.program_name, dmg])
 		target_rez.take_damage(dmg)
 	else:
 		log_to_terminal("'%s' holds — no damage dealt (passive defender).\n" % target_rez.program.program_name)
 	if board_renderer:
-		board_renderer.queue_redraw()
+		board_renderer.request_redraw()
 
 # Anti-system (CRASH_CPU / Krash) resident program from the datafort hit the
 # runner's cyberdeck: crash it for 1D6+1 turns (mirroring crash_cpu's CPU
@@ -2284,68 +2266,6 @@ func _on_jack_out_pressed() -> void:
 	RunState.selected_city_grid_path = ""
 	RunState.selected_security_tier = 0
 	get_tree().change_scene_to_file("res://scenes/ui/CyberdeckWorkbench.tscn")
-#func reveal_entry_points() -> void:
-	#if not current_layout:
-		#return
-		#
-	## Find all entry tiles and reveal them so the player can see where they start
-	#for raw_key in current_layout.grid_tiles.keys():
-		#var coord: Vector2i
-		#if raw_key is String:
-			#var parts = raw_key.split(",")
-			#coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-		#else:
-			#coord = raw_key
-			#
-		#var tile = current_layout.get_tile(coord)
-		#if tile and tile.tile_type == CP2020DatafortLayout.TileType.ENTRY:
-			#tile.is_explored = true
-			#tile.is_visible = true
-			
-			# Optional: Reveal immediate adjacent tiles (up, down, left, right)
-			#var adjacent_coords = [
-				#coord + Vector2i(0, -1), coord + Vector2i(0, 1),
-				#coord + Vector2i(-1, 0), coord + Vector2i(1, 0)
-			#]
-			#for adj in adjacent_coords:
-				#var adj_tile = current_layout.get_tile(adj)
-				#if adj_tile:
-					#adj_tile.is_explored = true
-					# We leave is_visible = false here so they look like "Fog of War" shadows 
-					# rather than fully lit active tiles!
-func spawn_netrunner_at_entry() -> void:
-	if not current_layout or not netrunner or not board_renderer:
-		return
-		
-	for raw_key in current_layout.get_current_floor_tiles().keys():
-		var coord: Vector2i
-		if raw_key is String:
-			var parts = raw_key.split(",")
-			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-		else:
-			coord = raw_key
-
-		var tile = current_layout.get_tile(coord, current_floor)
-		if tile and tile.tile_type == CP2020DatafortLayout.TileType.ENTRY:
-			var cell_size = board_renderer.cell_size
-			var offset_y = board_renderer.grid_offset_y
-			
-			# Calculate the exact pixel center of the entry tile
-			var target_pixel_pos = Vector2(
-				(coord.x * cell_size) + (cell_size / 2.0),
-				offset_y + (coord.y * cell_size) + (cell_size / 2.0)
-			)
-			
-			# Move the Netrunner icon
-			netrunner.position = target_pixel_pos
-			
-			# If your Netrunner script has a variable keeping track of its grid coordinate, 
-			# update it here (e.g., if it uses "grid_position")
-			if "grid_position" in netrunner:
-				netrunner.grid_position = coord
-				
-			log_to_terminal("Netrunner spawned at Entry Node %s.\n" % str(coord))
-			return # Stop searching once we place the Netrunner
 func recalculate_fog_of_war(player_pos: Vector2i) -> void:
 	if not current_layout:
 		return
@@ -2355,12 +2275,7 @@ func recalculate_fog_of_war(player_pos: Vector2i) -> void:
 	# preserved so previously-visited floors stay revealed when revisited.
 	for f in range(current_layout.get_floor_count()):
 		for raw_key in current_layout.get_floor_tiles(f).keys():
-			var coord: Vector2i
-			if raw_key is String:
-				var parts = raw_key.split(",")
-				coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-			else:
-				coord = raw_key
+			var coord := CP2020DatafortLayout.parse_coord(raw_key)
 			var tile = current_layout.get_tile(coord, f)
 			if tile:
 				tile.is_visible = false

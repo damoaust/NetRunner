@@ -10,6 +10,5 @@ effect_type = 3
 memory_cost = 4
 price = 2500
 description = "Anti-personnel attack program. Sets the runner's neural link alight, dealing 1D6 physical damage per hit."
-glyph_offset = Vector2(-5, -2)
 glyph_auto_center = false
 damage_dice = 6

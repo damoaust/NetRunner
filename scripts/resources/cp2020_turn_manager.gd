@@ -55,6 +55,27 @@ func end_player_turn() -> void:
 	is_netrunner_turn = false
 	turn_ended.emit(is_netrunner_turn)
 
+# Stun (CP2020 Death Trap): the runner is unconscious and can neither act nor
+# move. Both pools are zeroed. Called by the game session each netrunner turn
+# while the runner is stunned.
+func apply_stun() -> void:
+	actions_remaining = 0
+	movement_remaining = 0
+	actions_changed.emit(actions_remaining, max_actions)
+	movement_changed.emit(movement_remaining, max_movement)
+
+# Block program use while keeping the action/movement economy intact (cyberdeck
+# crash — the runner can still flee). Called by the game session while the
+# deck is crashed.
+func block_programs() -> void:
+	programs_blocked = true
+	actions_changed.emit(actions_remaining, max_actions)
+
+# Defer this round's adversary phase to AFTER the netrunner's turn (the runner
+# won or tied initiative, or round 1 where the runner acts first on entry).
+func defer_post_round_adversary() -> void:
+	_post_round_adversary = true
+
 # Spend one action on a program/Net action. Forfeits any unused movement for
 # this action (movement spaces don't carry over to a program action). Returns
 # false if not the runner's turn or no actions remain.
@@ -160,11 +181,10 @@ func start_round(ice_nodes: Array, target_pos: Vector2i, layout: CP2020DatafortL
 	if _count_valid_adversaries(ice_nodes) == 0:
 		start_netrunner_turn()
 		return
-	var nr_roll := randi_range(1, 10) + netrunner_int
-	var sys_roll := randi_range(1, 10) + system_int
-	var is_tie := nr_roll == sys_roll
-	var netrunner_first := nr_roll > sys_roll
-	initiative_rolled.emit(nr_roll, sys_roll, netrunner_first, is_tie)
+	var result := CP2020Dice.roll_opposed(netrunner_int, system_int)
+	var is_tie :bool= result.tie
+	var netrunner_first : bool = result.attacker_wins
+	initiative_rolled.emit(result.atk_roll, result.def_roll, netrunner_first, is_tie)
 	if not is_tie and not netrunner_first:
 		# System wins initiative — adversaries act before the runner this round.
 		is_netrunner_turn = false

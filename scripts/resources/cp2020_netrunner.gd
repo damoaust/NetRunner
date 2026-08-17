@@ -164,12 +164,7 @@ func initialize(layout: CP2020DatafortLayout, entry_coord: Vector2i = Vector2i(-
 			var plain: Vector2i = Vector2i(-1, -1)
 			var any_entry: Vector2i = Vector2i(-1, -1)
 			for raw_key in current_layout.get_current_floor_tiles().keys():
-				var coord: Vector2i
-				if raw_key is String:
-					var parts = raw_key.split(",")
-					coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-				else:
-					coord = raw_key
+				var coord := CP2020DatafortLayout.parse_coord(raw_key)
 				var tile = current_layout.get_tile(coord, current_floor)
 				if tile and tile.tile_type == CP2020DatafortLayout.TileType.ENTRY:
 					if tile.is_primary_entry and primary.x < 0:

@@ -82,6 +82,7 @@ var _ldl_panel_hubs: Array = []
 
 # Animation state for pulsing neon elements.
 var _pulse_time: float = 0.0
+var _font_cache: Font = null
 
 
 func _ready() -> void:
@@ -429,10 +430,11 @@ func _draw_header(font: Font, pulse: float) -> void:
 
 
 func _theme_font() -> Font:
-	var label := Label.new()
-	var f := label.get_theme_default_font()
-	label.free()
-	return f
+	if _font_cache == null:
+		var label := Label.new()
+		_font_cache = label.get_theme_default_font()
+		label.free()
+	return _font_cache
 
 
 # ---------------------------------------------------------------------------

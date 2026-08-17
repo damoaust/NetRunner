@@ -8,7 +8,10 @@ extends Control
 
 const CELL: int = 40
 const GRID_OFFSET_X: int = 20
-const GRID_OFFSET_Y: int = 90
+# Vertical offset of the grid from the top of the control. Derived at runtime
+# from the TopPanel's bottom edge (see _ready) so it tracks the scene layout
+# instead of a hardcoded magic number; 90 is the fallback.
+var grid_offset_y: int = 90
 
 enum Tool { REGION, HUB, ERASER }
 
@@ -27,6 +30,7 @@ var current_layout: CP2020WorldMapLayout = null
 var _pulse_time: float = 0.0
 
 @onready var columns_spinbox: SpinBox = $TopPanel/SettingsRow/ColumnsSpinBox
+@onready var top_panel: VBoxContainer = $TopPanel
 @onready var rows_spinbox: SpinBox = $TopPanel/SettingsRow/RowsSpinBox
 @onready var apply_size_button: Button = $TopPanel/SettingsRow/ApplySizeButton
 @onready var region_option: OptionButton = $TopPanel/ToolRow/RegionOption
@@ -62,7 +66,10 @@ func _ready() -> void:
 		current_layout.grid_cols = 31
 		current_layout.grid_rows = 16
 		_add_default_regions()
-	_setup_file_dialogs_if_missing()
+	# Derive the grid's vertical offset from the TopPanel's bottom edge so it
+	# tracks the scene layout instead of the hardcoded fallback.
+	if top_panel and top_panel.size.y > 0:
+		grid_offset_y = int(top_panel.position.y + top_panel.size.y) + 10
 	_setup_signals()
 	_refresh_region_option()
 	_populate_tier_option()
@@ -88,33 +95,6 @@ func _add_default_regions() -> void:
 		region.name = entry[0]
 		region.color = entry[1]
 		current_layout.regions.append(region)
-
-
-func _setup_file_dialogs_if_missing() -> void:
-	if not save_dialog:
-		save_dialog = FileDialog.new()
-		save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-		save_dialog.access = FileDialog.ACCESS_RESOURCES
-		save_dialog.add_filter("*.tres", "World Map Layout")
-		add_child(save_dialog)
-	if not load_dialog:
-		load_dialog = FileDialog.new()
-		load_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		load_dialog.access = FileDialog.ACCESS_RESOURCES
-		load_dialog.add_filter("*.tres", "World Map Layout")
-		add_child(load_dialog)
-	if not browse_dialog:
-		browse_dialog = FileDialog.new()
-		browse_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		browse_dialog.access = FileDialog.ACCESS_RESOURCES
-		browse_dialog.add_filter("*.tres", "Subnet Resource")
-		add_child(browse_dialog)
-	if not city_grid_browse_dialog:
-		city_grid_browse_dialog = FileDialog.new()
-		city_grid_browse_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-		city_grid_browse_dialog.access = FileDialog.ACCESS_RESOURCES
-		city_grid_browse_dialog.add_filter("*.tres", "City Grid Layout")
-		add_child(city_grid_browse_dialog)
 
 
 func _setup_signals() -> void:
@@ -357,22 +337,35 @@ func _refresh_side_panel() -> void:
 	side_panel.visible = selected_hub != null
 	if selected_hub == null:
 		return
-	# Disconnect temporarily to avoid feedback loops while populating.
-	if hub_name_edit and hub_name_edit.text_changed.is_connected(_on_hub_name_changed):
+	if hub_name_edit:
+		hub_name_edit.set_block_signals(true)
 		hub_name_edit.text = selected_hub.name
-	if subnet_path_edit and subnet_path_edit.text_changed.is_connected(_on_subnet_path_changed):
+		hub_name_edit.set_block_signals(false)
+	if subnet_path_edit:
+		subnet_path_edit.set_block_signals(true)
 		subnet_path_edit.text = selected_hub.subnet_path
-	if city_grid_path_edit and city_grid_path_edit.text_changed.is_connected(_on_city_grid_path_changed):
+		subnet_path_edit.set_block_signals(false)
+	if city_grid_path_edit:
+		city_grid_path_edit.set_block_signals(true)
 		city_grid_path_edit.text = selected_hub.city_grid_path
-	if ldl_cost_spinbox and ldl_cost_spinbox.value_changed.is_connected(_on_ldl_cost_changed):
+		city_grid_path_edit.set_block_signals(false)
+	if ldl_cost_spinbox:
+		ldl_cost_spinbox.set_block_signals(true)
 		ldl_cost_spinbox.value = selected_hub.ldl_cost
-	if security_code_spinbox and security_code_spinbox.value_changed.is_connected(_on_security_code_changed):
+		ldl_cost_spinbox.set_block_signals(false)
+	if security_code_spinbox:
+		security_code_spinbox.set_block_signals(true)
 		security_code_spinbox.value = selected_hub.security_code
-	if trace_value_spinbox and trace_value_spinbox.value_changed.is_connected(_on_trace_value_changed):
+		security_code_spinbox.set_block_signals(false)
+	if trace_value_spinbox:
+		trace_value_spinbox.set_block_signals(true)
 		trace_value_spinbox.value = selected_hub.trace_value
-	if security_tier_option and security_tier_option.item_selected.is_connected(_on_security_tier_changed):
+		trace_value_spinbox.set_block_signals(false)
+	if security_tier_option:
+		security_tier_option.set_block_signals(true)
 		var tier := clampi(int(selected_hub.security_tier), 0, CP2020SecurityTier.Tier.size() - 1)
 		security_tier_option.select(tier)
+		security_tier_option.set_block_signals(false)
 
 
 # ---------------------------------------------------------------------------
@@ -416,7 +409,7 @@ func _apply_tool(coord: Vector2i) -> void:
 
 func _screen_to_grid(screen_pos: Vector2) -> Vector2i:
 	var x := int((screen_pos.x - GRID_OFFSET_X) / CELL)
-	var y := int((screen_pos.y - GRID_OFFSET_Y) / CELL)
+	var y := int((screen_pos.y - grid_offset_y) / CELL)
 	return Vector2i(clampi(x, 0, current_layout.grid_cols - 1), clampi(y, 0, current_layout.grid_rows - 1))
 
 
@@ -454,10 +447,10 @@ func _draw_designer_background(total_w: int, total_h: int) -> void:
 
 	# Vignette around the grid.
 	var vignette := Color(0.0, 0.0, 0.0, 0.3)
-	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y, total_w, 100), vignette, true)
-	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y + total_h - 100, total_w, 100), vignette, true)
-	draw_rect(Rect2(GRID_OFFSET_X, GRID_OFFSET_Y, 100, total_h), vignette, true)
-	draw_rect(Rect2(GRID_OFFSET_X + total_w - 100, GRID_OFFSET_Y, 100, total_h), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X, grid_offset_y, total_w, 100), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X, grid_offset_y + total_h - 100, total_w, 100), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X, grid_offset_y, 100, total_h), vignette, true)
+	draw_rect(Rect2(GRID_OFFSET_X + total_w - 100, grid_offset_y, 100, total_h), vignette, true)
 
 
 func _draw_designer_scanlines() -> void:
@@ -475,7 +468,7 @@ func _draw_designer_regions(pulse: float) -> void:
 		if idx < 0 or idx >= current_layout.regions.size():
 			continue
 		var base: Color = current_layout.regions[idx].color
-		var rect := Rect2(GRID_OFFSET_X + coord.x * CELL, GRID_OFFSET_Y + coord.y * CELL, CELL, CELL)
+		var rect := Rect2(GRID_OFFSET_X + coord.x * CELL, grid_offset_y + coord.y * CELL, CELL, CELL)
 		var fill := Color(base.r * 0.35, base.g * 0.35, base.b * 0.35, 0.55)
 		draw_rect(rect, fill, true)
 		var highlight := Color(base.r, base.g, base.b, 0.35 + 0.15 * pulse)
@@ -484,7 +477,7 @@ func _draw_designer_regions(pulse: float) -> void:
 
 func _draw_designer_grid(total_w: int, total_h: int, pulse: float) -> void:
 	var bright_alpha := COLOR_GRID_BRIGHT.a * (0.5 + 0.5 * pulse)
-	var origin := Vector2(GRID_OFFSET_X, GRID_OFFSET_Y)
+	var origin := Vector2(GRID_OFFSET_X, grid_offset_y)
 	for x in range(current_layout.grid_cols + 1):
 		var line_color := COLOR_GRID
 		if x % 5 == 0:
@@ -501,7 +494,7 @@ func _draw_designer_grid(total_w: int, total_h: int, pulse: float) -> void:
 
 func _draw_designer_hubs(font: Font, pulse: float) -> void:
 	for hub in current_layout.hubs:
-		var center := Vector2(GRID_OFFSET_X + hub.pos.x * CELL + CELL / 2.0, GRID_OFFSET_Y + hub.pos.y * CELL + CELL / 2.0)
+		var center := Vector2(GRID_OFFSET_X + hub.pos.x * CELL + CELL / 2.0, grid_offset_y + hub.pos.y * CELL + CELL / 2.0)
 		var tier: int = clampi(int(hub.security_tier), 0, CP2020SecurityTier.Tier.size() - 1)
 		var tier_color: Color = CP2020SecurityTier.COLORS[tier]
 		var glyph: String = CP2020SecurityTier.GLYPHS[tier]
@@ -527,7 +520,7 @@ func _draw_designer_hubs(font: Font, pulse: float) -> void:
 		draw_string(font, glyph_pos, glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size, hub_color)
 
 		# City label.
-		var label_pos := Vector2(GRID_OFFSET_X + hub.pos.x * CELL + 4, GRID_OFFSET_Y + hub.pos.y * CELL + CELL + 4)
+		var label_pos := Vector2(GRID_OFFSET_X + hub.pos.x * CELL + 4, grid_offset_y + hub.pos.y * CELL + CELL + 4)
 		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COLOR_TEXT_LABEL)
 
 		# Spawn hub marker.

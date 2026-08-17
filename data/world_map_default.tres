@@ -1,8 +1,8 @@
-[gd_resource type="Resource" script_class="CP2020WorldMapLayout" format=3]
+[gd_resource type="Resource" script_class="CP2020WorldMapLayout" format=3 uid="uid://bsbr8oowtnbbg"]
 
-[ext_resource type="Script" path="res://scripts/resources/cp2020_world_map_layout.gd" id="1_layout"]
-[ext_resource type="Script" path="res://scripts/resources/cp2020_world_region.gd" id="2_region"]
-[ext_resource type="Script" path="res://scripts/resources/cp2020_world_hub.gd" id="3_hub"]
+[ext_resource type="Script" uid="uid://csbmr7rigdio4" path="res://scripts/resources/cp2020_world_map_layout.gd" id="1_layout"]
+[ext_resource type="Script" uid="uid://6r6oakwp7nl5" path="res://scripts/resources/cp2020_world_region.gd" id="2_region"]
+[ext_resource type="Script" uid="uid://cpabe2pihwbl6" path="res://scripts/resources/cp2020_world_hub.gd" id="3_hub"]
 
 [sub_resource type="Resource" id="Hub_0"]
 script = ExtResource("3_hub")

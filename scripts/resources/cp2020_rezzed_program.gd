@@ -1,5 +1,5 @@
 class_name RezzedProgram
-extends Node2D
+extends GridEntityBase
 
 # A runner-owned attack program rezzed onto the net as an active, visible
 # node. Modeled on BlackIce but friendly: it auto-follows the runner each
@@ -16,11 +16,8 @@ extends Node2D
 # fields exist for a later phase.
 
 signal message_logged(msg: String)
-signal moved_to(new_pos: Vector2i)
 signal destroyed
 
-# The program this node represents (a duplicate of the installed copy).
-var program: NetProgram = null
 # Reference to the original installed program copy — used by the game session
 # to track which installed copies are currently rezzed (one node per copy).
 var source_program: NetProgram = null
@@ -28,131 +25,40 @@ var source_program: NetProgram = null
 @export var max_integrity: int = 4
 var current_integrity: int = 4
 
-var current_position: Vector2i = Vector2i.ZERO
-# Floor the program was rezzed on. Stays on its floor (like ICE) — does not
-# follow the runner up/down. Only programs with home_floor == current_floor
-# follow or render.
-var home_floor: int = 0
-var astar_grid: AStarGrid2D
-
-@export var cell_size: int = 40
-@export var grid_offset_y: int = 90
-@export var label_visual_offset: Vector2 = Vector2(-2, -4)
-
-@onready var glyph_label = $GlyphLabel
+func _ready() -> void:
+	glyph_label = $GlyphLabel
 
 func initialize(start_pos: Vector2i, layout_size: Vector2i) -> void:
-	current_position = start_pos
+	super.initialize(start_pos, layout_size)
 	current_integrity = max_integrity
-
-	if glyph_label:
-		glyph_label.size = Vector2(cell_size, cell_size)
-		glyph_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + label_visual_offset
-		glyph_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		glyph_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-
-	update_visual_position()
-
-	if astar_grid:
-		astar_grid.free()
-	astar_grid = AStarGrid2D.new()
-	astar_grid.region = Rect2i(0, 0, layout_size.x, layout_size.y)
-	astar_grid.cell_size = Vector2(1, 1)
-	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
-	astar_grid.update()
-
-	moved_to.emit(current_position)
-
-func update_visual_position() -> void:
-	var center_x = (current_position.x * cell_size) + (cell_size / 2.0)
-	var center_y = grid_offset_y + (current_position.y * cell_size) + (cell_size / 2.0)
-	position = Vector2(center_x, center_y)
 
 # Animates a single step to `coord`. The caller MUST set `current_position`
 # to `coord` before calling — this only updates the visual, awaits the step
 # timer, and emits moved_to. Resources can't await get_tree(), so the await
 # lives here on the Node2D.
 func move_to_step(_coord: Vector2i) -> void:
-	update_visual_position()
-	await get_tree().create_timer(0.3).timeout
-	moved_to.emit(current_position)
+	# The caller MUST set `current_position` to `coord` before calling. The
+	# guarded helper updates the visual, awaits the step timer, and emits
+	# moved_to, bailing cleanly if the node was freed mid-turn. Awaited so
+	# the caller's `await move_to_step(...)` pauses for the full animation.
+	await _guarded_step_timer(0.3)
 
 func emit_log(msg: String) -> void:
 	message_logged.emit(msg)
 
-# Apply this node's on-map visual identity from its assigned program: sets the
-# glyph label text + tints its LabelSettings font_color. The LabelSettings is
-# duplicated per instance so the shared scene sub-resource is never mutated.
-# The label position is auto-centred using the glyph's TextServer bitmap metrics
-# (so different Unicode glyphs sit centred without manual tuning); the
-# per-program `glyph_offset` stacks on top for stubborn edge cases. No-op if
-# the label or program is missing. Call after initialize().
-func apply_visual_from_program() -> void:
-	if glyph_label == null or program == null:
-		return
-	var vis: Dictionary = program.get_visual()
-	var glyph: String = vis.get("glyph", "◆")
-	glyph_label.text = glyph
-	var col: Color = vis.get("color", Color.CYAN)
-	if glyph_label.label_settings:
-		glyph_label.label_settings = glyph_label.label_settings.duplicate()
-		glyph_label.label_settings.font_color = col
-	else:
-		glyph_label.add_theme_color_override("font_color", col)
-	# Auto-centre the glyph via its TextServer bitmap metrics. Falls back to the
-	# node's manual label_visual_offset when metrics are unavailable.
-	# NB: the scene LabelSettings sets font_size (26) but no font, so the Font
-	# reference falls back to the theme default font while the SIZE must still
-	# come from label_settings — measuring at the default size while the Label
-	# renders at the LabelSettings size produces a centring offset for the
-	# wrong glyph size.
-	var font: Font = null
-	var font_size: int = 0
-	if glyph_label.label_settings:
-		font = glyph_label.label_settings.font
-		font_size = int(glyph_label.label_settings.font_size)
-	if font == null:
-		font = glyph_label.get_theme_default_font()
-	if font_size <= 0:
-		font_size = int(glyph_label.get_theme_default_font_size())
-	# Resolve which font has the glyph. The theme font (whitrabt) lacks many
-	# Unicode symbols, so fall back to seguiemj.ttf (Segoe UI Emoji) for both
-	# metrics and rendering when the glyph isn't found.
-	var auto_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, font, font_size, cell_size)
-	if auto_offset == Vector2.ZERO:
-		var fallback_font: Font = load("res://data/seguiemj.ttf") as Font
-		if fallback_font != null:
-			var fb_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, fallback_font, font_size, cell_size)
-			if fb_offset != Vector2.ZERO:
-				auto_offset = fb_offset
-				if glyph_label.label_settings:
-					glyph_label.label_settings.font = fallback_font
-				else:
-					glyph_label.add_theme_font_override("font", fallback_font)
-	# When auto-center is disabled the designer positions the glyph entirely via
-	# glyph_offset in the Inspector; auto_offset is discarded.
-	if not program.glyph_auto_center:
-		auto_offset = Vector2.ZERO
-	elif auto_offset == Vector2.ZERO:
-		auto_offset = label_visual_offset
-	glyph_label.position = Vector2(-cell_size / 2.0, -cell_size / 2.0) + auto_offset + program.glyph_offset
 
-# Rebuild the astar solid region from Datawalls and locked Code Gates. Called
-# by the game session before the auto-follow path each turn.
-func refresh_pathfinding(layout: CP2020DatafortLayout) -> void:
-	astar_grid.fill_solid_region(astar_grid.region, false)
 
-	for raw_key in layout.get_floor_tiles(home_floor).keys():
-		var coord: Vector2i
-		if raw_key is String:
-			var parts = raw_key.split(",")
-			coord = Vector2i(parts[0].to_int(), parts[1].to_int())
-		else:
-			coord = raw_key
-		var tile = layout.get_tile(coord, home_floor)
-		if tile:
-			if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL or (tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked):
-				astar_grid.set_point_solid(coord, true)
+# Apply this node's on-map visual identity from its assigned program. Delegates
+# to the shared glyph applier in GridEntityBase using the rezzed-program glyph
+# fallback. Call after initialize().
+func apply_visual_from_program(p_program: NetProgram = null, p_glyph: String = "◆", p_color: Color = Color.CYAN) -> void:
+	# If called with no arguments, fall back to the node's internal 'program' property
+	var target_program: NetProgram = p_program
+	if target_program == null:
+		target_program = self.program
+		
+	# Pass the target program and the hardcoded friendly ICE fallback values to the parent
+	super.apply_visual_from_program(target_program, p_glyph, p_color)
 
 func update_visibility(_is_explored: bool, p_visible: bool) -> void:
 	if not glyph_label:

@@ -13,7 +13,6 @@
 [ext_resource type="Script" uid="uid://dk7sod657ryjc" path="res://scripts/resources/cp2020_interaction_handler.gd" id="9_rqnxn"]
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="10_llsot"]
 [ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="10_v6n4y"]
-[ext_resource type="Script" uid="uid://dxtpx2qahb6ff" path="res://scripts/resources/cp2020_subnet_loader.gd" id="11_7be1p"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="11_owktc"]
 [ext_resource type="Resource" uid="uid://cswmssw4eot6i" path="res://data/flatline.tres" id="12_d1l68"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="13_80o14"]
@@ -165,7 +164,5 @@ script = ExtResource("9_rqnxn")
 [node name="TurnManager" type="Node2D" parent="." unique_id=1795720484]
 script = ExtResource("10_llsot")
 
-[node name="SubnetLoader" type="Node2D" parent="." unique_id=2113021941]
-script = ExtResource("11_7be1p")
 
 [connection signal="pressed" from="UI/PanelContainer/VBoxContainer/JackOutButton" to="." method="_on_jack_out_pressed"]

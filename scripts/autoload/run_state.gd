@@ -132,6 +132,11 @@ func start_new_life() -> void:
 	else:
 		push_error("RunState: failed to load starting character '%s'." % char_path)
 
+	# Persist the fresh state immediately so a crash/quit before the workbench
+	# saves doesn't leave a stale (or missing) save file. GameOver clears the
+	# old save BEFORE calling this, so the fresh state becomes the saved state.
+	save_run()
+
 # --- Loot helpers (used by the loot interaction) ---
 # Appends a duplicate of prog to loot (duplicate to avoid mutating cached
 # .tres). Also discovers the program in the persistent MetaState catalogue.
@@ -324,7 +329,7 @@ func save_run() -> void:
 	data.selected_city_grid_path = selected_city_grid_path
 	data.selected_security_tier = selected_security_tier
 	data.last_death_cause = last_death_cause
-	data.last_run_summary = last_run_summary.duplicate()
+	data.last_run_summary = last_run_summary.duplicate(true)
 	if selected_deck != null:
 		data.selected_deck_path = selected_deck.resource_path if selected_deck.resource_path != "" else selected_deck.source_path
 	if selected_character != null and selected_character.resource_path != "":
@@ -394,7 +399,7 @@ func _load_run() -> void:
 	selected_city_grid_path = data.selected_city_grid_path
 	selected_security_tier = data.selected_security_tier
 	last_death_cause = data.last_death_cause
-	last_run_summary = data.last_run_summary.duplicate()
+	last_run_summary = data.last_run_summary.duplicate(true)
 	owned_programs.clear()
 	for path: String in data.owned_program_paths:
 		var prog: NetProgram = load(path) as NetProgram

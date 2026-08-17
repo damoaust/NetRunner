@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="DemonProgram" format=3]
+[gd_resource type="Resource" script_class="DemonProgram" format=3 uid="uid://p5yoc61xy2kp"]
 
-[ext_resource type="Script" path="res://scripts/resources/cp2020_programs.gd" id="1_2dtej"]
-[ext_resource type="Script" path="res://scripts/programs/demon_program.gd" id="1_afreet"]
+[ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_2dtej"]
+[ext_resource type="Script" uid="uid://dm3k05gmtyrkx" path="res://scripts/programs/demon_program.gd" id="1_afreet"]
+[ext_resource type="Texture2D" uid="uid://dtr5bh70cuwa5" path="res://sprites/ghosts/Yurei/Idle.png" id="3_0u7yf"]
 
 [resource]
 script = ExtResource("1_afreet")
@@ -16,5 +17,8 @@ price = 3000
 description = "Mid Demon class. A program shell carrying up to 3 subroutines. Rezzed as one node; commands fire any loaded subroutine at the Demon's STR 5."
 glyph = "⚚"
 color = Color(0.8, 0.25, 0.5, 1)
-glyph_offset = Vector2(0, -8)
 glyph_auto_center = false
+sprite_texture = ExtResource("3_0u7yf")
+sprite_frame = 1
+sprite_offset = Vector2(2, -24)
+sprite_scale = 2.45

@@ -71,10 +71,12 @@ func _init() -> void:
 @export var npc_max_health: int = 0
 @export var npc_max_mu: int = 0
 @export var npc_deck_name: String = ""
-# CP2020NpcNetrunner.Disposition as int (0 = HOSTILE, 1 = NEUTRAL).
-# NetWatch tiles default hostile; Netrunner tiles default neutral. A designer
-# override of 0/1 forces the disposition regardless of faction.
-@export var npc_disposition: int = -1
+# Per-tile NPC disposition override. Only read when npc_disposition_override
+# is true (mirroring the npc_has_override pattern); otherwise the game session
+# uses the faction default (NetWatch hostile, Netrunner neutral). Typed as the
+# Disposition enum so the inspector shows a dropdown.
+@export var npc_disposition: CP2020NpcNetrunner.Disposition = CP2020NpcNetrunner.Disposition.HOSTILE
+@export var npc_disposition_override: bool = false
 @export var npc_has_override: bool = false
 # Optional hand-authored program loadout (empty = use the tier template loadout).
 # Must be duplicated at spawn time to avoid mutating cached .tres resources.

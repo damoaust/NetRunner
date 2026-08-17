@@ -51,14 +51,17 @@ func get_subroutine(index: int) -> NetProgram:
 
 # Apply the Demon's own visual identity (glyph/color from get_visual()) rather
 # than a per-subroutine look. Overrides RezzedProgram.apply_visual_from_program
-# but reuses the same centring logic by temporarily pointing `program` at the
-# Demon core — which the session already set as `program` (the duplicated
-# DemonProgram). So the base implementation already does the right thing; this
-# override exists only to make intent explicit and guard against a null program.
-func apply_visual_from_program() -> void:
-	if program == null:
+# to make intent explicit and guard against a null program.
+func apply_visual_from_program(p_program: NetProgram = null, p_glyph: String = "◆", p_color: Color = Color.CYAN) -> void:
+	var target_program: NetProgram = p_program
+	if target_program == null:
+		target_program = self.program
+		
+	if target_program == null:
 		return
-	super.apply_visual_from_program()
+		
+	# Passes up to RezzedProgram's fixed implementation
+	super.apply_visual_from_program(target_program, p_glyph, p_color)
 
 # Damage reporting uses the Demon's name (not a subroutine's).
 func take_damage(amount: int) -> bool:

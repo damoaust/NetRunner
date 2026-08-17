@@ -2180,6 +2180,7 @@ npc_max_integrity = 6
 npc_max_health = 4
 npc_max_mu = 2
 npc_disposition = 0
+npc_disposition_override = true
 npc_has_override = true
 copied_file_paths = PackedStringArray()
 
@@ -3442,6 +3443,7 @@ npc_max_integrity = 3
 npc_max_health = 3
 npc_max_mu = 3
 npc_disposition = 0
+npc_disposition_override = true
 npc_has_override = true
 copied_file_paths = PackedStringArray()
 
