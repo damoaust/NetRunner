@@ -262,15 +262,22 @@ func grid_to_3d(coord: Vector2i, floor_idx: int = 0) -> Vector3:
 # so the 3D elements sit behind the 2D overlay at the same grid position.
 # `floor_idx` offsets the camera Y so deeper floors are viewed at their
 # stacked position.
-func sync_camera_2d(cam_2d_pos: Vector2, layout_size: Vector2i, floor_idx: int = 0) -> void:
+func sync_camera_2d(cam_2d_pos: Vector2, _layout_size: Vector2i, floor_idx: int = 0) -> void:
 	if camera_3d == null:
 		return
 	var center_x := cam_2d_pos.x
+	# 2D pixel Y includes the 90px header offset. The 3D grid starts at Z=0
+	# (no header), so subtract grid_offset_y to get grid-space Y.
 	var center_z := cam_2d_pos.y - grid_offset_y
 	var floor_y: float = floor_idx * floor_gap
-	var cam_size := float(maxi(layout_size.x, layout_size.y)) * cell_size * 0.75
-	camera_3d.size = cam_size
-	camera_3d.position = Vector3(center_x, floor_y + cam_size * 0.8, center_z + cam_size * 0.3)
+	# Match the 2D camera's visible area. The 2D Camera2D has no zoom, so its
+	# visible height = window height in pixels. The SubViewport should match.
+	# Use the SubViewport height as the orthographic size for 1:1 mapping.
+	var vp_h: float = float(sub_viewport.size.y) if sub_viewport else 700.0
+	camera_3d.size = vp_h
+	# Position camera above the focus point, looking down at -55 degrees.
+	# The camera Z is offset behind the focus so the -55 tilt frames the grid.
+	camera_3d.position = Vector3(center_x, floor_y + vp_h * 0.7, center_z + vp_h * 0.5)
 	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
 
 
@@ -446,7 +453,11 @@ func attach_to_canvas_layer(canvas_layer: CanvasLayer) -> void:
 		canvas_layer.add_child(texture_rect)
 
 
-# Resize the SubViewport to match the board dimensions.
-func resize_viewport(width: int, height: int) -> void:
+# Resize the SubViewport to match the actual on-screen area so the 3D
+# camera's orthographic size maps 1:1 to screen pixels (matching the 2D camera).
+func resize_viewport(_width: int, _height: int) -> void:
 	if sub_viewport:
-		sub_viewport.size = Vector2i(width, height)
+		# Use the window size, not the grid size, so the 3D camera sees the
+		# same screen area as the 2D camera (which has no zoom).
+		var win := DisplayServer.window_get_size()
+		sub_viewport.size = Vector2i(maxi(win.x, 800), maxi(win.y, 600))
