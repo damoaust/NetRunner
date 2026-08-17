@@ -247,13 +247,13 @@ func _create_floor_plane() -> void:
 
 
 # Convert a grid coordinate to a 3D world position. The grid maps to the XZ
-# plane; Y is up (walls extrude on Y). When `floor_idx` is provided, the mesh
-# is placed at that floor's height (offset by floor_idx * floor_gap on Y).
+# plane; Y is up (walls extrude on Y). Z is negated so 2D "down" (increasing Y)
+# maps to 3D "toward camera" (decreasing Z), matching the 2D camera scroll.
 func grid_to_3d(coord: Vector2i, floor_idx: int = 0) -> Vector3:
 	return Vector3(
 		coord.x * cell_size + cell_size / 2.0,
 		floor_idx * floor_gap,
-		coord.y * cell_size + cell_size / 2.0
+		-(coord.y * cell_size + cell_size / 2.0)
 	)
 
 
@@ -267,18 +267,19 @@ func sync_camera_2d(cam_2d_pos: Vector2, _layout_size: Vector2i, floor_idx: int 
 		return
 	var center_x := cam_2d_pos.x
 	# 2D pixel Y includes the 90px header offset. The 3D grid starts at Z=0
-	# (no header), so subtract grid_offset_y to get grid-space Y.
-	var center_z := cam_2d_pos.y - grid_offset_y
+	# (no header), so subtract grid_offset_y to get grid-space Y. In 2D, +Y is
+	# DOWN; in 3D +Z is INTO the screen. We negate Z so 2D "down" (increasing
+	# Y) maps to 3D "toward camera" (increasing -Z → toward viewer), matching
+	# the 2D camera's scroll direction.
+	var center_z := -(cam_2d_pos.y - grid_offset_y)
 	var floor_y: float = floor_idx * floor_gap
-	# Match the 2D camera's visible area. The 2D Camera2D has no zoom, so its
-	# visible height = window height in pixels. The SubViewport should match.
-	# Use the SubViewport height as the orthographic size for 1:1 mapping.
 	var vp_h: float = float(sub_viewport.size.y) if sub_viewport else 700.0
 	camera_3d.size = vp_h
-	# Position camera above the focus point, looking down at -55 degrees.
-	# The camera Z is offset behind the focus so the -55 tilt frames the grid.
-	camera_3d.position = Vector3(center_x, floor_y + vp_h * 0.7, center_z + vp_h * 0.5)
-	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
+	# Camera above the focus, looking straight down (top-down). look_at
+	# ensures the focus point is at the screen center.
+	var cam_height := vp_h * 0.7
+	camera_3d.position = Vector3(center_x, floor_y + cam_height, center_z)
+	camera_3d.look_at(Vector3(center_x, floor_y, center_z), Vector3.UP)
 
 
 # Clear all 3D tile meshes (call before re-syncing on floor change / load).
