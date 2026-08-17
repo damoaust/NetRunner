@@ -58,7 +58,7 @@ func _create_infrastructure() -> void:
 	sub_viewport = SubViewport.new()
 	sub_viewport.name = "Board3DViewport"
 	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	sub_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+	sub_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
 	sub_viewport.transparent_bg = true
 	sub_viewport.size = Vector2i(800, 700)
 	add_child(sub_viewport)
@@ -71,15 +71,16 @@ func _create_infrastructure() -> void:
 	camera_3d.name = "Camera3D"
 	camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera_3d.size = 700.0
-	camera_3d.position = Vector3(300, -400, 350)
+	camera_3d.position = Vector3(300, 500, 350)
 	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
 	camera_3d.near = 0.1
 	camera_3d.far = 2000.0
+	camera_3d.current = true
 	world_root.add_child(camera_3d)
 
 	# Ambient light so meshes aren't pitch black.
 	var light := DirectionalLight3D.new()
-	light.position = Vector3(200, -400, 200)
+	light.position = Vector3(200, 400, 200)
 	light.rotation_degrees = Vector3(-45, 30, 0)
 	light.light_energy = 0.6
 	light.light_color = Color(0.4, 0.6, 0.8)
@@ -88,7 +89,7 @@ func _create_infrastructure() -> void:
 	# WorldEnvironment for the 3D scene inside the SubViewport.
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.01, 0.02, 0.04, 0.0)
+	env.background_color = Color(0.0, 0.0, 0.0, 0.0)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.05, 0.08, 0.12)
 	env.ambient_light_energy = 0.4
@@ -108,6 +109,12 @@ func _create_infrastructure() -> void:
 	texture_rect.texture = sub_viewport.get_texture()
 	texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_rect.anchors_preset = Control.PRESET_FULL_RECT
+	texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	# Additive blend so the 3D neon glow shines through the 2D fog overlay.
+	# Dark areas of the 3D output (floor plane) don't affect the 2D grid below.
+	var tex_mat := CanvasItemMaterial.new()
+	tex_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	texture_rect.material = tex_mat
 
 
 # Create all shader/standard materials for 3D tile meshes.
@@ -235,16 +242,17 @@ func _create_floor_plane() -> void:
 	mat.emission = Color(0.0, 0.05, 0.08)
 	mat.emission_energy_multiplier = 0.3
 	_floor_mesh.material_override = mat
+	_floor_mesh.position.y = -1.0  # Slightly below the tile meshes
 	world_root.add_child(_floor_mesh)
 
 
 # Convert a grid coordinate to a 3D world position. The grid maps to the XZ
 # plane; Y is up (walls extrude on Y). When `floor_idx` is provided, the mesh
-# is placed in that floor's container (offset by floor_idx * floor_gap on Y).
+# is placed at that floor's height (offset by floor_idx * floor_gap on Y).
 func grid_to_3d(coord: Vector2i, floor_idx: int = 0) -> Vector3:
 	return Vector3(
 		coord.x * cell_size + cell_size / 2.0,
-		-floor_idx * floor_gap,
+		floor_idx * floor_gap,
 		coord.y * cell_size + cell_size / 2.0
 	)
 
@@ -259,10 +267,10 @@ func sync_camera_2d(cam_2d_pos: Vector2, layout_size: Vector2i, floor_idx: int =
 		return
 	var center_x := cam_2d_pos.x
 	var center_z := cam_2d_pos.y - grid_offset_y
-	var floor_y: float = -floor_idx * floor_gap
+	var floor_y: float = floor_idx * floor_gap
 	var cam_size := float(maxi(layout_size.x, layout_size.y)) * cell_size * 0.75
 	camera_3d.size = cam_size
-	camera_3d.position = Vector3(center_x, floor_y - cam_size * 0.8, center_z + cam_size * 0.3)
+	camera_3d.position = Vector3(center_x, floor_y + cam_size * 0.8, center_z + cam_size * 0.3)
 	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
 
 
@@ -292,7 +300,7 @@ func spawn_wall(coord: Vector2i, floor_idx: int = 0) -> void:
 	mesh.mesh = box
 	mesh.material_override = _wall_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y -= wall_height / 2.0
+	mesh.position.y += wall_height / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
@@ -310,7 +318,7 @@ func spawn_gate(coord: Vector2i, locked: bool, floor_idx: int = 0) -> void:
 	mesh.mesh = box
 	mesh.material_override = _gate_locked_material if locked else _gate_unlocked_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y -= h / 2.0
+	mesh.position.y += h / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
@@ -325,7 +333,7 @@ func spawn_memory_unit(coord: Vector2i, floor_idx: int = 0) -> void:
 	mesh.mesh = box
 	mesh.material_override = _mu_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y -= chip_height / 2.0
+	mesh.position.y += chip_height / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
@@ -342,7 +350,7 @@ func spawn_control_node(coord: Vector2i, crashed: bool, floor_idx: int = 0) -> v
 	mesh.mesh = box
 	mesh.material_override = _cpu_crashed_material if crashed else _cpu_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y -= cpu_height / 2.0
+	mesh.position.y += cpu_height / 2.0
 	mesh.rotation_degrees.y = 45.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
@@ -360,7 +368,7 @@ func spawn_ice_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
 	mesh.mesh = box
 	mesh.material_override = _ice_glow_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y -= wall_height * 0.4
+	mesh.position.y += wall_height * 0.4
 	world_root.add_child(mesh)
 	_ice_meshes[coord] = mesh
 
@@ -387,7 +395,7 @@ func spawn_beacon(coord: Vector2i, floor_idx: int = 0) -> void:
 	mesh.mesh = cyl
 	mesh.material_override = _beacon_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y -= beacon_height / 2.0
+	mesh.position.y += beacon_height / 2.0
 	world_root.add_child(mesh)
 	_beacon_meshes.append(mesh)
 
@@ -430,7 +438,9 @@ func sync_from_layout(layout: CP2020DatafortLayout, p_floor: int) -> void:
 				spawn_control_node(coord, tile.cpu_crashed_turns > 0, p_floor)
 
 
-# Attach the TextureRect to a CanvasLayer so it renders behind the 2D board.
+# Attach the TextureRect to a CanvasLayer so it renders on top of the 2D
+# board renderer. Uses additive blend mode so the 3D neon glow shines through
+# the fog overlay without obscuring the 2D neon grid lines beneath.
 func attach_to_canvas_layer(canvas_layer: CanvasLayer) -> void:
 	if texture_rect and texture_rect.get_parent() == null:
 		canvas_layer.add_child(texture_rect)

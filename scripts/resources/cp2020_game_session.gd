@@ -207,18 +207,26 @@ func _ready() -> void:
 			combat_animator.cell_size = board_renderer.cell_size
 			combat_animator.grid_offset_y = board_renderer.grid_offset_y
 
-	# 3D compositing layer — SubViewport + Camera3D behind the 2D overlay.
-	# Created programmatically (same pattern as combat_animator). The
-	# TextureRect output is attached to the bg CanvasLayer (layer -1) so
-	# it renders behind the 2D BoardRenderer.
+	# 3D compositing layer — SubViewport + Camera3D renders extruded walls and
+	# 3D elements. The TextureRect output is attached to a dedicated CanvasLayer
+	# (layer 1) ABOVE the 2D board renderer, with additive blend mode so the 3D
+	# neon glow shines through the fog without obscuring the 2D grid lines.
+	# The UI CanvasLayer (layer 0) is bumped to layer 2 so the HUD stays on top.
 	if board_3d == null and board_renderer:
 		board_3d = CP2020Board3D.new()
 		board_3d.cell_size = board_renderer.cell_size
 		board_3d.grid_offset_y = board_renderer.grid_offset_y
 		add_child(board_3d)
-		var bg_layer := get_node_or_null("CanvasLayer") as CanvasLayer
-		if bg_layer:
-			board_3d.attach_to_canvas_layer(bg_layer)
+		# Create a dedicated CanvasLayer for the 3D output (above the 2D board).
+		var layer_3d := CanvasLayer.new()
+		layer_3d.name = "Layer3D"
+		layer_3d.layer = 1
+		add_child(layer_3d)
+		board_3d.attach_to_canvas_layer(layer_3d)
+		# Bump the UI CanvasLayer above the 3D layer so the HUD stays readable.
+		var ui_layer := get_node_or_null("UI") as CanvasLayer
+		if ui_layer:
+			ui_layer.layer = 2
 
 	# Load the subnet chosen on the world map (fall back to default)
 	var subnet_path := RunState.selected_subnet_path if RunState.selected_subnet_path != "" else starting_subnet_path
