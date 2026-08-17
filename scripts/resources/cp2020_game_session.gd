@@ -294,6 +294,8 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		_deployed_programs.clear()
 		if board_renderer:
 			board_renderer.watchdog_beacons = _watchdog_beacons
+		if board_3d:
+			board_3d.clear_beacons()
 		# Clear any rezzed attack-program nodes from a prior dive — they do
 		# not persist across dataforts (a fresh dive starts un-rezzed).
 		_clear_rezzed_programs()
@@ -901,6 +903,8 @@ func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 		log_to_terminal("Hit! %s takes %d damage.\n" % [target_ice.program.program_name, dmg])
 		if target_ice.take_damage(dmg):
 			ice_nodes.erase(target_ice)
+			if board_3d:
+				board_3d.remove_ice_proxy(target_coord)
 	elif not result.tie:
 		log_to_terminal("%s repels the attack — no damage.\n" % target_ice.program.program_name)
 	else:
@@ -983,6 +987,9 @@ func deploy_watchdog_beacon(program: NetProgram, target_coord: Vector2i) -> void
 	log_to_terminal("Watchdog beacon '%s' deployed at %s — monitoring 20-space radius.\n" % [program.program_name, target_coord])
 	if board_renderer:
 		board_renderer.request_redraw()
+	# Sync 3D beacon column for the watchdog trace.
+	if board_3d:
+		board_3d.sync_beacons(_watchdog_beacons)
 
 func _execute_detection(program: NetProgram, target_coord: Vector2i) -> void:
 	deploy_watchdog_beacon(program, target_coord)
@@ -1692,6 +1699,9 @@ func spawn_black_ice() -> void:
 					ice.trace_succeeded.connect(_on_ice_trace_succeeded)
 				ice_nodes.append(ice)
 				log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program.program_name, coord])
+				# Spawn a 3D glow proxy for this ICE in the compositing layer.
+				if board_3d:
+					board_3d.spawn_ice_proxy(coord)
 
 
 func spawn_npcs() -> void:

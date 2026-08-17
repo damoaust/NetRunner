@@ -14,22 +14,35 @@ extends Node3D
 @export var cell_size: float = 40.0
 @export var grid_offset_y: float = 90.0
 @export var wall_height: float = 24.0
+@export var gate_height: float = 16.0
+@export var chip_height: float = 10.0
+@export var cpu_height: float = 14.0
+@export var beacon_height: float = 80.0
 
 var sub_viewport: SubViewport
 var camera_3d: Camera3D
 var world_root: Node3D
 var texture_rect: TextureRect
 var _floor_mesh: MeshInstance3D
-var _wall_meshes: Array[MeshInstance3D] = []
+var _tile_meshes: Array[MeshInstance3D] = []
+var _beacon_meshes: Array[MeshInstance3D] = []
+var _ice_meshes: Dictionary = {}  # coord (Vector2i) -> MeshInstance3D
 var _world_env: WorldEnvironment
 
 # Neon-edge shader for extruded walls: dark fill with emissive cyan edges.
 var _wall_material: ShaderMaterial
+var _gate_locked_material: ShaderMaterial
+var _gate_unlocked_material: ShaderMaterial
+var _mu_material: StandardMaterial3D
+var _cpu_material: StandardMaterial3D
+var _cpu_crashed_material: StandardMaterial3D
+var _ice_glow_material: StandardMaterial3D
+var _beacon_material: ShaderMaterial
 
 
 func _ready() -> void:
 	_create_infrastructure()
-	_create_wall_material()
+	_create_materials()
 	_create_floor_plane()
 
 
@@ -93,16 +106,86 @@ func _create_infrastructure() -> void:
 	texture_rect.anchors_preset = Control.PRESET_FULL_RECT
 
 
-# Neon-edge shader: dark fill with emissive cyan edges, matching the
-# cyberpunk aesthetic. Applied to extruded wall meshes.
-func _create_wall_material() -> void:
+# Create all shader/standard materials for 3D tile meshes.
+func _create_materials() -> void:
+	# Wall: cyan neon edges
+	_wall_material = _make_edge_shader_mat(Color(0.0, 0.78, 0.92, 1.0), Color(0.02, 0.05, 0.08, 0.85), 2.0)
+	# Locked gate: red neon edges
+	_gate_locked_material = _make_edge_shader_mat(Color(1.0, 0.2, 0.15, 1.0), Color(0.08, 0.02, 0.02, 0.8), 2.5)
+	# Unlocked gate: green neon edges, shorter
+	_gate_unlocked_material = _make_edge_shader_mat(Color(0.0, 1.0, 0.4, 1.0), Color(0.02, 0.06, 0.03, 0.6), 1.5)
+
+	# Memory unit: amber chip
+	_mu_material = StandardMaterial3D.new()
+	_mu_material.albedo_color = Color(0.3, 0.2, 0.05, 0.9)
+	_mu_material.emission_enabled = true
+	_mu_material.emission = Color(0.8, 0.6, 0.1)
+	_mu_material.emission_energy_multiplier = 0.6
+	_mu_material.roughness = 0.5
+	_mu_material.metalness = 0.7
+
+	# CPU: purple glow
+	_cpu_material = StandardMaterial3D.new()
+	_cpu_material.albedo_color = Color(0.15, 0.05, 0.25, 0.9)
+	_cpu_material.emission_enabled = true
+	_cpu_material.emission = Color(0.5, 0.1, 0.8)
+	_cpu_material.emission_energy_multiplier = 0.8
+	_cpu_material.roughness = 0.3
+	_cpu_material.metalness = 0.6
+
+	# Crashed CPU: dimmed red
+	_cpu_crashed_material = StandardMaterial3D.new()
+	_cpu_crashed_material.albedo_color = Color(0.2, 0.03, 0.03, 0.7)
+	_cpu_crashed_material.emission_enabled = true
+	_cpu_crashed_material.emission = Color(0.6, 0.05, 0.05)
+	_cpu_crashed_material.emission_energy_multiplier = 0.3
+	_cpu_crashed_material.roughness = 0.8
+
+	# ICE glow: red-ish translucent
+	_ice_glow_material = StandardMaterial3D.new()
+	_ice_glow_material.albedo_color = Color(0.8, 0.1, 0.1, 0.4)
+	_ice_glow_material.emission_enabled = true
+	_ice_glow_material.emission = Color(1.0, 0.15, 0.05)
+	_ice_glow_material.emission_energy_multiplier = 1.5
+	_ice_glow_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_ice_glow_material.roughness = 0.2
+	_ice_glow_material.metalness = 0.8
+
+	# Beacon: volumetric additive column
+	_beacon_material = _make_beacon_shader_mat(Color(1.0, 0.3, 0.1, 0.5))
+
+
+func _make_edge_shader_mat(edge_col: Color, fill_col: Color, glow: float) -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = _wall_shader_code()
-	_wall_material = ShaderMaterial.new()
-	_wall_material.shader = shader
-	_wall_material.set_shader_parameter("edge_color", Color(0.0, 0.78, 0.92, 1.0))
-	_wall_material.set_shader_parameter("fill_color", Color(0.02, 0.05, 0.08, 0.85))
-	_wall_material.set_shader_parameter("edge_glow", 2.0)
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("edge_color", edge_col)
+	mat.set_shader_parameter("fill_color", fill_col)
+	mat.set_shader_parameter("edge_glow", glow)
+	return mat
+
+
+func _make_beacon_shader_mat(col: Color) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = "
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, unshaded;
+
+uniform vec4 beam_color : source_color;
+uniform float pulse_speed = 3.0;
+
+void fragment() {
+	float pulse = 0.6 + 0.4 * sin(TIME * pulse_speed);
+	EMISSION = beam_color.rgb * pulse * 2.0;
+	ALBEDO = beam_color.rgb;
+	ALPHA = beam_color.a * pulse;
+}
+"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("beam_color", col)
+	return mat
 
 
 static func _wall_shader_code() -> String:
@@ -180,12 +263,18 @@ func sync_camera_2d(cam_2d_pos: Vector2, layout_size: Vector2i) -> void:
 	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
 
 
-# Clear all 3D wall meshes (call before re-syncing on floor change / load).
+# Clear all 3D tile meshes (call before re-syncing on floor change / load).
 func clear_walls() -> void:
-	for w in _wall_meshes:
+	for w in _tile_meshes:
 		if is_instance_valid(w):
 			w.queue_free()
-	_wall_meshes.clear()
+	_tile_meshes.clear()
+	# Also clear ICE 3D proxies — they re-sync from entity spawns.
+	for key in _ice_meshes.keys():
+		var m = _ice_meshes[key]
+		if is_instance_valid(m):
+			m.queue_free()
+	_ice_meshes.clear()
 
 
 # Spawn an extruded wall mesh at the given grid coordinate. Uses a BoxMesh
@@ -202,7 +291,117 @@ func spawn_wall(coord: Vector2i) -> void:
 	mesh.position = grid_to_3d(coord)
 	mesh.position.y = -wall_height / 2.0
 	world_root.add_child(mesh)
-	_wall_meshes.append(mesh)
+	_tile_meshes.append(mesh)
+
+
+# Spawn a 3D code gate: a thinner box with red (locked) or green (unlocked)
+# neon-edge shader. Locked gates are solid obstacles; unlocked gates are
+# shorter (half height) to show they've been opened.
+func spawn_gate(coord: Vector2i, locked: bool) -> void:
+	if world_root == null:
+		return
+	var h: float = gate_height if locked else gate_height * 0.5
+	var box := BoxMesh.new()
+	box.size = Vector3(cell_size * 0.85, h, cell_size * 0.85)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.material_override = _gate_locked_material if locked else _gate_unlocked_material
+	mesh.position = grid_to_3d(coord)
+	mesh.position.y = -h / 2.0
+	world_root.add_child(mesh)
+	_tile_meshes.append(mesh)
+
+
+# Spawn a 3D memory unit: a small extruded chip box with amber emission.
+func spawn_memory_unit(coord: Vector2i) -> void:
+	if world_root == null:
+		return
+	var box := BoxMesh.new()
+	box.size = Vector3(cell_size * 0.6, chip_height, cell_size * 0.5)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.material_override = _mu_material
+	mesh.position = grid_to_3d(coord)
+	mesh.position.y = -chip_height / 2.0
+	world_root.add_child(mesh)
+	_tile_meshes.append(mesh)
+
+
+# Spawn a 3D control node (CPU): a diamond/pyramid mesh with purple glow.
+# If crashed, uses the dimmed red material instead.
+func spawn_control_node(coord: Vector2i, crashed: bool) -> void:
+	if world_root == null:
+		return
+	# Use a box rotated 45° on Y for a diamond top-down look.
+	var box := BoxMesh.new()
+	box.size = Vector3(cell_size * 0.5, cpu_height, cell_size * 0.5)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.material_override = _cpu_crashed_material if crashed else _cpu_material
+	mesh.position = grid_to_3d(coord)
+	mesh.position.y = -cpu_height / 2.0
+	mesh.rotation_degrees.y = 45.0
+	world_root.add_child(mesh)
+	_tile_meshes.append(mesh)
+
+
+# Spawn a 3D ICE glow proxy at a grid coordinate. A translucent red box that
+# pulses, representing the ICE's threat aura. The 2D glyph/label stays on the
+# entity's Node2D for the actual skull/glyph visual.
+func spawn_ice_proxy(coord: Vector2i) -> void:
+	if world_root == null or _ice_meshes.has(coord):
+		return
+	var box := BoxMesh.new()
+	box.size = Vector3(cell_size * 0.7, wall_height * 0.8, cell_size * 0.7)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.material_override = _ice_glow_material
+	mesh.position = grid_to_3d(coord)
+	mesh.position.y = -wall_height * 0.4
+	world_root.add_child(mesh)
+	_ice_meshes[coord] = mesh
+
+
+# Remove a 3D ICE proxy when the ICE is derezzed/destroyed.
+func remove_ice_proxy(coord: Vector2i) -> void:
+	if _ice_meshes.has(coord):
+		var m = _ice_meshes[coord]
+		if is_instance_valid(m):
+			m.queue_free()
+		_ice_meshes.erase(coord)
+
+
+# Spawn a 3D beacon: a volumetric light column at a grid coordinate for
+# watchdog trace markers. Uses a cylinder mesh with additive pulsing shader.
+func spawn_beacon(coord: Vector2i) -> void:
+	if world_root == null:
+		return
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = cell_size * 0.15
+	cyl.bottom_radius = cell_size * 0.15
+	cyl.height = beacon_height
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = cyl
+	mesh.material_override = _beacon_material
+	mesh.position = grid_to_3d(coord)
+	mesh.position.y = -beacon_height / 2.0
+	world_root.add_child(mesh)
+	_beacon_meshes.append(mesh)
+
+
+# Clear all beacon meshes.
+func clear_beacons() -> void:
+	for b in _beacon_meshes:
+		if is_instance_valid(b):
+			b.queue_free()
+	_beacon_meshes.clear()
+
+
+# Sync beacons from a list of grid coordinates (watchdog trace positions).
+func sync_beacons(coords: Array) -> void:
+	clear_beacons()
+	for c in coords:
+		spawn_beacon(c)
 
 
 # Full sync: clear + rebuild all 3D elements for the current floor. Called
@@ -221,8 +420,11 @@ func sync_from_layout(layout: CP2020DatafortLayout, p_floor: int) -> void:
 			CP2020DatafortLayout.TileType.DATAWALL:
 				spawn_wall(coord)
 			CP2020DatafortLayout.TileType.CODE_GATE:
-				if not tile.is_unlocked:
-					spawn_wall(coord)
+				spawn_gate(coord, not tile.is_unlocked)
+			CP2020DatafortLayout.TileType.MEMORY_UNIT:
+				spawn_memory_unit(coord)
+			CP2020DatafortLayout.TileType.CONTROL_NODE:
+				spawn_control_node(coord, tile.cpu_crashed_turns > 0)
 
 
 # Attach the TextureRect to a CanvasLayer so it renders behind the 2D board.
