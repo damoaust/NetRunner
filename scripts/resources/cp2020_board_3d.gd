@@ -18,6 +18,10 @@ extends Node3D
 @export var chip_height: float = 10.0
 @export var cpu_height: float = 14.0
 @export var beacon_height: float = 80.0
+# Vertical separation between stacked floors in 3D. Each floor's mesh group
+# is offset by floor_index * FLOOR_GAP on the Y axis so multi-floor dataforts
+# show as a stacked tower behind the 2D overlay.
+@export var floor_gap: float = 50.0
 
 var sub_viewport: SubViewport
 var camera_3d: Camera3D
@@ -235,12 +239,12 @@ func _create_floor_plane() -> void:
 
 
 # Convert a grid coordinate to a 3D world position. The grid maps to the XZ
-# plane; Y is up (walls extrude on Y). Origin matches the 2D renderer's
-# pixel-to-grid math so Camera3D and Camera2D stay aligned.
-func grid_to_3d(coord: Vector2i) -> Vector3:
+# plane; Y is up (walls extrude on Y). When `floor_idx` is provided, the mesh
+# is placed in that floor's container (offset by floor_idx * floor_gap on Y).
+func grid_to_3d(coord: Vector2i, floor_idx: int = 0) -> Vector3:
 	return Vector3(
 		coord.x * cell_size + cell_size / 2.0,
-		0.0,
+		-floor_idx * floor_gap,
 		coord.y * cell_size + cell_size / 2.0
 	)
 
@@ -248,18 +252,17 @@ func grid_to_3d(coord: Vector2i) -> Vector3:
 # Sync the 3D camera position from the 2D RunnerCamera. The 2D camera follows
 # the netrunner; the 3D camera mirrors that pan with a height + angle offset
 # so the 3D elements sit behind the 2D overlay at the same grid position.
-func sync_camera_2d(cam_2d_pos: Vector2, layout_size: Vector2i) -> void:
+# `floor_idx` offsets the camera Y so deeper floors are viewed at their
+# stacked position.
+func sync_camera_2d(cam_2d_pos: Vector2, layout_size: Vector2i, floor_idx: int = 0) -> void:
 	if camera_3d == null:
 		return
-	# The 3D camera centers on the same grid position as the 2D camera.
-	# cam_2d_pos is in pixel space (origin top-left, +Y down). The 3D world
-	# uses XZ (origin bottom-left of the grid, +Z "down" in grid terms).
 	var center_x := cam_2d_pos.x
 	var center_z := cam_2d_pos.y - grid_offset_y
-	# Position the camera above and behind the focus point, looking down.
+	var floor_y: float = -floor_idx * floor_gap
 	var cam_size := float(maxi(layout_size.x, layout_size.y)) * cell_size * 0.75
 	camera_3d.size = cam_size
-	camera_3d.position = Vector3(center_x, -cam_size * 0.8, center_z + cam_size * 0.3)
+	camera_3d.position = Vector3(center_x, floor_y - cam_size * 0.8, center_z + cam_size * 0.3)
 	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
 
 
@@ -280,7 +283,7 @@ func clear_walls() -> void:
 # Spawn an extruded wall mesh at the given grid coordinate. Uses a BoxMesh
 # with the neon-edge shader material. Called by the sync helper for every
 # DATAWALL tile on the current floor.
-func spawn_wall(coord: Vector2i) -> void:
+func spawn_wall(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
 	var box := BoxMesh.new()
@@ -288,8 +291,8 @@ func spawn_wall(coord: Vector2i) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = box
 	mesh.material_override = _wall_material
-	mesh.position = grid_to_3d(coord)
-	mesh.position.y = -wall_height / 2.0
+	mesh.position = grid_to_3d(coord, floor_idx)
+	mesh.position.y -= wall_height / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
@@ -297,7 +300,7 @@ func spawn_wall(coord: Vector2i) -> void:
 # Spawn a 3D code gate: a thinner box with red (locked) or green (unlocked)
 # neon-edge shader. Locked gates are solid obstacles; unlocked gates are
 # shorter (half height) to show they've been opened.
-func spawn_gate(coord: Vector2i, locked: bool) -> void:
+func spawn_gate(coord: Vector2i, locked: bool, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
 	var h: float = gate_height if locked else gate_height * 0.5
@@ -306,14 +309,14 @@ func spawn_gate(coord: Vector2i, locked: bool) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = box
 	mesh.material_override = _gate_locked_material if locked else _gate_unlocked_material
-	mesh.position = grid_to_3d(coord)
-	mesh.position.y = -h / 2.0
+	mesh.position = grid_to_3d(coord, floor_idx)
+	mesh.position.y -= h / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
 
 # Spawn a 3D memory unit: a small extruded chip box with amber emission.
-func spawn_memory_unit(coord: Vector2i) -> void:
+func spawn_memory_unit(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
 	var box := BoxMesh.new()
@@ -321,15 +324,15 @@ func spawn_memory_unit(coord: Vector2i) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = box
 	mesh.material_override = _mu_material
-	mesh.position = grid_to_3d(coord)
-	mesh.position.y = -chip_height / 2.0
+	mesh.position = grid_to_3d(coord, floor_idx)
+	mesh.position.y -= chip_height / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
 
 # Spawn a 3D control node (CPU): a diamond/pyramid mesh with purple glow.
 # If crashed, uses the dimmed red material instead.
-func spawn_control_node(coord: Vector2i, crashed: bool) -> void:
+func spawn_control_node(coord: Vector2i, crashed: bool, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
 	# Use a box rotated 45° on Y for a diamond top-down look.
@@ -338,8 +341,8 @@ func spawn_control_node(coord: Vector2i, crashed: bool) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = box
 	mesh.material_override = _cpu_crashed_material if crashed else _cpu_material
-	mesh.position = grid_to_3d(coord)
-	mesh.position.y = -cpu_height / 2.0
+	mesh.position = grid_to_3d(coord, floor_idx)
+	mesh.position.y -= cpu_height / 2.0
 	mesh.rotation_degrees.y = 45.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
@@ -348,7 +351,7 @@ func spawn_control_node(coord: Vector2i, crashed: bool) -> void:
 # Spawn a 3D ICE glow proxy at a grid coordinate. A translucent red box that
 # pulses, representing the ICE's threat aura. The 2D glyph/label stays on the
 # entity's Node2D for the actual skull/glyph visual.
-func spawn_ice_proxy(coord: Vector2i) -> void:
+func spawn_ice_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null or _ice_meshes.has(coord):
 		return
 	var box := BoxMesh.new()
@@ -356,8 +359,8 @@ func spawn_ice_proxy(coord: Vector2i) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = box
 	mesh.material_override = _ice_glow_material
-	mesh.position = grid_to_3d(coord)
-	mesh.position.y = -wall_height * 0.4
+	mesh.position = grid_to_3d(coord, floor_idx)
+	mesh.position.y -= wall_height * 0.4
 	world_root.add_child(mesh)
 	_ice_meshes[coord] = mesh
 
@@ -373,7 +376,7 @@ func remove_ice_proxy(coord: Vector2i) -> void:
 
 # Spawn a 3D beacon: a volumetric light column at a grid coordinate for
 # watchdog trace markers. Uses a cylinder mesh with additive pulsing shader.
-func spawn_beacon(coord: Vector2i) -> void:
+func spawn_beacon(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
 	var cyl := CylinderMesh.new()
@@ -383,8 +386,8 @@ func spawn_beacon(coord: Vector2i) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = cyl
 	mesh.material_override = _beacon_material
-	mesh.position = grid_to_3d(coord)
-	mesh.position.y = -beacon_height / 2.0
+	mesh.position = grid_to_3d(coord, floor_idx)
+	mesh.position.y -= beacon_height / 2.0
 	world_root.add_child(mesh)
 	_beacon_meshes.append(mesh)
 
@@ -418,13 +421,13 @@ func sync_from_layout(layout: CP2020DatafortLayout, p_floor: int) -> void:
 			continue
 		match tile.tile_type:
 			CP2020DatafortLayout.TileType.DATAWALL:
-				spawn_wall(coord)
+				spawn_wall(coord, p_floor)
 			CP2020DatafortLayout.TileType.CODE_GATE:
-				spawn_gate(coord, not tile.is_unlocked)
+				spawn_gate(coord, not tile.is_unlocked, p_floor)
 			CP2020DatafortLayout.TileType.MEMORY_UNIT:
-				spawn_memory_unit(coord)
+				spawn_memory_unit(coord, p_floor)
 			CP2020DatafortLayout.TileType.CONTROL_NODE:
-				spawn_control_node(coord, tile.cpu_crashed_turns > 0)
+				spawn_control_node(coord, tile.cpu_crashed_turns > 0, p_floor)
 
 
 # Attach the TextureRect to a CanvasLayer so it renders behind the 2D board.

@@ -339,9 +339,9 @@ func _center_camera_on_runner(_new_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	if not camera or not netrunner:
 		return
 	camera.position = netrunner.position
-	# Sync the 3D camera to match the 2D camera pan.
+	# Sync the 3D camera to match the 2D camera pan + floor depth.
 	if board_3d and current_layout:
-		board_3d.sync_camera_2d(netrunner.position, Vector2i(current_layout.columns, current_layout.rows))
+		board_3d.sync_camera_2d(netrunner.position, Vector2i(current_layout.columns, current_layout.rows), current_floor)
 
 # Sets the current floor and propagates it to the layout + netrunner so every
 # floor-scoped read (get_tile / line_of_sight / renderer / pathfinding) agrees.
@@ -1701,7 +1701,7 @@ func spawn_black_ice() -> void:
 				log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program.program_name, coord])
 				# Spawn a 3D glow proxy for this ICE in the compositing layer.
 				if board_3d:
-					board_3d.spawn_ice_proxy(coord)
+					board_3d.spawn_ice_proxy(coord, f)
 
 
 func spawn_npcs() -> void:
