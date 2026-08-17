@@ -20,8 +20,27 @@ extends Node3D
 @export var beacon_height: float = 80.0
 # Vertical separation between stacked floors in 3D. Each floor's mesh group
 # is offset by floor_index * FLOOR_GAP on the Y axis so multi-floor dataforts
-# show as a stacked tower behind the 2D overlay.
+# can be rebuilt per-floor.
 @export var floor_gap: float = 50.0
+# Height of the top-down Camera3D above the floor. Orthographic projection
+# means the exact value only affects near/far clipping, not screen scale.
+@export var camera_height: float = 1000.0
+
+# --- Custom tile meshes (optional) ---
+# Assign a Mesh resource here in the inspector to replace the default
+# procedurally-generated BoxMesh for that tile type. Leave null to use the
+# default box. The neon material (_wall_material / _gate_*_material /
+# _mu_material / _cpu_material) is still applied via material_override, so the
+# tile keeps its colour/edges while taking the new shape. Author the mesh at
+# the desired world size (e.g. ~36x24x36 for a wall at cell_size 40); the
+# instance is positioned/centred on the tile the same way as the default box.
+@export_group("Tile Meshes")
+@export var wall_mesh: Mesh = null
+@export var gate_mesh: Mesh = null
+@export var memory_unit_mesh: Mesh = null
+@export var control_node_mesh: Mesh = null
+@export var ice_proxy_mesh: Mesh = null
+@export var floor_mesh: Mesh = null
 
 var sub_viewport: SubViewport
 var camera_3d: Camera3D
@@ -32,6 +51,19 @@ var _tile_meshes: Array[MeshInstance3D] = []
 var _beacon_meshes: Array[MeshInstance3D] = []
 var _ice_meshes: Dictionary = {}  # coord (Vector2i) -> MeshInstance3D
 var _world_env: WorldEnvironment
+
+# Debug helpers for verifying 3D camera alignment. Can be toggled via
+# ScreenshotTool F11 or --debug-3d flag.
+var _debug_origin: MeshInstance3D
+var _debug_axis_x: MeshInstance3D
+var _debug_axis_z: MeshInstance3D
+var _debug_boundary: MeshInstance3D
+var _debug_visible: bool = false
+
+# Picture-in-picture preview of the 3D camera output. Created in
+# _create_infrastructure when show_pip is true.
+var _pip_texture_rect: TextureRect = null
+var _pip_enabled: bool = false
 
 # Neon-edge shader for extruded walls: dark fill with emissive cyan edges.
 var _wall_material: ShaderMaterial
@@ -45,9 +77,74 @@ var _beacon_material: ShaderMaterial
 
 
 func _ready() -> void:
-	_create_infrastructure()
+	# Create shared materials up front; actual SubViewport/camera/world setup
+	# is deferred to setup_with_container() / setup_from_scene() so the
+	# controller can live inside a scene-authored SubViewportContainer.
 	_create_materials()
+
+
+# Called when the 3D infrastructure is authored in the scene (.tscn). The
+# camera, light and world environment are children of this Node3D; geometry is
+# added directly as children so it renders behind the 2D board.
+func setup_from_scene() -> void:
+	world_root = self
+	# Find or create the camera.
+	camera_3d = get_node_or_null("Camera3D") as Camera3D
+	if camera_3d == null:
+		camera_3d = Camera3D.new()
+		camera_3d.name = "Camera3D"
+		camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
+		add_child(camera_3d)
+	# Top-down orientation is authored in the scene's Camera3D transform
+	# (looking down -Y, world +Z = screen down to match the 2D +Y-down grid).
+	# Do NOT override rotation here — setting rotation_degrees resets the
+	# authored basis and previously pointed the camera UP (showing only the
+	# background). Only mark it current.
+	camera_3d.current = true
+
+	# Build floor plane and debug alignment helpers (hidden by default).
 	_create_floor_plane()
+	_create_debug_helpers()
+
+
+# Called when no scene-authored SubViewport exists. Creates the SubViewport
+# dynamically and adds it to the provided SubViewportContainer so Godot
+# renders it correctly.
+func setup_with_container(container: SubViewportContainer) -> void:
+	if container == null:
+		push_error("CP2020Board3D.setup_with_container: container is null.")
+		return
+	if sub_viewport == null:
+		_create_infrastructure()
+	# Reparent the dynamically created SubViewport into the container so the
+	# 3D output is displayed automatically.
+	if sub_viewport and sub_viewport.get_parent() != container:
+		if sub_viewport.get_parent():
+			sub_viewport.get_parent().remove_child(sub_viewport)
+		container.add_child(sub_viewport)
+	container.stretch = true
+	# Build debug alignment helpers (hidden by default).
+	_create_debug_helpers()
+
+
+# SubViewport compositing: render the 3D world to a SubViewport and display
+# it via a TextureRect on the given (background) CanvasLayer, so the 3D
+# terrain appears behind the 2D neon overlay. Use this when the scene does
+# not embed the 3D view in a SubViewportContainer. Any scene-authored direct
+# Camera3D is disabled so it does not render an empty 3D pass over the
+# TextureRect.
+func setup_subviewport(canvas_layer: CanvasLayer) -> void:
+	# Disable a scene-authored direct Camera3D (child of this node) so the
+	# main viewport does not render an empty 3D world on top of the TextureRect.
+	var direct_cam := get_node_or_null("Camera3D") as Camera3D
+	if direct_cam:
+		direct_cam.current = false
+		direct_cam.visible = false
+	if sub_viewport == null:
+		_create_infrastructure()
+	# Attach the output TextureRect to the background canvas layer.
+	if canvas_layer:
+		attach_to_canvas_layer(canvas_layer)
 
 
 # Build the SubViewport + Camera3D + world root + output TextureRect. The
@@ -59,8 +156,15 @@ func _create_infrastructure() -> void:
 	sub_viewport.name = "Board3DViewport"
 	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	sub_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
+	# Transparent background so the 3D terrain (floor + walls) occludes the
+	# 2D city background only where geometry exists — the city stays visible
+	# around the grid. The 3D meshes themselves are opaque, so walls/floor
+	# fully cover the background behind them (no city bleeding through).
 	sub_viewport.transparent_bg = true
-	sub_viewport.size = Vector2i(800, 700)
+	sub_viewport.size = Vector2i(1920, 1080)
+	# Give the SubViewport its own 3D world so the Camera3D and
+	# WorldEnvironment inside it actually render.
+	sub_viewport.own_world_3d = true
 	add_child(sub_viewport)
 
 	world_root = Node3D.new()
@@ -70,10 +174,12 @@ func _create_infrastructure() -> void:
 	camera_3d = Camera3D.new()
 	camera_3d.name = "Camera3D"
 	camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera_3d.size = 700.0
-	camera_3d.position = Vector3(300, 500, 350)
-	camera_3d.rotation_degrees = Vector3(-55, 0, 0)
-	camera_3d.near = 0.1
+	camera_3d.size = 1080.0
+	# Top-down: -90 degree X rotation looks down -Y with world +Z mapping to
+	# screen down (matching the 2D board's +Y-down grid).
+	camera_3d.position = Vector3(0, camera_height, 0)
+	camera_3d.rotation_degrees = Vector3(-90, 0, 0)
+	camera_3d.near = 1.0
 	camera_3d.far = 2000.0
 	camera_3d.current = true
 	world_root.add_child(camera_3d)
@@ -86,41 +192,75 @@ func _create_infrastructure() -> void:
 	light.light_color = Color(0.4, 0.6, 0.8)
 	world_root.add_child(light)
 
-	# WorldEnvironment for the 3D scene inside the SubViewport.
+	# WorldEnvironment for the 3D scene inside the SubViewport. The
+	# background is cleared (transparent) so the 2D city background stays
+	# visible around the grid; the 3D floor/walls occlude it within the grid.
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.0, 0.0, 0.0, 0.0)
+	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.05, 0.08, 0.12)
 	env.ambient_light_energy = 0.4
-	env.glow_enabled = true
-	env.glow_intensity = 1.2
-	env.glow_strength = 1.0
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	env.glow_enabled = false
 	_world_env = WorldEnvironment.new()
 	_world_env.environment = env
 	world_root.add_child(_world_env)
 
-	# TextureRect on the bg CanvasLayer to display the 3D output. It sits
-	# behind the 2D BoardRenderer (CanvasLayer -1 draws before the default
-	# world 2D canvas).
+	# Opaque floor plane (sized per datafort in sync_from_layout) so the grid
+	# area is solid ground that occludes the 2D city background. Without it the
+	# city would show through between the 3D walls.
+	_create_floor_plane()
+
+	# TextureRect displays the SubViewport's 3D output on the background
+	# CanvasLayer (layer -1) so it renders behind the 2D BoardRenderer. Normal
+	# (alpha) blend so the opaque 3D floor/walls occlude the city background
+	# (additive blend let the city bleed through the walls).
 	texture_rect = TextureRect.new()
 	texture_rect.name = "Board3DOutput"
 	texture_rect.texture = sub_viewport.get_texture()
 	texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_rect.anchors_preset = Control.PRESET_FULL_RECT
 	texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
-	# Additive blend so the 3D neon glow shines through the 2D fog overlay.
-	# Dark areas of the 3D output (floor plane) don't affect the 2D grid below.
-	var tex_mat := CanvasItemMaterial.new()
-	tex_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	texture_rect.material = tex_mat
+	# Normal (alpha) blend: opaque 3D geometry occludes the city background;
+	# transparent SubViewport areas (around the grid) let the city show through.
+
+	# Build debug alignment helpers (hidden by default).
+	_create_debug_helpers()
+
+
+# Create a small picture-in-picture preview so we can see what the 3D
+# camera is rendering even when the main TextureRect is behind the 2D
+# board. Call this after attach_to_canvas_layer if you need the PIP.
+func create_pip_preview() -> void:
+	if texture_rect == null or texture_rect.get_parent() == null:
+		return
+	if _pip_texture_rect != null:
+		return
+	_pip_texture_rect = TextureRect.new()
+	_pip_texture_rect.name = "Board3DPiP"
+	_pip_texture_rect.texture = sub_viewport.get_texture()
+	_pip_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pip_texture_rect.size = Vector2(400, 300)
+	_pip_texture_rect.position = Vector2(20, 110)
+	_pip_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	# Add a border so it is easy to spot on screen.
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)
+	style.border_color = Color(1, 0, 0.8, 1)
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.border_width_left = 2
+	style.border_width_right = 2
+	_pip_texture_rect.add_theme_stylebox_override("panel", style)
+	texture_rect.get_parent().add_child(_pip_texture_rect)
+	_pip_enabled = true
 
 
 # Create all shader/standard materials for 3D tile meshes.
 func _create_materials() -> void:
-	# Wall: cyan neon edges
-	_wall_material = _make_edge_shader_mat(Color(0.0, 0.78, 0.92, 1.0), Color(0.02, 0.05, 0.08, 0.85), 2.0)
+	# Wall: cyan neon edges on a visible teal block (top-down needs a
+	# distinctly-coloured fill so walls read as solid blocks against the
+	# dark floor, not just thin outlines).
+	_wall_material = _make_edge_shader_mat(Color(0.0, 0.85, 1.0, 1.0), Color(0.0, 0.20, 0.30, 0.92), 3.5)
 	# Locked gate: red neon edges
 	_gate_locked_material = _make_edge_shader_mat(Color(1.0, 0.2, 0.15, 1.0), Color(0.08, 0.02, 0.02, 0.8), 2.5)
 	# Unlocked gate: green neon edges, shorter
@@ -133,7 +273,7 @@ func _create_materials() -> void:
 	_mu_material.emission = Color(0.8, 0.6, 0.1)
 	_mu_material.emission_energy_multiplier = 0.6
 	_mu_material.roughness = 0.5
-	_mu_material.metalness = 0.7
+	_mu_material.metallic = 0.7
 
 	# CPU: purple glow
 	_cpu_material = StandardMaterial3D.new()
@@ -142,7 +282,7 @@ func _create_materials() -> void:
 	_cpu_material.emission = Color(0.5, 0.1, 0.8)
 	_cpu_material.emission_energy_multiplier = 0.8
 	_cpu_material.roughness = 0.3
-	_cpu_material.metalness = 0.6
+	_cpu_material.metallic = 0.6
 
 	# Crashed CPU: dimmed red
 	_cpu_crashed_material = StandardMaterial3D.new()
@@ -160,7 +300,7 @@ func _create_materials() -> void:
 	_ice_glow_material.emission_energy_multiplier = 1.5
 	_ice_glow_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_ice_glow_material.roughness = 0.2
-	_ice_glow_material.metalness = 0.8
+	_ice_glow_material.metallic = 0.8
 
 	# Beacon: volumetric additive column
 	_beacon_material = _make_beacon_shader_mat(Color(1.0, 0.3, 0.1, 0.5))
@@ -209,10 +349,11 @@ uniform vec4 fill_color : source_color;
 uniform float edge_glow : hint_range(0.0, 10.0) = 2.0;
 
 void fragment() {
-	// Edge detection based on UV proximity to edges
+	// Edge detection based on UV proximity to edges (thick neon frame so
+	// extruded walls read clearly under the top-down camera).
 	float edge = 0.0;
-	edge = max(edge, smoothstep(0.92, 1.0, abs(UV.x - 0.5) * 2.0));
-	edge = max(edge, smoothstep(0.92, 1.0, abs(UV.y - 0.5) * 2.0));
+	edge = max(edge, smoothstep(0.80, 1.0, abs(UV.x - 0.5) * 2.0));
+	edge = max(edge, smoothstep(0.80, 1.0, abs(UV.y - 0.5) * 2.0));
 
 	vec3 color = mix(fill_color.rgb, edge_color.rgb, edge);
 	float alpha = mix(fill_color.a, 1.0, edge);
@@ -225,61 +366,97 @@ void fragment() {
 "
 
 
-# A dark floor plane at y=0 — the grid base. Scaled to cover a large area so
-# the board sits on a surface. Uses a subtle grid shader for depth.
+# A dark floor plane at y=0 — the grid base. Resized in sync_from_layout to
+# match the loaded datafort so it acts as the visible ground behind the 2D
+# overlay.
 func _create_floor_plane() -> void:
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(2000, 2000)
+	if world_root == null:
+		push_warning("CP2020Board3D._create_floor_plane: world_root is null, skipping.")
+		return
 	_floor_mesh = MeshInstance3D.new()
 	_floor_mesh.name = "FloorPlane"
-	_floor_mesh.mesh = plane
+	if floor_mesh != null:
+		# Custom floor mesh (author at unit size; _resize_floor_plane scales it
+		# to cover the grid).
+		_floor_mesh.mesh = floor_mesh
+	else:
+		# Use a thin box instead of a plane to avoid one-sided mesh issues with
+		# the top-down camera.
+		var box := BoxMesh.new()
+		box.size = Vector3(1, 2, 1)
+		_floor_mesh.mesh = box
 
 	var mat := StandardMaterial3D.new()
+	# Dark navy floor that reads as solid ground behind the 2D grid.
 	mat.albedo_color = Color(0.01, 0.02, 0.04, 1.0)
-	mat.roughness = 0.9
-	mat.metalness = 0.1
 	mat.emission_enabled = true
 	mat.emission = Color(0.0, 0.05, 0.08)
 	mat.emission_energy_multiplier = 0.3
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_floor_mesh.material_override = mat
 	_floor_mesh.position.y = -1.0  # Slightly below the tile meshes
 	world_root.add_child(_floor_mesh)
 
 
+# Resize/reposition the floor plane to cover the current datafort grid area.
+func _resize_floor_plane(layout: CP2020DatafortLayout) -> void:
+	if _floor_mesh == null or layout == null:
+		return
+	var box: BoxMesh = _floor_mesh.mesh as BoxMesh
+	if box:
+		# Default box floor: resize the mesh itself.
+		box.size = Vector3(layout.columns * cell_size, 2.0, layout.rows * cell_size)
+		_floor_mesh.scale = Vector3.ONE
+	else:
+		# Custom floor mesh: scale the instance so its AABB covers the grid.
+		var aabb: AABB = _floor_mesh.mesh.get_aabb()
+		var sx: float = (layout.columns * cell_size) / aabb.size.x if aabb.size.x > 0.0 else 1.0
+		var sz: float = (layout.rows * cell_size) / aabb.size.z if aabb.size.z > 0.0 else 1.0
+		_floor_mesh.scale = Vector3(sx, 1.0, sz)
+	# Center the plane over the grid: the grid's first cell is at (cs/2, cs/2)
+	# and the grid spans columns*cs by rows*cs.
+	_floor_mesh.position = Vector3(
+		(layout.columns * cell_size) / 2.0,
+		-1.0,
+		(layout.rows * cell_size) / 2.0
+	)
+
+
 # Convert a grid coordinate to a 3D world position. The grid maps to the XZ
-# plane; Y is up (walls extrude on Y). Z is negated so 2D "down" (increasing Y)
-# maps to 3D "toward camera" (decreasing Z), matching the 2D camera scroll.
+# plane; Y is up (walls extrude on Y). With the top-down camera, world +Z
+# maps to screen down, matching 2D +Y, so no Z negation is needed.
 func grid_to_3d(coord: Vector2i, floor_idx: int = 0) -> Vector3:
 	return Vector3(
 		coord.x * cell_size + cell_size / 2.0,
 		floor_idx * floor_gap,
-		-(coord.y * cell_size + cell_size / 2.0)
+		coord.y * cell_size + cell_size / 2.0
 	)
 
 
 # Sync the 3D camera position from the 2D RunnerCamera. The 2D camera follows
-# the netrunner; the 3D camera mirrors that pan with a height + angle offset
-# so the 3D elements sit behind the 2D overlay at the same grid position.
-# `floor_idx` offsets the camera Y so deeper floors are viewed at their
-# stacked position.
+# the netrunner; the 3D camera mirrors that pan with a fixed top-down
+# rotation so the 3D elements sit behind the 2D overlay at the same grid
+# position. `floor_idx` offsets the camera Y so the current floor is in view.
 func sync_camera_2d(cam_2d_pos: Vector2, _layout_size: Vector2i, floor_idx: int = 0) -> void:
 	if camera_3d == null:
 		return
 	var center_x := cam_2d_pos.x
-	# 2D pixel Y includes the 90px header offset. The 3D grid starts at Z=0
-	# (no header), so subtract grid_offset_y to get grid-space Y. In 2D, +Y is
-	# DOWN; in 3D +Z is INTO the screen. We negate Z so 2D "down" (increasing
-	# Y) maps to 3D "toward camera" (increasing -Z → toward viewer), matching
-	# the 2D camera's scroll direction.
-	var center_z := -(cam_2d_pos.y - grid_offset_y)
+	# 2D pixel Y includes the 90px header offset. The 3D grid starts at Z=0,
+	# so subtract grid_offset_y to get grid-space Y. With the top-down camera
+	# (rotation -90° around X), world +Z maps to screen down, matching 2D +Y.
+	var center_z := cam_2d_pos.y - grid_offset_y
 	var floor_y: float = floor_idx * floor_gap
-	var vp_h: float = float(sub_viewport.size.y) if sub_viewport else 700.0
+	var vp_h: float = camera_3d.size
+	if sub_viewport:
+		vp_h = float(sub_viewport.size.y)
+	elif get_tree() and get_tree().root:
+		vp_h = float(get_tree().root.size.y)
 	camera_3d.size = vp_h
-	# Camera above the focus, looking straight down (top-down). look_at
-	# ensures the focus point is at the screen center.
-	var cam_height := vp_h * 0.7
-	camera_3d.position = Vector3(center_x, floor_y + cam_height, center_z)
-	camera_3d.look_at(Vector3(center_x, floor_y, center_z), Vector3.UP)
+	# For an orthogonal top-down camera, the camera position maps to the
+	# screen centre. Keep the scene-authored rotation (looking down -Y);
+	# only update position + ortho size so panning follows the 2D camera.
+	camera_3d.position = Vector3(center_x, floor_y + camera_height, center_z)
+	camera_3d.current = true
 
 
 # Clear all 3D tile meshes (call before re-syncing on floor change / load).
@@ -294,6 +471,7 @@ func clear_walls() -> void:
 		if is_instance_valid(m):
 			m.queue_free()
 	_ice_meshes.clear()
+	# Keep debug helpers; their visibility is toggled separately.
 
 
 # Spawn an extruded wall mesh at the given grid coordinate. Uses a BoxMesh
@@ -302,13 +480,20 @@ func clear_walls() -> void:
 func spawn_wall(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
-	var box := BoxMesh.new()
-	box.size = Vector3(cell_size * 0.9, wall_height, cell_size * 0.9)
+	var m: Mesh = wall_mesh
+	var h: float
+	if m == null:
+		var box := BoxMesh.new()
+		box.size = Vector3(cell_size * 0.9, wall_height, cell_size * 0.9)
+		m = box
+		h = wall_height
+	else:
+		h = m.get_aabb().size.y
 	var mesh := MeshInstance3D.new()
-	mesh.mesh = box
+	mesh.mesh = m
 	mesh.material_override = _wall_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += wall_height / 2.0
+	mesh.position.y += h / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
@@ -320,10 +505,18 @@ func spawn_gate(coord: Vector2i, locked: bool, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
 	var h: float = gate_height if locked else gate_height * 0.5
-	var box := BoxMesh.new()
-	box.size = Vector3(cell_size * 0.85, h, cell_size * 0.85)
+	var m: Mesh = gate_mesh
+	if m == null:
+		var box := BoxMesh.new()
+		box.size = Vector3(cell_size * 0.85, h, cell_size * 0.85)
+		m = box
+	elif not locked:
+		# Unlocked custom gate: halve its height offset to read as "opened".
+		h = m.get_aabb().size.y * 0.5
+	else:
+		h = m.get_aabb().size.y
 	var mesh := MeshInstance3D.new()
-	mesh.mesh = box
+	mesh.mesh = m
 	mesh.material_override = _gate_locked_material if locked else _gate_unlocked_material
 	mesh.position = grid_to_3d(coord, floor_idx)
 	mesh.position.y += h / 2.0
@@ -335,13 +528,20 @@ func spawn_gate(coord: Vector2i, locked: bool, floor_idx: int = 0) -> void:
 func spawn_memory_unit(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
-	var box := BoxMesh.new()
-	box.size = Vector3(cell_size * 0.6, chip_height, cell_size * 0.5)
+	var m: Mesh = memory_unit_mesh
+	var h: float
+	if m == null:
+		var box := BoxMesh.new()
+		box.size = Vector3(cell_size * 0.6, chip_height, cell_size * 0.5)
+		m = box
+		h = chip_height
+	else:
+		h = m.get_aabb().size.y
 	var mesh := MeshInstance3D.new()
-	mesh.mesh = box
+	mesh.mesh = m
 	mesh.material_override = _mu_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += chip_height / 2.0
+	mesh.position.y += h / 2.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
 
@@ -351,14 +551,21 @@ func spawn_memory_unit(coord: Vector2i, floor_idx: int = 0) -> void:
 func spawn_control_node(coord: Vector2i, crashed: bool, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
-	# Use a box rotated 45° on Y for a diamond top-down look.
-	var box := BoxMesh.new()
-	box.size = Vector3(cell_size * 0.5, cpu_height, cell_size * 0.5)
+	var m: Mesh = control_node_mesh
+	var h: float
+	if m == null:
+		# Use a box rotated 45° on Y for a diamond top-down look.
+		var box := BoxMesh.new()
+		box.size = Vector3(cell_size * 0.5, cpu_height, cell_size * 0.5)
+		m = box
+		h = cpu_height
+	else:
+		h = m.get_aabb().size.y
 	var mesh := MeshInstance3D.new()
-	mesh.mesh = box
+	mesh.mesh = m
 	mesh.material_override = _cpu_crashed_material if crashed else _cpu_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += cpu_height / 2.0
+	mesh.position.y += h / 2.0
 	mesh.rotation_degrees.y = 45.0
 	world_root.add_child(mesh)
 	_tile_meshes.append(mesh)
@@ -370,13 +577,20 @@ func spawn_control_node(coord: Vector2i, crashed: bool, floor_idx: int = 0) -> v
 func spawn_ice_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null or _ice_meshes.has(coord):
 		return
-	var box := BoxMesh.new()
-	box.size = Vector3(cell_size * 0.7, wall_height * 0.8, cell_size * 0.7)
+	var m: Mesh = ice_proxy_mesh
+	var h: float
+	if m == null:
+		var box := BoxMesh.new()
+		box.size = Vector3(cell_size * 0.7, wall_height * 0.8, cell_size * 0.7)
+		m = box
+		h = wall_height * 0.8
+	else:
+		h = m.get_aabb().size.y
 	var mesh := MeshInstance3D.new()
-	mesh.mesh = box
+	mesh.mesh = m
 	mesh.material_override = _ice_glow_material
 	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += wall_height * 0.4
+	mesh.position.y += h * 0.5
 	world_root.add_child(mesh)
 	_ice_meshes[coord] = mesh
 
@@ -388,6 +602,115 @@ func remove_ice_proxy(coord: Vector2i) -> void:
 		if is_instance_valid(m):
 			m.queue_free()
 		_ice_meshes.erase(coord)
+
+
+# Build optional debug alignment helpers: a 5x5 neon marker at the grid
+# origin, axis-aligned arrows on +X (red) and +Z (green), and a wireframe
+# boundary box around the datafort area. Hidden by default.
+func _create_debug_helpers() -> void:
+	if world_root == null:
+		return
+	_debug_origin = _make_debug_marker(0, 0, 0, Color.MAGENTA, Vector3(60, 4, 60))
+	_debug_axis_x = _make_debug_arrow(Vector3(1, 0, 0), Color.RED)
+	_debug_axis_z = _make_debug_arrow(Vector3(0, 0, 1), Color.GREEN)
+	_debug_boundary = _make_boundary_box()
+	set_debug_visible(_debug_visible)
+
+
+func _make_debug_marker(floor_idx: int, x: int, y: int, col: Color, size: Vector3) -> MeshInstance3D:
+	var box := BoxMesh.new()
+	box.size = size
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = col
+	mat.emission_enabled = true
+	mat.emission = col
+	mat.emission_energy_multiplier = 2.0
+	mesh.material_override = mat
+	mesh.position = grid_to_3d(Vector2i(x, y), floor_idx)
+	mesh.position.y += size.y * 0.5
+	world_root.add_child(mesh)
+	return mesh
+
+
+func _make_debug_arrow(dir: Vector3, col: Color) -> MeshInstance3D:
+	var arrow_root := MeshInstance3D.new()
+	arrow_root.name = "DebugArrow" + ("X" if dir.x > 0 else "Z")
+	world_root.add_child(arrow_root)
+	var shaft := CylinderMesh.new()
+	shaft.top_radius = 2.0
+	shaft.bottom_radius = 2.0
+	shaft.height = 80.0
+	var shaft_mesh := MeshInstance3D.new()
+	shaft_mesh.mesh = shaft
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = col
+	mat.emission_enabled = true
+	mat.emission = col
+	mat.emission_energy_multiplier = 2.0
+	shaft_mesh.material_override = mat
+	shaft_mesh.position = dir * 40.0
+	# Orient the cylinder so its long axis points along dir. A cylinder's
+	# default height axis is Y, so rotate it to lie along dir.
+	shaft_mesh.rotation_degrees = Vector3(90, 0, 0) if dir.z != 0 else Vector3(0, 0, -90)
+	arrow_root.add_child(shaft_mesh)
+	return arrow_root
+
+
+func _make_boundary_box() -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	var im := ImmediateMesh.new()
+	mesh.mesh = im
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color.YELLOW
+	mat.emission_enabled = true
+	mat.emission = Color.YELLOW
+	mat.emission_energy_multiplier = 2.0
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.material_override = mat
+	world_root.add_child(mesh)
+	return mesh
+
+
+# Resize and redraw the debug boundary box around the current datafort grid.
+func _update_debug_boundary(layout: CP2020DatafortLayout) -> void:
+	if _debug_boundary == null or layout == null:
+		return
+	var im := _debug_boundary.mesh as ImmediateMesh
+	if im == null:
+		return
+	im.clear_surfaces()
+	im.surface_begin(Mesh.PRIMITIVE_LINES)
+	var w: float = layout.columns * cell_size
+	var h: float = layout.rows * cell_size
+	var y: float = 2.0
+	var corners: PackedVector3Array = PackedVector3Array([
+		Vector3(0, y, 0),
+		Vector3(w, y, 0),
+		Vector3(w, y, 0),
+		Vector3(w, y, h),
+		Vector3(w, y, h),
+		Vector3(0, y, h),
+		Vector3(0, y, h),
+		Vector3(0, y, 0),
+	])
+	for c in corners:
+		im.surface_add_vertex(c)
+	im.surface_end()
+
+
+# Show/hide the debug alignment helpers.
+func set_debug_visible(p_visible: bool) -> void:
+	_debug_visible = p_visible
+	if _debug_origin:
+		_debug_origin.visible = p_visible
+	if _debug_axis_x:
+		_debug_axis_x.visible = p_visible
+	if _debug_axis_z:
+		_debug_axis_z.visible = p_visible
+	if _debug_boundary:
+		_debug_boundary.visible = p_visible
 
 
 # Spawn a 3D beacon: a volumetric light column at a grid coordinate for
@@ -429,6 +752,8 @@ func sync_from_layout(layout: CP2020DatafortLayout, p_floor: int) -> void:
 	clear_walls()
 	if layout == null:
 		return
+	_resize_floor_plane(layout)
+	_update_debug_boundary(layout)
 	var tiles := layout.get_floor_tiles(p_floor)
 	for raw_key in tiles.keys():
 		var coord := CP2020DatafortLayout.parse_coord(raw_key)
@@ -454,11 +779,10 @@ func attach_to_canvas_layer(canvas_layer: CanvasLayer) -> void:
 		canvas_layer.add_child(texture_rect)
 
 
-# Resize the SubViewport to match the actual on-screen area so the 3D
-# camera's orthographic size maps 1:1 to screen pixels (matching the 2D camera).
-func resize_viewport(_width: int, _height: int) -> void:
-	if sub_viewport:
-		# Use the window size, not the grid size, so the 3D camera sees the
-		# same screen area as the 2D camera (which has no zoom).
-		var win := DisplayServer.window_get_size()
-		sub_viewport.size = Vector2i(maxi(win.x, 800), maxi(win.y, 600))
+# Resize the 3D camera's orthographic size to match the 2D rendering
+# resolution so 1 world unit maps to 1 screen pixel vertically. This keeps the
+# 3D grid aligned with the 2D board.
+func resize_viewport(_width: int, height: int) -> void:
+	var h: int = height if height > 0 else 700
+	if camera_3d:
+		camera_3d.size = float(h)

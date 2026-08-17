@@ -207,26 +207,25 @@ func _ready() -> void:
 			combat_animator.cell_size = board_renderer.cell_size
 			combat_animator.grid_offset_y = board_renderer.grid_offset_y
 
-	# 3D compositing layer — SubViewport + Camera3D renders extruded walls and
-	# 3D elements. The TextureRect output is attached to a dedicated CanvasLayer
-	# (layer 1) ABOVE the 2D board renderer, with additive blend mode so the 3D
-	# neon glow shines through the fog without obscuring the 2D grid lines.
-	# The UI CanvasLayer (layer 0) is bumped to layer 2 so the HUD stays on top.
-	if board_3d == null and board_renderer:
-		board_3d = CP2020Board3D.new()
+	# 3D terrain layer — the SubViewport, Camera3D and world are authored in
+	# cp2020_gameplay.tscn inside Board3DContainer. The CP2020Board3D script
+	# on the Board3D node controls them and spawns wall/CPU meshes.
+	if board_3d == null:
+		board_3d = get_node_or_null("Board3D") as CP2020Board3D
+	if board_3d and board_renderer:
 		board_3d.cell_size = board_renderer.cell_size
 		board_3d.grid_offset_y = board_renderer.grid_offset_y
-		add_child(board_3d)
-		# Create a dedicated CanvasLayer for the 3D output (above the 2D board).
-		var layer_3d := CanvasLayer.new()
-		layer_3d.name = "Layer3D"
-		layer_3d.layer = 1
-		add_child(layer_3d)
-		board_3d.attach_to_canvas_layer(layer_3d)
-		# Bump the UI CanvasLayer above the 3D layer so the HUD stays readable.
+		# Render the 3D world to a SubViewport and display it via a TextureRect
+		# on the background CanvasLayer (layer -1), behind the 2D neon overlay.
+		var bg_layer := get_node_or_null("CanvasLayer") as CanvasLayer
+		board_3d.setup_subviewport(bg_layer)
+		# Make the 2D board an overlay: skip solid terrain fills so the 3D
+		# geometry is visible behind the grid lines and fog.
+		board_renderer.draw_terrain_fills = false
+		# Bump the UI CanvasLayer above the 2D board so the HUD stays readable.
 		var ui_layer := get_node_or_null("UI") as CanvasLayer
 		if ui_layer:
-			ui_layer.layer = 2
+			ui_layer.layer = 1
 
 	# Load the subnet chosen on the world map (fall back to default)
 	var subnet_path := RunState.selected_subnet_path if RunState.selected_subnet_path != "" else starting_subnet_path
@@ -236,6 +235,20 @@ func _ready() -> void:
 	_update_trace()
 	_update_security_dispatch_hud()
 	log_to_terminal("JACKED IN. Connection established to matrix grid.\n")
+	# Apply F11 debug-3d flag from startup to the newly created 3D board.
+	if OS.get_cmdline_args().has("--debug-3d") and board_3d:
+		board_3d.set_debug_visible(true)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_SIZE_CHANGED:
+		if board_3d and current_layout and board_renderer:
+			var root_size := get_tree().root.size if get_tree() else Vector2i(1920, 1080)
+			board_3d.resize_viewport(root_size.x, root_size.y)
+			board_3d.sync_camera_2d(
+				netrunner.position if netrunner else Vector2.ZERO,
+				Vector2i(current_layout.columns, current_layout.rows),
+				current_floor
+			)
 
 func _update_floor_hud_label() -> void:
 	if floor_hud_label == null or current_layout == null:
@@ -319,9 +332,13 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		_update_camera_limits()
 		_center_camera_on_runner()
 		board_renderer.request_redraw()
-		# Sync 3D extruded walls for the current floor.
+		# Sync 3D extruded walls for the current floor. Size the SubViewport to
+		# the root viewport resolution (the 2D render size), not the window
+		# size, so the orthographic camera maps 1:1 with the 2D board before
+		# the TextureRect scales to the display.
 		if board_3d:
-			board_3d.resize_viewport(int(current_layout.columns * board_renderer.cell_size), int(current_layout.rows * board_renderer.cell_size + board_renderer.grid_offset_y))
+			var root_size := get_tree().root.size if get_tree() else Vector2i(1920, 1080)
+			board_3d.resize_viewport(root_size.x, root_size.y)
 			board_3d.sync_from_layout(current_layout, current_floor)
 	return true
 
@@ -347,9 +364,28 @@ func _center_camera_on_runner(_new_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	if not camera or not netrunner:
 		return
 	camera.position = netrunner.position
-	# Sync the 3D camera to match the 2D camera pan + floor depth.
-	if board_3d and current_layout:
-		board_3d.sync_camera_2d(netrunner.position, Vector2i(current_layout.columns, current_layout.rows), current_floor)
+	# The 3D camera is synced every frame in _process to the 2D Camera2D's
+	# actual screen center (which respects map-edge clamping + smoothing), so
+	# the 3D tiles stay aligned with the 2D grid even near map edges.
+	_sync_3d_camera()
+
+
+# Keep the 3D camera locked to the 2D Camera2D's real view center every frame.
+# The 2D camera clamps at the map edges (_update_camera_limits) and eases via
+# position_smoothing, so syncing to netrunner.position would drift the 3D
+# tiles bottom-right of the 2D cells near edges. camera.get_screen_center_position()
+# returns the clamped+smoothed center the player actually sees.
+func _sync_3d_camera() -> void:
+	if board_3d and camera and current_layout:
+		board_3d.sync_camera_2d(
+			camera.get_screen_center_position(),
+			Vector2i(current_layout.columns, current_layout.rows),
+			current_floor
+		)
+
+
+func _process(_delta: float) -> void:
+	_sync_3d_camera()
 
 # Sets the current floor and propagates it to the layout + netrunner so every
 # floor-scoped read (get_tile / line_of_sight / renderer / pathfinding) agrees.
@@ -1352,7 +1388,7 @@ func _find_rez_spawn_tile(runner_pos: Vector2i) -> Vector2i:
 func _derez_program(rez: RezzedProgram) -> void:
 	if not is_instance_valid(rez):
 		return
-	var name := rez.program.program_name if rez.program else "program"
+	var prog_name := rez.program.program_name if rez.program else "program"
 	# Explosion VFX — capture position + color before freeing the node.
 	var rez_pos := rez.current_position
 	var rez_color: Color = Color(1, 0.3, 0.1)
@@ -1364,7 +1400,7 @@ func _derez_program(rez: RezzedProgram) -> void:
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
 		board_renderer.request_redraw()
-	log_to_terminal("De-rezzing '%s' — returned to deck memory.\n" % name)
+	log_to_terminal("De-rezzing '%s' — returned to deck memory.\n" % prog_name)
 	update_deck_info()
 
 # Spawn a fire-and-forget de-rez explosion effect at `grid_pos`. The effect

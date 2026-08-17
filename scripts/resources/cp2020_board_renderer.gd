@@ -93,6 +93,18 @@ var rezzed_program_nodes: Array = []
 var hovered_coord: Vector2i = Vector2i(-1, -1)
 var hover_interactable: bool = false
 
+# When false, the 2D board draws only grid lines, fog-of-war tints and
+# overlays, leaving the actual wall/memory/CPU fills to the 3D terrain layer.
+# The game session sets this to false when CP2020Board3D is active.
+@export var draw_terrain_fills: bool = true
+
+# Effective fog-fill alphas used in the last draw_grid() call. When the 3D
+# layer is active (draw_terrain_fills false) these are reduced so the 3D
+# terrain shows through; they are exposed here for runtime diagnostics.
+var effective_unexp_alpha: float = 1.0
+var effective_fog_alpha: float = 0.88
+var effective_vis_alpha: float = 0.35
+
 # Cached default theme font for runtime text overlays (e.g. worm integrity).
 var _default_font: Font = null
 
@@ -246,14 +258,32 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 	var total_width: float = float(layout.columns * cell_size)
 	var total_height: float = float(layout.rows * cell_size)
 
-	# 1. Base background (dark navy) across the grid area.
-	canvas.draw_rect(Rect2(0, grid_offset_y, total_width, total_height), color_grid_bg)
+	# 1. Base background (dark navy) across the grid area. Skipped when the 3D
+	# terrain layer is rendering the board so the 3D floor plane shows through.
+	if draw_terrain_fills:
+		canvas.draw_rect(Rect2(0, grid_offset_y, total_width, total_height), color_grid_bg)
 
 	# 2. Neon grid lines across the full grid (dim + bright every 5th, pulsing).
 	_draw_neon_grid_lines(total_width, total_height)
 
-	# 3+4. Fog-state overlays + tile graphics per cell.
+	# 3+4. Fog-state overlays + optional tile graphics per cell.
 	# Iterate every cell so unexplored/no-tile areas are painted as black void.
+	#
+	# When the 3D terrain layer is active (draw_terrain_fills == false), the
+	# extruded walls/floor live in the 3D world BEHIND this 2D canvas. Opaque
+	# fog fills here would completely hide them, so the fog is drawn as a
+	# translucent tint instead — dark enough to read as unexplored/fogged, but
+	# transparent enough for the 3D neon walls to show through. Grid lines,
+	# scanlines, vignette and the tech frame still draw on top.
+	var unexp_color: Color = color_unexplored_fill if draw_terrain_fills else Color(color_unexplored_fill.r, color_unexplored_fill.g, color_unexplored_fill.b, 0.5)
+	var fog_color: Color = color_fog_overlay if draw_terrain_fills else Color(color_fog_overlay.r, color_fog_overlay.g, color_fog_overlay.b, 0.35)
+	# In 3D mode, tiles in LOS (visible) draw NO darkening overlay so the 3D
+	# terrain is 100% visible; only explored-not-visible and unexplored tiles
+	# get a translucent fog tint.
+	var vis_color: Color = color_visible_overlay if draw_terrain_fills else Color(color_visible_overlay.r, color_visible_overlay.g, color_visible_overlay.b, 0.0)
+	effective_unexp_alpha = unexp_color.a
+	effective_fog_alpha = fog_color.a
+	effective_vis_alpha = vis_color.a
 	var oy: float = float(grid_offset_y)
 	for x in range(layout.columns):
 		for y in range(layout.rows):
@@ -262,18 +292,23 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 			var cell_rect := Rect2(float(x * cell_size), oy + float(y * cell_size), float(cell_size), float(cell_size))
 
 			if tile_data == null or not tile_data.is_explored:
-				# UNEXPLORED: opaque black void — hide grid lines.
-				canvas.draw_rect(cell_rect, color_unexplored_fill, true)
+				# UNEXPLORED: dark void — hide grid lines (translucent in 3D mode).
+				canvas.draw_rect(cell_rect, unexp_color, true)
 				continue
 
+			# VISIBLE vs EXPLORED-FOG: apply the matching translucent tint, then
+			# either the full 2D tile graphics (2D mode) or a minimal 2D overlay
+			# (3D mode). In 3D mode the structural tiles (walls/gates/CPU/MU)
+			# are rendered by the 3D layer, so only EMPTY/ENTRY get a 2D marker
+			# here (they have no 3D mesh).
 			if tile_data.is_visible:
-				# VISIBLE: subtle floor tint — grid lines clearly visible.
-				canvas.draw_rect(cell_rect, color_visible_overlay, true)
-				_draw_tile_graphics(canvas, tile_data, cell_rect, true)
+				canvas.draw_rect(cell_rect, vis_color, true)
 			else:
-				# EXPLORED (FOG): semi-transparent dark overlay — dim grid lines.
-				canvas.draw_rect(cell_rect, color_fog_overlay, true)
-				_draw_tile_graphics(canvas, tile_data, cell_rect, false)
+				canvas.draw_rect(cell_rect, fog_color, true)
+			if draw_terrain_fills:
+				_draw_tile_graphics(canvas, tile_data, cell_rect, tile_data.is_visible)
+			else:
+				_draw_tile_overlay_3d(canvas, tile_data, cell_rect, tile_data.is_visible)
 
 	# 5. Scanlines across the grid area.
 	_draw_scanlines(total_width, total_height)
@@ -433,35 +468,82 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 	# (cp2020_npc_netrunner.tscn) render their own glyphs at runtime.
 	# Tile glyphs for these types are drawn exclusively in the designer.
 
-	# Worm-in-progress overlay: when a Worm program is working on a DATAWALL
-	# or locked CODE_GATE (worm_turns_remaining > 0), draw a small purple "W"
-	# glyph in the tile center so the player can see the worm at work. When
-	# the Worm has taken damage from a Killer (DEREZ_ICE), shift the color
-	# toward yellow/orange and draw a "cur/max" integrity readout below the W.
-	if tile_data.worm_turns_remaining > 0:
-		var center = cell_rect.get_center()
-		# Color shifts from purple (full) → orange (damaged) → red (near 0).
-		var max_int: int = tile_data.worm_max_integrity if tile_data.worm_max_integrity > 0 else 1
-		var integrity_ratio: float = float(tile_data.worm_integrity) / float(max_int)
-		var worm_color: Color = _a(color_worm_full, alpha_mult)
-		if integrity_ratio < 1.0:
-			# Blend purple → orange as integrity drops.
-			worm_color = _a(color_worm_damaged, alpha_mult).lerp(_a(color_worm_full, alpha_mult), integrity_ratio)
-		if integrity_ratio <= 0.34:
-			worm_color = _a(color_worm_critical, alpha_mult)
-		# Pulsing background circle to draw attention.
-		var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
-		canvas.draw_circle(center, pulse_radius, _a(color_worm_halo, alpha_mult))
-		# "W" glyph drawn as three diagonal strokes.
-		var s: float = 7.0
-		canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), worm_color, 2.0)
-		canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), worm_color, 2.0)
-		canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), worm_color, 2.0)
-		# Integrity readout (only when the Worm has been damaged).
-		if tile_data.worm_max_integrity > 0 and tile_data.worm_integrity < tile_data.worm_max_integrity:
-			var txt := "%d/%d" % [tile_data.worm_integrity, tile_data.worm_max_integrity]
-			var font := _get_default_font()
-			canvas.draw_string(font, center + Vector2(-10, s + 12.0), txt, HORIZONTAL_ALIGNMENT_CENTER, 20, 8, worm_color)
+	# Worm overlay is drawn on top of terrain fills so it remains visible
+	# whether the 2D or 3D layer is rendering the underlying tile.
+	_draw_worm_overlay(canvas, tile_data, cell_rect, is_visible)
+
+
+# 3D-mode tile overlay: draws 2D graphics only for tile types that have no
+# 3D mesh (EMPTY path dots, ENTRY travel frames + glyphs) so the player can
+# still identify walkable/entry tiles on top of the 3D terrain. Structural
+# tiles (DATAWALL/CODE_GATE/MEMORY_UNIT/CONTROL_NODE) are rendered by the 3D
+# layer, so they are intentionally not drawn here to avoid covering them.
+# The worm overlay is always drawn on top.
+func _draw_tile_overlay_3d(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool) -> void:
+	var alpha_mult: float = 1.0 if is_visible else 0.3
+	match tile_data.tile_type:
+		CP2020DatafortLayout.TileType.EMPTY:
+			var center = cell_rect.get_center()
+			canvas.draw_circle(center, 2.0, _a(color_empty_dot, alpha_mult))
+		CP2020DatafortLayout.TileType.ENTRY:
+			canvas.draw_rect(cell_rect, _a(color_entry_fill, alpha_mult), true)
+			var has_up := tile_data.can_go_up
+			var has_down := tile_data.can_go_down
+			if has_up and has_down:
+				var half := Rect2(cell_rect.position, Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
+				canvas.draw_rect(half, _a(color_entry_up, alpha_mult), false, 2.0)
+				var half2 := Rect2(cell_rect.position + Vector2(0, cell_rect.size.y * 0.5), Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
+				canvas.draw_rect(half2, _a(color_entry_down, alpha_mult), false, 2.0)
+			elif has_up:
+				canvas.draw_rect(cell_rect, _a(color_entry_up, alpha_mult), false, 2.0)
+			elif has_down:
+				canvas.draw_rect(cell_rect, _a(color_entry_down, alpha_mult), false, 2.0)
+			else:
+				canvas.draw_rect(cell_rect, _a(color_entry_frame, alpha_mult), false, 2.0)
+			if has_up or has_down:
+				var font := _get_default_font()
+				var glyph_size := 8
+				if has_up:
+					canvas.draw_string(font, cell_rect.position + Vector2(2, glyph_size + 1), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, _a(color_entry_up_glyph, alpha_mult))
+				if has_down:
+					canvas.draw_string(font, cell_rect.position + Vector2(2, cell_rect.size.y - 1), "↓", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, _a(color_entry_down_glyph, alpha_mult))
+			if tile_data.is_primary_entry:
+				var mark := Rect2(cell_rect.position + Vector2(cell_rect.size.x - 12, 4), Vector2(8, 8))
+				canvas.draw_rect(mark, _a(color_primary_entry_mark, alpha_mult), true)
+		_:
+			pass
+	_draw_worm_overlay(canvas, tile_data, cell_rect, is_visible)
+
+
+# Worm-in-progress overlay. Drawn even when terrain fills are disabled so
+# the player can still see active worms on top of the 3D board.
+func _draw_worm_overlay(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool) -> void:
+	if tile_data.worm_turns_remaining <= 0:
+		return
+	var alpha_mult: float = 1.0 if is_visible else 0.3
+	var center = cell_rect.get_center()
+	# Color shifts from purple (full) → orange (damaged) → red (near 0).
+	var max_int: int = tile_data.worm_max_integrity if tile_data.worm_max_integrity > 0 else 1
+	var integrity_ratio: float = float(tile_data.worm_integrity) / float(max_int)
+	var worm_color: Color = _a(color_worm_full, alpha_mult)
+	if integrity_ratio < 1.0:
+		# Blend purple → orange as integrity drops.
+		worm_color = _a(color_worm_damaged, alpha_mult).lerp(_a(color_worm_full, alpha_mult), integrity_ratio)
+	if integrity_ratio <= 0.34:
+		worm_color = _a(color_worm_critical, alpha_mult)
+	# Pulsing background circle to draw attention.
+	var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
+	canvas.draw_circle(center, pulse_radius, _a(color_worm_halo, alpha_mult))
+	# "W" glyph drawn as three diagonal strokes.
+	var s: float = 7.0
+	canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), worm_color, 2.0)
+	canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), worm_color, 2.0)
+	canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), worm_color, 2.0)
+	# Integrity readout (only when the Worm has been damaged).
+	if tile_data.worm_max_integrity > 0 and tile_data.worm_integrity < tile_data.worm_max_integrity:
+		var txt := "%d/%d" % [tile_data.worm_integrity, tile_data.worm_max_integrity]
+		var font := _get_default_font()
+		canvas.draw_string(font, center + Vector2(-10, s + 12.0), txt, HORIZONTAL_ALIGNMENT_CENTER, 20, 8, worm_color)
 
 
 # ─── Hover highlight ───
