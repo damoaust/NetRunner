@@ -199,6 +199,13 @@ func activate_alarm() -> void:
 		message_logged.emit("ALARM: %s woken and hunting!" % program.program_name)
 
 func update_visibility(_is_explored: bool, p_visible: bool) -> void:
+	# 3D mode: a 3D proxy renders this ICE, so hide the 2D sprite/glyph.
+	if visual_3d_mode:
+		if sprite:
+			sprite.visible = false
+		if glyph_label:
+			glyph_label.visible = false
+		return
 	if _use_sprite:
 		if sprite:
 			sprite.visible = p_visible

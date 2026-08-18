@@ -123,6 +123,12 @@ var current_floor: int = 0
 
 # Animation state for the cyberpunk diamond avatar (matches world-map runner).
 var _pulse_time: float = 0.0
+# When true, the 2D _draw ring/diamond is hidden because a 3D runner avatar
+# renders in the board_3d layer instead. Set by the game session.
+var visual_3d_mode: bool = false
+
+func set_visual_3d_mode(active: bool) -> void:
+	visual_3d_mode = active
 
 func get_used_memory() -> int:
 	var total_mu = 0
@@ -194,6 +200,10 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	# 3D mode: a 3D avatar renders the runner in the board_3d layer; skip the
+	# 2D ring/diamond so they don't double-draw.
+	if visual_3d_mode:
+		return
 	var pulse := 0.5 * (1.0 + sin(_pulse_time * 3.0))
 	var center := Vector2.ZERO
 	var size := cell_size * 0.32 * (0.9 + 0.1 * pulse)

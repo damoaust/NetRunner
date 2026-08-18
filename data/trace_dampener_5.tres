@@ -10,4 +10,4 @@ bonus_value = 5
 price = 4000
 glyph = "∿"
 color = Color(0.3, 0.7, 1.0, 1.0)
-description = "Military signal dampener. Reduces accumulated trace from LDL travel by 5 per jump."
+description = "Military signal dampener. Adds 5 to the target a Watchdog must beat on its trace check, making you harder to pinpoint."

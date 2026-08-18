@@ -220,7 +220,7 @@ func _pick_program(effect: int) -> NetProgram:
 
 func update_visibility(_is_explored: bool, p_visible: bool) -> void:
 	if glyph_label:
-		glyph_label.visible = p_visible
+		glyph_label.visible = p_visible and not visual_3d_mode
 
 
 func take_damage(amount: int) -> bool:

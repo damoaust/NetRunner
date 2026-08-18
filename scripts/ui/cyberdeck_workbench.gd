@@ -228,23 +228,30 @@ func _load_runner_characters() -> void:
 func _ready() -> void:
 	# Discover all character .tres in res://data/characters/ so newly added
 	# roster entries are selectable without editing this script.
+	
 	_load_runner_characters()
+	
 	# First launch / after permadeath: ensure a life is in progress with
 	# starting gear before building the loadout. RunState autoload already
 	# attempts to load a saved run from the previous session.
+	
 	if RunState.owned_decks.is_empty():
 		RunState.start_new_life()
+		
 	# Persist the current hub state whenever the workbench is entered (covers
 	# returning from a run as well as the initial new-life setup).
 	RunState.save_run()
+	
 	# The static UI structure lives in CyberdeckWorkbench.tscn (theme applied
 	# at the root); here we only wire signals, populate the filter dropdown,
 	# style the list scrollbars, and seed the dynamic content.
+	
 	_connect_signals()
 	_populate_filter()
 	for list in [loaded_list, library_list, shop_buy_decks_list, shop_buy_programs_list, shop_buy_modules_list, shop_sell_loot_list, shop_sell_files_list]:
 		if list:
 			_style_scrollbars(list)
+			
 	# Default active deck to the previously equipped deck if still owned,
 	# else the first owned deck.
 	var decks := _owned_decks()
@@ -252,6 +259,7 @@ func _ready() -> void:
 		active_deck = RunState.selected_deck
 	elif not decks.is_empty():
 		active_deck = decks[0]
+		
 	# Ensure a character is equipped. A fresh life seeds one in start_new_life,
 	# but guard against a null (e.g. older save) by defaulting to the MetaState
 	# preferred character, then the first roster entry.
@@ -264,11 +272,18 @@ func _ready() -> void:
 			ch = _runner_characters[0]
 		if ch != null:
 			RunState.selected_character = ch
+	
+	# Grabs every node in the scene tree that you added to this group
+	var buttons = get_tree().get_nodes_in_group("pulse_buttons")
+	
+	# Loop through the array and start the pulse for each one
+	for btn in buttons:
+		_start_pulse(btn)
+			
 	_refresh_deck_selector()
 	update_deck_ui()
 	_refresh_shop()
 	_start_cursor_blink()
-	_start_jackin_pulse()
 	_setup_drag_drop()
 
 # Populate the library filter OptionButton (All + one entry per EffectType).
@@ -483,7 +498,7 @@ func _refresh_loaded() -> void:
 			loaded_list.add_item("(empty slot)", null, false)
 			loaded_list.set_item_custom_fg_color(loaded_list.item_count - 1, COL_GREY)
 			continue
-		var tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
+		var _tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
 		var col: Color = EFFECT_COLORS.get(prog.effect_type, COL_TEXT)
 		var icon := prog.icon as Texture2D
 		# Row text now only includes: chip + name + [tag] + (MU). The
@@ -504,7 +519,7 @@ func _refresh_library() -> void:
 			continue
 		if filter_et != null and prog.effect_type != filter_et:
 			continue
-		var tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
+		var _tag: String = EFFECT_TAGS.get(prog.effect_type, "?")
 		var col: Color = EFFECT_COLORS.get(prog.effect_type, COL_TEXT)
 		var icon := prog.icon as Texture2D
 		var loaded := _is_loaded(prog)
@@ -785,14 +800,17 @@ func _start_cursor_blink() -> void:
 			detail_cursor_label.visible = not detail_cursor_label.visible)
 	add_child(timer)
 
-# Subtle pulse on the JACK IN button border to draw the eye. Loops forever.
-func _start_jackin_pulse() -> void:
-	if jack_button == null:
+# The reusable pulse function
+func _start_pulse(target_button: Control) -> void:
+	if target_button == null:
 		return
+		
 	var tween := create_tween().set_loops()
-	tween.tween_property(jack_button, "modulate", Color(1.0, 1.2, 1.4, 1.0), 0.8)\
+	
+	tween.tween_property(target_button, "modulate", Color(1.0, 1.2, 1.4, 1.0), 0.8)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(jack_button, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.8)\
+		
+	tween.tween_property(target_button, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.8)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 # ---------------------------------------------------------------------------

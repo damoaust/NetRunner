@@ -31,6 +31,22 @@ var program: NetProgram = null
 # scene label (SkullLabel / GlyphLabel) here in _ready() so the shared visual
 # code can target it uniformly.
 var glyph_label: Label = null
+# When true, the 2D glyph/sprite visual is hidden because a 3D proxy renders
+# the entity in the board_3d layer instead. Set by the game session when the
+# 3D board is active.
+var visual_3d_mode: bool = false
+
+
+func set_visual_3d_mode(active: bool) -> void:
+	visual_3d_mode = active
+	# Hide the 2D glyph immediately when 3D mode is on so a freshly-spawned
+	# entity (e.g. a rezzed program created mid-game, after the load-time fog
+	# pass) doesn't show its 2D glyph for a frame until the next
+	# update_visibility call. Restoring visibility on deactivate is left to
+	# the next update_visibility (fog) pass — 3D mode is set once at load and
+	# rarely toggled off mid-run.
+	if active and glyph_label:
+		glyph_label.visible = false
 
 
 # Common setup shared by every entity's initialize(): records the start

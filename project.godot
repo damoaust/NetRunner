@@ -19,7 +19,6 @@ config/icon="res://icon.svg"
 
 RunState="*res://scripts/autoload/run_state.gd"
 MetaState="*res://scripts/autoload/meta_state.gd"
-ScreenshotTool="*res://scripts/autoload/screenshot_tool.gd"
 
 [display]
 

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="NetrunnerCharacter" format=3 uid="uid://yn61k1b6bfid"]
+
+[ext_resource type="Texture2D" uid="uid://d2q5edr61go3q" path="res://char_3.jpg" id="1_3dgga"]
+[ext_resource type="Script" uid="uid://xvdomwjghiuh" path="res://scripts/resources/cp2020_character.gd" id="1_ew2ic"]
+
+[resource]
+script = ExtResource("1_ew2ic")
+character_name = "Mike"
+callsign = "Mike"
+reflex = 9
+intelligence = 6
+body = 9
+portrait_texture = ExtResource("1_3dgga")
+metadata/_custom_type_script = "uid://xvdomwjghiuh"

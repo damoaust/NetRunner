@@ -25,31 +25,77 @@ extends Node3D
 # Height of the top-down Camera3D above the floor. Orthographic projection
 # means the exact value only affects near/far clipping, not screen scale.
 @export var camera_height: float = 1000.0
+# Camera zoom multiplier shared with the 2D Camera2D. >1 = zoom in (smaller
+# world region visible), <1 = zoom out. Applied in sync_camera_2d by dividing
+# the orthographic size so the 3D scene scales in lock-step with the 2D board.
+# Set from the game session via set_zoom_factor(); loose-clamped here, the
+# session enforces the user-facing min/max.
+var _zoom_factor: float = 1.0
 
 # --- Custom tile meshes (optional) ---
-# Assign a Mesh resource here in the inspector to replace the default
-# procedurally-generated BoxMesh for that tile type. Leave null to use the
-# default box. The neon material (_wall_material / _gate_*_material /
-# _mu_material / _cpu_material) is still applied via material_override, so the
-# tile keeps its colour/edges while taking the new shape. Author the mesh at
-# the desired world size (e.g. ~36x24x36 for a wall at cell_size 40); the
-# instance is positioned/centred on the tile the same way as the default box.
+# Assign a PackedScene (.glb / .tscn / .scn) here in the inspector to replace the
+# default procedurally-generated BoxMesh for that tile type. Leave null to use
+# the default box (neon material applied).
+#
+# When a PackedScene is assigned: the scene is instantiated AS-IS — your scale,
+# rotation, and child positions from the .tscn are respected. The model is
+# placed at the tile centre (X/Z) with its AABB bottom aligned to the floor.
+# No material override is applied (the model keeps its own materials). Author
+# a .tscn with the .glb as an inherited scene, set the scale/rotation/position
+# in the editor, and drop it onto the slot.
 @export_group("Tile Meshes")
-@export var wall_mesh: Mesh = null
-@export var gate_mesh: Mesh = null
-@export var memory_unit_mesh: Mesh = null
-@export var control_node_mesh: Mesh = null
-@export var ice_proxy_mesh: Mesh = null
-@export var floor_mesh: Mesh = null
+@export var wall_mesh: PackedScene = null
+@export var gate_mesh: PackedScene = null
+@export var memory_unit_mesh: PackedScene = null
+@export var control_node_mesh: PackedScene = null
+@export var ice_proxy_mesh: PackedScene = null
+@export var floor_mesh: PackedScene = null
+
+# --- Custom entity meshes (optional) ---
+# Replace the default 3D primitive used for each on-grid entity/glyph with a
+# custom PackedScene (.glb). Leave null for the default neon primitive.
+# The model's own scale/rotation/position from the .tscn are respected; no
+# material override is applied (the model keeps its own materials).
+@export_group("Entity Meshes")
+@export var runner_mesh: PackedScene = null
+@export var black_ice_mesh: PackedScene = null
+@export var npc_mesh: PackedScene = null
+@export var rezzed_mesh: PackedScene = null
+@export var worm_mesh: PackedScene = null
+@export var entry_arrow_up_mesh: PackedScene = null
+@export var entry_arrow_down_mesh: PackedScene = null
+# When true, custom PackedScene models have their materials forced to opaque
+# (transparency disabled, albedo alpha set to 1.0). Fixes semi-transparent
+# Sketchfab .glb models that use alpha blending. Disable if your model
+# intentionally uses transparency (e.g. glass, holograms).
+@export var force_opaque_models: bool = true
 
 var sub_viewport: SubViewport
 var camera_3d: Camera3D
 var world_root: Node3D
 var texture_rect: TextureRect
 var _floor_mesh: MeshInstance3D
-var _tile_meshes: Array[MeshInstance3D] = []
+var _floor_scene_root: Node3D
+var _tile_meshes: Array[Node3D] = []
+# Tile 3D proxies (walls/gates/MU/CPU) keyed by grid coord, so a single tile
+# can be refreshed in place when its state changes mid-game (gate unlock,
+# wall breach, worm open) without rebuilding the whole floor (which would
+# also wipe ICE proxies). Cleared alongside _tile_meshes in clear_walls.
+var _tile_proxy_by_coord: Dictionary = {}  # Vector2i -> Node3D
 var _beacon_meshes: Array[MeshInstance3D] = []
-var _ice_meshes: Dictionary = {}  # coord (Vector2i) -> MeshInstance3D
+var _ice_meshes: Dictionary = {}  # entity (Node) -> Node3D
+# 3D proxies for on-grid entities (replace the 2D sprites/glyphs in 3D mode).
+var _runner_proxy: Node3D = null
+# Blue fresnel glow shell around the runner proxy, shown while a defensive
+# program (Shield / Aegis SHIELD, or ARMOR) is active. A world_root child
+# (NOT a child of _runner_proxy) so the custom .glb's authored scale doesn't
+# distort the sphere; positioned manually to follow the runner.
+var _runner_glow_mesh: MeshInstance3D = null
+var _runner_glow_material: ShaderMaterial
+var _npc_proxies: Dictionary = {}        # Node (entity) -> Node3D
+var _rezzed_proxies: Dictionary = {}     # Node (entity) -> Node3D
+var _worm_proxies: Dictionary = {}       # coord (Vector2i) -> Node3D
+var _entry_arrow_proxies: Dictionary = {} # coord (Vector2i) -> Node3D
 var _world_env: WorldEnvironment
 
 # Debug helpers for verifying 3D camera alignment. Can be toggled via
@@ -74,6 +120,14 @@ var _cpu_material: StandardMaterial3D
 var _cpu_crashed_material: StandardMaterial3D
 var _ice_glow_material: StandardMaterial3D
 var _beacon_material: ShaderMaterial
+
+# Entity proxy materials (neon, matching the tile aesthetic).
+var _runner_material: StandardMaterial3D
+var _npc_netwatch_material: StandardMaterial3D
+var _npc_runner_material: StandardMaterial3D
+var _rezzed_material: StandardMaterial3D
+var _entry_arrow_up_material: StandardMaterial3D
+var _entry_arrow_down_material: StandardMaterial3D
 
 
 func _ready() -> void:
@@ -160,7 +214,7 @@ func _create_infrastructure() -> void:
 	# 2D city background only where geometry exists — the city stays visible
 	# around the grid. The 3D meshes themselves are opaque, so walls/floor
 	# fully cover the background behind them (no city bleeding through).
-	sub_viewport.transparent_bg = true
+	sub_viewport.transparent_bg = false
 	sub_viewport.size = Vector2i(1920, 1080)
 	# Give the SubViewport its own 3D world so the Camera3D and
 	# WorldEnvironment inside it actually render.
@@ -188,18 +242,16 @@ func _create_infrastructure() -> void:
 	var light := DirectionalLight3D.new()
 	light.position = Vector3(200, 400, 200)
 	light.rotation_degrees = Vector3(-45, 30, 0)
-	light.light_energy = 0.6
-	light.light_color = Color(0.4, 0.6, 0.8)
+	light.light_energy = 1.5
+	light.light_color = Color(0.7, 0.8, 1.0)
 	world_root.add_child(light)
 
-	# WorldEnvironment for the 3D scene inside the SubViewport. The
-	# background is cleared (transparent) so the 2D city background stays
-	# visible around the grid; the 3D floor/walls occlude it within the grid.
+	# WorldEnvironment for the 3D scene inside the SubViewport.
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.05, 0.08, 0.12)
-	env.ambient_light_energy = 0.4
+	env.ambient_light_color = Color(0.3, 0.35, 0.4)
+	env.ambient_light_energy = 1.0
 	env.glow_enabled = false
 	_world_env = WorldEnvironment.new()
 	_world_env.environment = env
@@ -305,6 +357,32 @@ func _create_materials() -> void:
 	# Beacon: volumetric additive column
 	_beacon_material = _make_beacon_shader_mat(Color(1.0, 0.3, 0.1, 0.5))
 
+	# --- Entity proxy materials (neon, unshaded so they read top-down) ---
+	_runner_material = _make_emissive_mat(Color(0.0, 0.9, 1.0), 1.6)
+	_npc_netwatch_material = _make_emissive_mat(Color(1.0, 0.15, 0.1), 1.4)
+	_npc_runner_material = _make_emissive_mat(Color(1.0, 0.85, 0.1), 1.2)
+	_rezzed_material = _make_emissive_mat(Color(0.2, 0.9, 1.0), 1.5)
+	_entry_arrow_up_material = _make_emissive_mat(Color(0.0, 0.9, 0.9), 1.3)
+	_entry_arrow_down_material = _make_emissive_mat(Color(0.8, 0.4, 1.0), 1.3)
+
+	# Runner defensive-buff glow shell (Shield / Aegis / Armor active). Fresnel
+	# rim + additive blend + TIME pulse so it reads as a neon shield bubble
+	# around the runner without hiding the model underneath.
+	_runner_glow_material = _make_runner_glow_shader_mat(Color(0.25, 0.6, 1.0, 1.0))
+
+
+# Build an unshaded emissive StandardMaterial3D (neon solid for entity proxies).
+func _make_emissive_mat(col: Color, energy: float) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(col.r * 0.25, col.g * 0.25, col.b * 0.25, 1.0)
+	mat.emission_enabled = true
+	mat.emission = col
+	mat.emission_energy_multiplier = energy
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.roughness = 0.3
+	mat.metallic = 0.4
+	return mat
+
 
 func _make_edge_shader_mat(edge_col: Color, fill_col: Color, glow: float) -> ShaderMaterial:
 	var shader := Shader.new()
@@ -315,6 +393,44 @@ func _make_edge_shader_mat(edge_col: Color, fill_col: Color, glow: float) -> Sha
 	mat.set_shader_parameter("fill_color", fill_col)
 	mat.set_shader_parameter("edge_glow", glow)
 	return mat
+
+
+func _make_runner_glow_shader_mat(col: Color) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = _runner_glow_shader_code()
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("glow_color", col)
+	mat.set_shader_parameter("glow_strength", 1.4)
+	mat.set_shader_parameter("fresnel_power", 2.5)
+	mat.set_shader_parameter("pulse_speed", 3.0)
+	return mat
+
+
+# Fresnel-rim additive blue glow for the runner's defensive-buff shell. The
+# rim falloff (1 - dot(NORMAL, VIEW)) keeps the shell transparent in the
+# centre so the runner model shows through; additive blend + TIME pulse give
+# a neon shield-bubble look. `no_depth_test` would let it show through walls;
+# we keep depth so it occludes correctly behind 3D walls.
+static func _runner_glow_shader_code() -> String:
+	return "
+shader_type spatial;
+render_mode blend_add, depth_draw_opaque, unshaded, cull_back;
+
+uniform vec4 glow_color : source_color;
+uniform float glow_strength : hint_range(0.0, 4.0) = 1.4;
+uniform float fresnel_power : hint_range(0.5, 8.0) = 2.5;
+uniform float pulse_speed : hint_range(0.0, 8.0) = 3.0;
+
+void fragment() {
+	float fres = pow(clamp(1.0 - dot(NORMAL, VIEW), 0.0, 1.0), fresnel_power);
+	float pulse = 0.65 + 0.35 * sin(TIME * pulse_speed);
+	float intensity = fres * pulse * glow_strength;
+	ALBEDO = glow_color.rgb;
+	EMISSION = glow_color.rgb * intensity;
+	ALPHA = intensity;
+}
+"
 
 
 func _make_beacon_shader_mat(col: Color) -> ShaderMaterial:
@@ -373,19 +489,6 @@ func _create_floor_plane() -> void:
 	if world_root == null:
 		push_warning("CP2020Board3D._create_floor_plane: world_root is null, skipping.")
 		return
-	_floor_mesh = MeshInstance3D.new()
-	_floor_mesh.name = "FloorPlane"
-	if floor_mesh != null:
-		# Custom floor mesh (author at unit size; _resize_floor_plane scales it
-		# to cover the grid).
-		_floor_mesh.mesh = floor_mesh
-	else:
-		# Use a thin box instead of a plane to avoid one-sided mesh issues with
-		# the top-down camera.
-		var box := BoxMesh.new()
-		box.size = Vector3(1, 2, 1)
-		_floor_mesh.mesh = box
-
 	var mat := StandardMaterial3D.new()
 	# Dark navy floor that reads as solid ground behind the 2D grid.
 	mat.albedo_color = Color(0.01, 0.02, 0.04, 1.0)
@@ -393,33 +496,89 @@ func _create_floor_plane() -> void:
 	mat.emission = Color(0.0, 0.05, 0.08)
 	mat.emission_energy_multiplier = 0.3
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_floor_mesh.material_override = mat
-	_floor_mesh.position.y = -1.0  # Slightly below the tile meshes
-	world_root.add_child(_floor_mesh)
+
+	if floor_mesh != null:
+		# Custom floor scene: instantiate and extract the first MeshInstance3D.
+		_floor_scene_root = floor_mesh.instantiate()
+		var mis := _floor_scene_root.find_children("*", "MeshInstance3D")
+		if mis.size() > 0:
+			_floor_mesh = mis[0] as MeshInstance3D
+		elif _floor_scene_root is MeshInstance3D:
+			_floor_mesh = _floor_scene_root as MeshInstance3D
+		else:
+			push_warning("CP2020Board3D._create_floor_plane: floor_mesh scene has no MeshInstance3D, falling back to default.")
+			if is_instance_valid(_floor_scene_root):
+				_floor_scene_root.queue_free()
+			_floor_scene_root = null
+			_floor_mesh = MeshInstance3D.new()
+			_floor_mesh.mesh = BoxMesh.new()
+			(_floor_mesh.mesh as BoxMesh).size = Vector3(1, 2, 1)
+		if _floor_scene_root != null:
+			world_root.add_child(_floor_scene_root)
+		_apply_material_recursive(_floor_mesh if _floor_scene_root == null else _floor_scene_root, mat)
+		if _floor_scene_root != null:
+			_floor_scene_root.position.y = -1.0
+		else:
+			_floor_mesh.position.y = -1.0
+	else:
+		# Use a thin box instead of a plane to avoid one-sided mesh issues with
+		# the top-down camera.
+		_floor_mesh = MeshInstance3D.new()
+		_floor_mesh.name = "FloorPlane"
+		var box := BoxMesh.new()
+		box.size = Vector3(1, 2, 1)
+		_floor_mesh.mesh = box
+		_floor_mesh.material_override = mat
+		_floor_mesh.position.y = -1.0  # Slightly below the tile meshes
+		world_root.add_child(_floor_mesh)
 
 
 # Resize/reposition the floor plane to cover the current datafort grid area.
 func _resize_floor_plane(layout: CP2020DatafortLayout) -> void:
-	if _floor_mesh == null or layout == null:
+	var target: Node3D = _floor_scene_root if _floor_scene_root != null else _floor_mesh
+	if target == null or layout == null:
 		return
-	var box: BoxMesh = _floor_mesh.mesh as BoxMesh
+	var box: BoxMesh = null
+	if _floor_mesh != null and _floor_mesh.mesh != null:
+		box = _floor_mesh.mesh as BoxMesh
 	if box:
 		# Default box floor: resize the mesh itself.
 		box.size = Vector3(layout.columns * cell_size, 2.0, layout.rows * cell_size)
-		_floor_mesh.scale = Vector3.ONE
+		target.scale = Vector3.ONE
 	else:
 		# Custom floor mesh: scale the instance so its AABB covers the grid.
-		var aabb: AABB = _floor_mesh.mesh.get_aabb()
+		var aabb: AABB = _get_node_aabb(target)
 		var sx: float = (layout.columns * cell_size) / aabb.size.x if aabb.size.x > 0.0 else 1.0
 		var sz: float = (layout.rows * cell_size) / aabb.size.z if aabb.size.z > 0.0 else 1.0
-		_floor_mesh.scale = Vector3(sx, 1.0, sz)
+		target.scale = Vector3(sx, 1.0, sz)
 	# Center the plane over the grid: the grid's first cell is at (cs/2, cs/2)
 	# and the grid spans columns*cs by rows*cs.
-	_floor_mesh.position = Vector3(
+	target.position = Vector3(
 		(layout.columns * cell_size) / 2.0,
 		-1.0,
 		(layout.rows * cell_size) / 2.0
 	)
+
+
+# Compute a combined AABB for a node subtree (used for custom floor scenes).
+func _get_node_aabb(node: Node3D) -> AABB:
+	if node is MeshInstance3D and (node as MeshInstance3D).mesh != null:
+		return (node as MeshInstance3D).mesh.get_aabb()
+	var aabb := AABB()
+	var first := true
+	for child in node.find_children("*", "MeshInstance3D"):
+		var mi := child as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var child_aabb := mi.mesh.get_aabb()
+		if first:
+			aabb = child_aabb
+			first = false
+		else:
+			aabb = aabb.merge(child_aabb)
+	if first:
+		return AABB(Vector3.ONE * -0.5, Vector3.ONE)
+	return aabb
 
 
 # Convert a grid coordinate to a 3D world position. The grid maps to the XZ
@@ -451,7 +610,12 @@ func sync_camera_2d(cam_2d_pos: Vector2, _layout_size: Vector2i, floor_idx: int 
 		vp_h = float(sub_viewport.size.y)
 	elif get_tree() and get_tree().root:
 		vp_h = float(get_tree().root.size.y)
-	camera_3d.size = vp_h
+	# Apply the shared zoom factor: a smaller orthographic size shows a smaller
+	# world region, which the full-screen TextureRect stretches up — so the 3D
+	# scene visually zooms in lock-step with the 2D Camera2D.zoom. Clamp guards
+	# against a divide-by-zero if the factor is ever set to 0.
+	var zf: float = _zoom_factor if _zoom_factor > 0.01 else 1.0
+	camera_3d.size = vp_h / zf
 	# For an orthogonal top-down camera, the camera position maps to the
 	# screen centre. Keep the scene-authored rotation (looking down -Y);
 	# only update position + ortho size so panning follows the 2D camera.
@@ -465,13 +629,14 @@ func clear_walls() -> void:
 		if is_instance_valid(w):
 			w.queue_free()
 	_tile_meshes.clear()
-	# Also clear ICE 3D proxies — they re-sync from entity spawns.
-	for key in _ice_meshes.keys():
-		var m = _ice_meshes[key]
-		if is_instance_valid(m):
-			m.queue_free()
-	_ice_meshes.clear()
-	# Keep debug helpers; their visibility is toggled separately.
+	_tile_proxy_by_coord.clear()
+	# NOTE: ICE 3D proxies (_ice_meshes) are NOT cleared here. They are entity
+	# proxies (like NPC/rezzed), positioned at their home-floor Y and gated by
+	# refresh_entity_proxy_floors. They must persist across floor changes
+	# (sync_from_layout calls this on every floor switch) — clearing them here
+	# wiped the ICE models immediately after spawn_black_ice created them, so
+	# ICE 3D models never rendered. Use clear_ice_proxies() for a full reset
+	# (called by spawn_black_ice on load).
 
 
 # Spawn an extruded wall mesh at the given grid coordinate. Uses a BoxMesh
@@ -480,22 +645,10 @@ func clear_walls() -> void:
 func spawn_wall(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
-	var m: Mesh = wall_mesh
-	var h: float
-	if m == null:
-		var box := BoxMesh.new()
-		box.size = Vector3(cell_size * 0.9, wall_height, cell_size * 0.9)
-		m = box
-		h = wall_height
-	else:
-		h = m.get_aabb().size.y
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = m
-	mesh.material_override = _wall_material
-	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += h / 2.0
-	world_root.add_child(mesh)
-	_tile_meshes.append(mesh)
+	var mesh := _spawn_proxy(wall_mesh, Vector3(cell_size * 0.9, wall_height, cell_size * 0.9), _wall_material, coord, floor_idx)
+	if mesh != null:
+		_tile_meshes.append(mesh)
+		_tile_proxy_by_coord[coord] = mesh
 
 
 # Spawn a 3D code gate: a thinner box with red (locked) or green (unlocked)
@@ -505,45 +658,24 @@ func spawn_gate(coord: Vector2i, locked: bool, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
 	var h: float = gate_height if locked else gate_height * 0.5
-	var m: Mesh = gate_mesh
-	if m == null:
-		var box := BoxMesh.new()
-		box.size = Vector3(cell_size * 0.85, h, cell_size * 0.85)
-		m = box
-	elif not locked:
-		# Unlocked custom gate: halve its height offset to read as "opened".
-		h = m.get_aabb().size.y * 0.5
-	else:
-		h = m.get_aabb().size.y
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = m
-	mesh.material_override = _gate_locked_material if locked else _gate_unlocked_material
-	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += h / 2.0
-	world_root.add_child(mesh)
-	_tile_meshes.append(mesh)
+	var mat: Material = _gate_locked_material if locked else _gate_unlocked_material
+	var mesh := _spawn_proxy(gate_mesh, Vector3(cell_size * 0.85, h, cell_size * 0.85), mat, coord, floor_idx)
+	if mesh != null:
+		if gate_mesh != null and not locked:
+			# Unlocked custom scene: squash Y to half height to read as "opened".
+			mesh.scale.y = 0.5
+		_tile_meshes.append(mesh)
+		_tile_proxy_by_coord[coord] = mesh
 
 
 # Spawn a 3D memory unit: a small extruded chip box with amber emission.
 func spawn_memory_unit(coord: Vector2i, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
-	var m: Mesh = memory_unit_mesh
-	var h: float
-	if m == null:
-		var box := BoxMesh.new()
-		box.size = Vector3(cell_size * 0.6, chip_height, cell_size * 0.5)
-		m = box
-		h = chip_height
-	else:
-		h = m.get_aabb().size.y
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = m
-	mesh.material_override = _mu_material
-	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += h / 2.0
-	world_root.add_child(mesh)
-	_tile_meshes.append(mesh)
+	var mesh := _spawn_proxy(memory_unit_mesh, Vector3(cell_size * 0.6, chip_height, cell_size * 0.5), _mu_material, coord, floor_idx)
+	if mesh != null:
+		_tile_meshes.append(mesh)
+		_tile_proxy_by_coord[coord] = mesh
 
 
 # Spawn a 3D control node (CPU): a diamond/pyramid mesh with purple glow.
@@ -551,57 +683,393 @@ func spawn_memory_unit(coord: Vector2i, floor_idx: int = 0) -> void:
 func spawn_control_node(coord: Vector2i, crashed: bool, floor_idx: int = 0) -> void:
 	if world_root == null:
 		return
-	var m: Mesh = control_node_mesh
-	var h: float
-	if m == null:
-		# Use a box rotated 45° on Y for a diamond top-down look.
-		var box := BoxMesh.new()
-		box.size = Vector3(cell_size * 0.5, cpu_height, cell_size * 0.5)
-		m = box
-		h = cpu_height
-	else:
-		h = m.get_aabb().size.y
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = m
-	mesh.material_override = _cpu_crashed_material if crashed else _cpu_material
-	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += h / 2.0
-	mesh.rotation_degrees.y = 45.0
-	world_root.add_child(mesh)
-	_tile_meshes.append(mesh)
+	var mat: Material = _cpu_crashed_material if crashed else _cpu_material
+	var mesh := _spawn_proxy(control_node_mesh, Vector3(cell_size * 0.5, cpu_height, cell_size * 0.5), mat, coord, floor_idx, 45.0)
+	if mesh != null:
+		_tile_meshes.append(mesh)
+		_tile_proxy_by_coord[coord] = mesh
 
 
-# Spawn a 3D ICE glow proxy at a grid coordinate. A translucent red box that
-# pulses, representing the ICE's threat aura. The 2D glyph/label stays on the
-# entity's Node2D for the actual skull/glyph visual.
-func spawn_ice_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
-	if world_root == null or _ice_meshes.has(coord):
+# Spawn a 3D ICE proxy for an ICE entity — the ICE's on-map visual in 3D
+# mode (replaces the 2D sprite/glyph). A solid neon shape tinted with the
+# program's colour (default red for killer ICE). Uses black_ice_mesh if
+# assigned, else a default box. Keyed by the ICE node so it can follow moves.
+func spawn_ice_proxy(entity: Node, coord: Vector2i, floor_idx: int = 0, color: Color = Color(1.0, 0.15, 0.05)) -> void:
+	if world_root == null or _ice_meshes.has(entity):
 		return
-	var m: Mesh = ice_proxy_mesh
-	var h: float
-	if m == null:
-		var box := BoxMesh.new()
-		box.size = Vector3(cell_size * 0.7, wall_height * 0.8, cell_size * 0.7)
-		m = box
-		h = wall_height * 0.8
-	else:
-		h = m.get_aabb().size.y
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = m
-	mesh.material_override = _ice_glow_material
-	mesh.position = grid_to_3d(coord, floor_idx)
-	mesh.position.y += h * 0.5
-	world_root.add_child(mesh)
-	_ice_meshes[coord] = mesh
+	# Per-instance emissive material so each ICE can take its program colour.
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(color.r * 0.25, color.g * 0.25, color.b * 0.25, 0.9)
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 1.6
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var mesh := _spawn_proxy(black_ice_mesh, Vector3(cell_size * 0.7, wall_height * 0.8, cell_size * 0.7), mat, coord, floor_idx)
+	if mesh != null:
+		mesh.set_meta("home_floor", floor_idx)
+		_ice_meshes[entity] = mesh
 
 
 # Remove a 3D ICE proxy when the ICE is derezzed/destroyed.
-func remove_ice_proxy(coord: Vector2i) -> void:
-	if _ice_meshes.has(coord):
-		var m = _ice_meshes[coord]
+func remove_ice_proxy(entity: Node) -> void:
+	if _ice_meshes.has(entity):
+		var m = _ice_meshes[entity]
 		if is_instance_valid(m):
 			m.queue_free()
-		_ice_meshes.erase(coord)
+		_ice_meshes.erase(entity)
+
+
+# Clear all ICE 3D proxies (full reset). Called by the game session's
+# spawn_black_ice before re-spawning ICE on a fresh dive, so stale proxies
+# from a previous dive (pointing to freed nodes) don't linger. NOT called by
+# clear_walls / sync_from_layout — ICE proxies persist across floor changes.
+func clear_ice_proxies() -> void:
+	for key in _ice_meshes.keys():
+		var m = _ice_meshes[key]
+		if is_instance_valid(m):
+			m.queue_free()
+	_ice_meshes.clear()
+
+
+# Move an existing ICE proxy to a new coord (ICE move). No-op if absent.
+func update_ice_proxy(entity: Node, new_coord: Vector2i, floor_idx: int = 0) -> void:
+	if not _ice_meshes.has(entity):
+		return
+	var mesh: Node3D = _ice_meshes[entity]
+	if is_instance_valid(mesh):
+		mesh.position = grid_to_3d(new_coord, floor_idx)
+		mesh.position.y = floor_idx * floor_gap - mesh.get_meta("aabb_bottom", 0.0)
+
+
+# Shared helper: build a Node3D from a custom PackedScene (.glb) or a default
+# box, centre it on the tile, and add it to world_root.
+#
+# When scene is null: a BoxMesh of default_size is created, the neon material
+# is applied, and rot_y rotates it (existing behaviour).
+#
+# When a PackedScene is provided: the scene is instantiated AS-IS — the user's
+# scale, rotation, and child positions from the .tscn are respected. The model
+# is placed at the tile centre (X/Z) and its AABB bottom is aligned to the
+# floor (Y). No material override is applied (the model keeps its own
+# materials). Author a .tscn with the .glb, adjust scale/rotation/position in
+# the editor, and drop it onto the inspector slot.
+func _spawn_proxy(scene: PackedScene, default_size: Vector3, material: Material, coord: Vector2i, floor_idx: int, rot_y: float = 0.0) -> Node3D:
+	if world_root == null:
+		return null
+	var node: Node3D
+	if scene == null:
+		var box := BoxMesh.new()
+		box.size = default_size
+		var mi := MeshInstance3D.new()
+		mi.mesh = box
+		node = mi
+		if material != null:
+			node.material_override = material
+		node.rotation_degrees.y = rot_y
+		node.position = grid_to_3d(coord, floor_idx)
+		node.position.y += default_size.y / 2.0
+	else:
+		node = scene.instantiate()
+		if force_opaque_models:
+			_force_materials_opaque(node)
+		var aabb := _get_scene_aabb(node)
+		# Store the AABB bottom Y so update functions can reposition correctly.
+		node.set_meta("aabb_bottom", aabb.position.y)
+		node.position = grid_to_3d(coord, floor_idx)
+		# Raise the model so its AABB bottom sits on the floor surface.
+		node.position.y = floor_idx * floor_gap - aabb.position.y
+	world_root.add_child(node)
+	return node
+
+
+# Compute the combined AABB of a node subtree in the root's local space.
+# Transforms each MeshInstance3D's mesh AABB by the child's own transform.
+func _get_scene_aabb(node: Node3D) -> AABB:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.mesh != null:
+			return mi.mesh.get_aabb()
+		return AABB(Vector3.ONE * -0.5, Vector3.ONE)
+	var aabb := AABB()
+	var first := true
+	for child in node.find_children("*", "MeshInstance3D"):
+		var mi := child as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var local := mi.mesh.get_aabb()
+		# Transform all 8 corners by the child's local transform and merge.
+		for i in range(8):
+			var corner := local.position + Vector3(
+				local.size.x if (i & 1) else 0.0,
+				local.size.y if (i & 2) else 0.0,
+				local.size.z if (i & 4) else 0.0,
+			)
+			var tc := mi.transform * corner
+			if first:
+				aabb = AABB(tc, Vector3.ZERO)
+				first = false
+			else:
+				aabb = aabb.expand(tc)
+	if first:
+		return AABB(Vector3.ONE * -0.5, Vector3.ONE)
+	return aabb
+
+
+# Force all materials in a subtree to opaque: duplicate surface materials,
+# disable transparency, and set albedo alpha to 1.0. Fixes Sketchfab .glb
+# models that ship with alpha-blended materials.
+func _force_materials_opaque(node: Node3D) -> void:
+	for child in node.find_children("*", "MeshInstance3D", true):
+		var mi := child as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for i in range(mi.mesh.get_surface_count()):
+			var mat := mi.mesh.surface_get_material(i)
+			if mat == null:
+				continue
+			if mat is BaseMaterial3D:
+				var dup := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
+				dup.albedo_color = Color(dup.albedo_color.r, dup.albedo_color.g, dup.albedo_color.b, 1.0)
+				dup.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+				dup.alpha_scissor_threshold = 0.01
+				mi.set_surface_override_material(i, dup)
+
+
+# Compute the vertical extent of a node — either directly (MeshInstance3D) or
+# by scanning its MeshInstance3D children (instantiated .glb scene root).
+func _get_node_height(node: Node3D) -> float:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.mesh != null:
+			return mi.mesh.get_aabb().size.y
+		return 1.0
+	var aabb := _get_scene_aabb(node)
+	return aabb.size.y if aabb.size.y > 0.0 else 1.0
+
+
+# Apply a material_override to every MeshInstance3D found in the subtree.
+func _apply_material_recursive(node: Node3D, material: Material) -> void:
+	if node is MeshInstance3D:
+		(node as MeshInstance3D).material_override = material
+		return
+	for child in node.find_children("*", "MeshInstance3D"):
+		(child as MeshInstance3D).material_override = material
+
+
+# --- Netrunner avatar (replaces the 2D _draw ring/diamond) ---
+func spawn_runner_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
+	if _runner_proxy != null and is_instance_valid(_runner_proxy):
+		_runner_proxy.queue_free()
+	# Diamond top-down (box rotated 45°) like the 2D runner diamond.
+	_runner_proxy = _spawn_proxy(runner_mesh, Vector3(cell_size * 0.5, 20.0, cell_size * 0.5), _runner_material, coord, floor_idx, 45.0)
+	# Defensive-buff glow shell (Shield/Aegis/Armor). Sibling of the proxy
+	# under world_root so the custom .glb's authored scale doesn't distort
+	# the sphere; positioned manually to follow the runner. Hidden until a
+	# buff is raised (toggled via set_runner_shield_glow).
+	_create_runner_glow(coord, floor_idx)
+
+func update_runner_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
+	if _runner_proxy == null or not is_instance_valid(_runner_proxy):
+		spawn_runner_proxy(coord, floor_idx)
+		return
+	_runner_proxy.position = grid_to_3d(coord, floor_idx)
+	_runner_proxy.position.y = floor_idx * floor_gap - _runner_proxy.get_meta("aabb_bottom", 0.0)
+	# Keep the glow shell centred on the runner as it moves.
+	_position_runner_glow(coord, floor_idx)
+
+func remove_runner_proxy() -> void:
+	if _runner_proxy != null and is_instance_valid(_runner_proxy):
+		_runner_proxy.queue_free()
+	_runner_proxy = null
+	if _runner_glow_mesh != null and is_instance_valid(_runner_glow_mesh):
+		_runner_glow_mesh.queue_free()
+	_runner_glow_mesh = null
+
+
+# Build the runner defensive-buff glow shell at a tile. The shell is a
+# SphereMesh slightly larger than a tile, centred at the model's mid-height,
+# using the fresnel additive glow shader. Hidden by default.
+func _create_runner_glow(coord: Vector2i, floor_idx: int) -> void:
+	if world_root == null or _runner_glow_material == null:
+		return
+	if _runner_glow_mesh != null and is_instance_valid(_runner_glow_mesh):
+		_runner_glow_mesh.queue_free()
+	var sphere := SphereMesh.new()
+	sphere.radius = cell_size * 0.55
+	sphere.height = cell_size * 1.1
+	_runner_glow_mesh = MeshInstance3D.new()
+	_runner_glow_mesh.mesh = sphere
+	_runner_glow_mesh.material_override = _runner_glow_material
+	_runner_glow_mesh.visible = false
+	world_root.add_child(_runner_glow_mesh)
+	_position_runner_glow(coord, floor_idx)
+
+
+# Place the glow shell at the runner's tile, vertically centred on the proxy
+# model (half the model height above the floor).
+func _position_runner_glow(coord: Vector2i, floor_idx: int) -> void:
+	if _runner_glow_mesh == null or not is_instance_valid(_runner_glow_mesh):
+		return
+	var base_pos := grid_to_3d(coord, floor_idx)
+	var model_h: float = _get_node_height(_runner_proxy) if (_runner_proxy != null and is_instance_valid(_runner_proxy)) else 20.0
+	_runner_glow_mesh.position = Vector3(base_pos.x, floor_idx * floor_gap + model_h * 0.5, base_pos.z)
+
+
+# Toggle the runner's defensive-buff glow (Shield / Aegis SHIELD, or ARMOR).
+# Called by the game session when a defensive program is raised or consumed.
+func set_runner_shield_glow(active: bool) -> void:
+	if _runner_glow_mesh != null and is_instance_valid(_runner_glow_mesh):
+		_runner_glow_mesh.visible = active
+
+
+# --- NPC netrunner proxy (replaces the 2D GlyphLabel "N"/"R") ---
+func spawn_npc_proxy(entity: Node, coord: Vector2i, is_netwatch: bool, floor_idx: int = 0) -> void:
+	if _npc_proxies.has(entity):
+		return
+	var mat: Material = _npc_netwatch_material if is_netwatch else _npc_runner_material
+	# A capsule-ish box standing on the tile.
+	var mesh := _spawn_proxy(npc_mesh, Vector3(cell_size * 0.45, 26.0, cell_size * 0.45), mat, coord, floor_idx)
+	if mesh != null:
+		mesh.set_meta("home_floor", floor_idx)
+		_npc_proxies[entity] = mesh
+
+func update_npc_proxy(entity: Node, coord: Vector2i, floor_idx: int = 0) -> void:
+	if not _npc_proxies.has(entity):
+		return
+	var mesh: Node3D = _npc_proxies[entity]
+	if is_instance_valid(mesh):
+		mesh.position = grid_to_3d(coord, floor_idx)
+		mesh.position.y = floor_idx * floor_gap - mesh.get_meta("aabb_bottom", 0.0)
+
+func remove_npc_proxy(entity: Node) -> void:
+	if _npc_proxies.has(entity):
+		var mesh: Node3D = _npc_proxies[entity]
+		if is_instance_valid(mesh):
+			mesh.queue_free()
+		_npc_proxies.erase(entity)
+
+
+# --- Rezzed attack-program proxy (replaces the 2D "◆" glyph) ---
+func spawn_rezzed_proxy(entity: Node, coord: Vector2i, floor_idx: int = 0) -> void:
+	if _rezzed_proxies.has(entity):
+		return
+	var mesh := _spawn_proxy(rezzed_mesh, Vector3(cell_size * 0.4, 12.0, cell_size * 0.4), _rezzed_material, coord, floor_idx, 45.0)
+	if mesh != null:
+		mesh.set_meta("home_floor", floor_idx)
+		_rezzed_proxies[entity] = mesh
+
+func update_rezzed_proxy(entity: Node, coord: Vector2i, floor_idx: int = 0) -> void:
+	if not _rezzed_proxies.has(entity):
+		return
+	var mesh: Node3D = _rezzed_proxies[entity]
+	if is_instance_valid(mesh):
+		mesh.position = grid_to_3d(coord, floor_idx)
+		mesh.position.y = floor_idx * floor_gap - mesh.get_meta("aabb_bottom", 0.0)
+
+func remove_rezzed_proxy(entity: Node) -> void:
+	if _rezzed_proxies.has(entity):
+		var mesh: Node3D = _rezzed_proxies[entity]
+		if is_instance_valid(mesh):
+			mesh.queue_free()
+		_rezzed_proxies.erase(entity)
+
+
+# --- Worm proxy (replaces the 2D "W" worm overlay). Colour shifts with
+# integrity (purple -> orange -> red) so the material is per-instance. ---
+func spawn_worm_proxy(coord: Vector2i, color: Color, floor_idx: int = 0) -> void:
+	if _worm_proxies.has(coord):
+		update_worm_proxy(coord, color)
+		return
+	var mesh := _spawn_proxy(worm_mesh, Vector3(cell_size * 0.5, 8.0, cell_size * 0.5), null, coord, floor_idx)
+	if mesh:
+		if worm_mesh == null:
+			_apply_material_recursive(mesh, _make_worm_mat(color))
+		_worm_proxies[coord] = mesh
+
+func update_worm_proxy(coord: Vector2i, color: Color) -> void:
+	if not _worm_proxies.has(coord):
+		return
+	var mesh: Node3D = _worm_proxies[coord]
+	if is_instance_valid(mesh) and worm_mesh == null:
+		_apply_material_recursive(mesh, _make_worm_mat(color))
+
+func remove_worm_proxy(coord: Vector2i) -> void:
+	if _worm_proxies.has(coord):
+		var mesh: Node3D = _worm_proxies[coord]
+		if is_instance_valid(mesh):
+			mesh.queue_free()
+		_worm_proxies.erase(coord)
+
+func _make_worm_mat(col: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(col.r * 0.3, col.g * 0.3, col.b * 0.3, 0.95)
+	mat.emission_enabled = true
+	mat.emission = col
+	mat.emission_energy_multiplier = 1.4
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return mat
+
+
+# --- Entry travel arrows (replace the 2D ↑/↓ glyphs on ENTRY tiles) ---
+func spawn_entry_arrow(coord: Vector2i, up: bool, floor_idx: int = 0) -> void:
+	if _entry_arrow_proxies.has(coord):
+		return
+	var mat: Material = _entry_arrow_up_material if up else _entry_arrow_down_material
+	# A thin tall prism reads as an arrow/portal marker top-down.
+	var mesh := _spawn_proxy(entry_arrow_up_mesh if up else entry_arrow_down_mesh, Vector3(cell_size * 0.3, 30.0, cell_size * 0.3), mat, coord, floor_idx)
+	if mesh:
+		_entry_arrow_proxies[coord] = mesh
+
+func clear_entry_arrows() -> void:
+	for key in _entry_arrow_proxies.keys():
+		var mesh: Node3D = _entry_arrow_proxies[key]
+		if is_instance_valid(mesh):
+			mesh.queue_free()
+	_entry_arrow_proxies.clear()
+
+
+# Toggle visibility of every entity proxy (ICE / NPC / rezzed program) based on
+# whether its home floor matches the current floor. Entity proxies are floor-
+# bound (ICE/NPC/rezzed never follow the runner between floors), and the
+# orthographic top-down camera would otherwise render every floor's proxies
+# overlapping on screen. Call on floor change and after spawning entities so
+# only the current floor's 3D entities are visible. The runner proxy is
+# always on the current floor and is left visible.
+func refresh_entity_proxy_floors(current_floor_idx: int) -> void:
+	_refresh_proxy_dict_floors(_ice_meshes, current_floor_idx)
+	_refresh_proxy_dict_floors(_npc_proxies, current_floor_idx)
+	_refresh_proxy_dict_floors(_rezzed_proxies, current_floor_idx)
+
+func _refresh_proxy_dict_floors(dict: Dictionary, current_floor_idx: int) -> void:
+	for key in dict.keys():
+		var m: Node3D = dict[key]
+		if not is_instance_valid(m):
+			continue
+		var hf: int = int(m.get_meta("home_floor", 0))
+		m.visible = hf == current_floor_idx
+
+
+# Clear every entity proxy (runner, NPCs, rezzed programs, worm, entry arrows).
+# ICE proxies are cleared in clear_walls(); beacons in clear_beacons().
+func clear_entity_proxies() -> void:
+	remove_runner_proxy()
+	for key in _npc_proxies.keys():
+		var m: Node3D = _npc_proxies[key]
+		if is_instance_valid(m):
+			m.queue_free()
+	_npc_proxies.clear()
+	for key in _rezzed_proxies.keys():
+		var m: Node3D = _rezzed_proxies[key]
+		if is_instance_valid(m):
+			m.queue_free()
+	_rezzed_proxies.clear()
+	for key in _worm_proxies.keys():
+		var m: Node3D = _worm_proxies[key]
+		if is_instance_valid(m):
+			m.queue_free()
+	_worm_proxies.clear()
+	clear_entry_arrows()
 
 
 # Build optional debug alignment helpers: a 5x5 neon marker at the grid
@@ -750,6 +1218,7 @@ func sync_beacons(coords: Array) -> void:
 # by the game session on load_subnet, floor change, and tile mutations.
 func sync_from_layout(layout: CP2020DatafortLayout, p_floor: int) -> void:
 	clear_walls()
+	clear_entry_arrows()
 	if layout == null:
 		return
 	_resize_floor_plane(layout)
@@ -769,6 +1238,12 @@ func sync_from_layout(layout: CP2020DatafortLayout, p_floor: int) -> void:
 				spawn_memory_unit(coord, p_floor)
 			CP2020DatafortLayout.TileType.CONTROL_NODE:
 				spawn_control_node(coord, tile.cpu_crashed_turns > 0, p_floor)
+			CP2020DatafortLayout.TileType.ENTRY:
+				# 3D entry travel arrows replace the 2D ↑/↓ glyphs.
+				if tile.can_go_up:
+					spawn_entry_arrow(coord, true, p_floor)
+				if tile.can_go_down:
+					spawn_entry_arrow(coord, false, p_floor)
 
 
 # Attach the TextureRect to a CanvasLayer so it renders on top of the 2D
@@ -779,10 +1254,56 @@ func attach_to_canvas_layer(canvas_layer: CanvasLayer) -> void:
 		canvas_layer.add_child(texture_rect)
 
 
+# Refresh a single tile's 3D proxy in place after its state changes mid-game
+# (gate unlock, wall breach, worm open, CPU crash). Removes the existing proxy
+# at `coord` (if any) and respawns it from the tile's current type/state. No-op
+# for tile types with no 3D proxy (EMPTY / ENTRY / BLACK_ICE / NETWATCH /
+# NETRUNNER). Only call for tiles on the current floor — proxies for other
+# floors are not tracked here (they're rebuilt on floor change).
+func refresh_tile_3d(coord: Vector2i, tile: CP2020TileData, floor_idx: int) -> void:
+	if world_root == null or tile == null:
+		return
+	# Remove the existing proxy at this coord (wall/gate/MU/CPU).
+	if _tile_proxy_by_coord.has(coord):
+		var old: Node3D = _tile_proxy_by_coord[coord]
+		_tile_meshes.erase(old)
+		_tile_proxy_by_coord.erase(coord)
+		if is_instance_valid(old):
+			old.queue_free()
+	match tile.tile_type:
+		CP2020DatafortLayout.TileType.DATAWALL:
+			spawn_wall(coord, floor_idx)
+		CP2020DatafortLayout.TileType.CODE_GATE:
+			spawn_gate(coord, not tile.is_unlocked, floor_idx)
+		CP2020DatafortLayout.TileType.MEMORY_UNIT:
+			spawn_memory_unit(coord, floor_idx)
+		CP2020DatafortLayout.TileType.CONTROL_NODE:
+			spawn_control_node(coord, tile.cpu_crashed_turns > 0, floor_idx)
+		_:
+			# EMPTY / removed wall: no proxy. Entry arrows are handled by
+			# sync_from_layout on floor change; mid-game arrow changes are rare.
+			pass
+
+
 # Resize the 3D camera's orthographic size to match the 2D rendering
 # resolution so 1 world unit maps to 1 screen pixel vertically. This keeps the
-# 3D grid aligned with the 2D board.
-func resize_viewport(_width: int, height: int) -> void:
+# 3D grid aligned with the 2D board. The SubViewport texture is also resized to
+# the root viewport so the 3D output fills the screen at the same resolution
+# as the 2D render (the TextureRect uses STRETCH_SCALE over FULL_RECT); this
+# fixes pre-existing non-1080p scale drift and keeps zoom correct on any
+# window size. camera_3d.size is re-applied each frame by sync_camera_2d
+# (which also applies the zoom factor), so the value set here is a fallback.
+func resize_viewport(width: int, height: int) -> void:
 	var h: int = height if height > 0 else 700
+	var w: int = width if width > 0 else 1920
+	if sub_viewport:
+		sub_viewport.size = Vector2i(w, h)
 	if camera_3d:
 		camera_3d.size = float(h)
+
+
+# Set the shared camera zoom factor (driven by the game session from the mouse
+# wheel). Applied in sync_camera_2d each frame via _sync_3d_camera, so setting
+# the field is enough — the new zoom takes effect on the very next frame.
+func set_zoom_factor(z: float) -> void:
+	_zoom_factor = clampf(z, 0.1, 10.0)

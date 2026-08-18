@@ -59,8 +59,10 @@ func effective_interface_rank() -> int:
 			total += mod.bonus_value
 	return total
 
-# Total trace reduction from installed Trace Dampener modules. Applied at LDL
-# travel sites as max(0, trace_value - effective_trace_reduction()).
+# Total trace-dampening bonus from installed Trace Dampener modules. Added to
+# the Watchdog trace-check target (accumulated_trace + this) in
+# WatchdogProgram.take_ice_turn, making the runner harder to pinpoint. LDL
+# hops add the full trace_value (this no longer reduces LDL trace gain).
 func effective_trace_reduction() -> int:
 	var total := 0
 	for mod in installed_modules:

@@ -63,7 +63,7 @@ func apply_visual_from_program(p_program: NetProgram = null, p_glyph: String = "
 func update_visibility(_is_explored: bool, p_visible: bool) -> void:
 	if not glyph_label:
 		return
-	glyph_label.visible = p_visible
+	glyph_label.visible = p_visible and not visual_3d_mode
 
 func take_damage(amount: int) -> bool:
 	current_integrity -= amount

@@ -85,6 +85,12 @@ var watchdog_beacons: Array[Vector2i] = []
 # nodes on the current floor are drawn (floor-gated like ICE).
 var rezzed_program_nodes: Array = []
 
+# The netrunner's current grid coord (current floor). Set by the game session
+# so the 3D-mode empty-path dot can be suppressed on tiles occupied by the
+# runner (the 3D runner model renders there) — avoids the dot showing through
+# the model. Vector2i(-1,-1) means "no runner on this floor".
+var runner_coord: Vector2i = Vector2i(-1, -1)
+
 # --- Hover highlight ---
 # The grid coord currently under the mouse, and whether it is interactable
 # (offers a right-click context menu). Set by the game session from its
@@ -308,7 +314,7 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 			if draw_terrain_fills:
 				_draw_tile_graphics(canvas, tile_data, cell_rect, tile_data.is_visible)
 			else:
-				_draw_tile_overlay_3d(canvas, tile_data, cell_rect, tile_data.is_visible)
+				_draw_tile_overlay_3d(canvas, tile_data, cell_rect, tile_data.is_visible, coord)
 
 	# 5. Scanlines across the grid area.
 	_draw_scanlines(total_width, total_height)
@@ -320,37 +326,41 @@ func draw_grid(canvas: CanvasItem, layout: CP2020DatafortLayout) -> void:
 	_draw_tech_frame(total_width, total_height)
 
 	# 8. Watchdog beacon overlay — pulsing amber "W" glyph at each beacon.
-	for beacon in watchdog_beacons:
-		var beacon_rect = Rect2(beacon.x * cell_size, grid_offset_y + (beacon.y * cell_size), cell_size, cell_size)
-		var center = beacon_rect.get_center()
-		var beacon_color = color_beacon
-		var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
-		canvas.draw_circle(center, pulse_radius, color_beacon_halo)
-		var s: float = 7.0
-		canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), beacon_color, 2.0)
-		canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), beacon_color, 2.0)
-		canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), beacon_color, 2.0)
+	# (3D mode renders beacons as 3D columns via board_3d.spawn_beacon.)
+	if draw_terrain_fills:
+		for beacon in watchdog_beacons:
+			var beacon_rect = Rect2(beacon.x * cell_size, grid_offset_y + (beacon.y * cell_size), cell_size, cell_size)
+			var center = beacon_rect.get_center()
+			var beacon_color = color_beacon
+			var pulse_radius: float = 8.0 + sin(Time.get_ticks_msec() * 0.005) * 2.0
+			canvas.draw_circle(center, pulse_radius, color_beacon_halo)
+			var s: float = 7.0
+			canvas.draw_line(center + Vector2(-s, -s), center + Vector2(0, s), beacon_color, 2.0)
+			canvas.draw_line(center + Vector2(0, s), center + Vector2(s, -s), beacon_color, 2.0)
+			canvas.draw_line(center + Vector2(s, -s), center + Vector2(s * 2.0, s), beacon_color, 2.0)
 
 	# 9. Rezzed attack-program overlay — pulsing diamond + tinted halo.
-	for rez in rezzed_program_nodes:
-		if not is_instance_valid(rez):
-			continue
-		if rez.home_floor != current_layout.current_floor:
-			continue
-		var rez_rect = Rect2(rez.current_position.x * cell_size, grid_offset_y + (rez.current_position.y * cell_size), cell_size, cell_size)
-		var rcenter = rez_rect.get_center()
-		var vis: Dictionary = rez.program.get_visual() if rez.program else {}
-		var rez_color: Color = vis.get("color", color_rez_default)
-		var rpulse: float = 9.0 + sin(Time.get_ticks_msec() * 0.006) * 2.0
-		canvas.draw_circle(rcenter, rpulse, Color(rez_color.r, rez_color.g, rez_color.b, 0.3))
-		var ds: float = 8.0
-		var d := PackedVector2Array([
-			rcenter + Vector2(0, -ds),
-			rcenter + Vector2(ds, 0),
-			rcenter + Vector2(0, ds),
-			rcenter + Vector2(-ds, 0),
-		])
-		canvas.draw_polyline(d, rez_color, 2.0, true)
+	# (3D mode renders rezzed programs as 3D proxies via board_3d.)
+	if draw_terrain_fills:
+		for rez in rezzed_program_nodes:
+			if not is_instance_valid(rez):
+				continue
+			if rez.home_floor != current_layout.current_floor:
+				continue
+			var rez_rect = Rect2(rez.current_position.x * cell_size, grid_offset_y + (rez.current_position.y * cell_size), cell_size, cell_size)
+			var rcenter = rez_rect.get_center()
+			var vis: Dictionary = rez.program.get_visual() if rez.program else {}
+			var rez_color: Color = vis.get("color", color_rez_default)
+			var rpulse: float = 9.0 + sin(Time.get_ticks_msec() * 0.006) * 2.0
+			canvas.draw_circle(rcenter, rpulse, Color(rez_color.r, rez_color.g, rez_color.b, 0.3))
+			var ds: float = 8.0
+			var d := PackedVector2Array([
+				rcenter + Vector2(0, -ds),
+				rcenter + Vector2(ds, 0),
+				rcenter + Vector2(0, ds),
+				rcenter + Vector2(-ds, 0),
+			])
+			canvas.draw_polyline(d, rez_color, 2.0, true)
 
 func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool) -> void:
 	var alpha_mult: float = 1.0 if is_visible else 0.3
@@ -474,45 +484,36 @@ func _draw_tile_graphics(canvas: CanvasItem, tile_data: CP2020TileData, cell_rec
 
 
 # 3D-mode tile overlay: draws 2D graphics only for tile types that have no
-# 3D mesh (EMPTY path dots, ENTRY travel frames + glyphs) so the player can
-# still identify walkable/entry tiles on top of the 3D terrain. Structural
-# tiles (DATAWALL/CODE_GATE/MEMORY_UNIT/CONTROL_NODE) are rendered by the 3D
-# layer, so they are intentionally not drawn here to avoid covering them.
-# The worm overlay is always drawn on top.
-func _draw_tile_overlay_3d(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool) -> void:
+# 3D proxy — currently just the EMPTY path dot. ENTRY travel arrows, worm
+# overlays, beacons, and rezzed-program markers are all rendered as 3D
+# objects by board_3d in 3D mode, so they are intentionally NOT drawn here.
+# Structural tiles (DATAWALL/CODE_GATE/MEMORY_UNIT/CONTROL_NODE) are rendered
+# by the 3D layer too. The empty-path dot is suppressed on tiles occupied by
+# the runner or a rezzed program (their 3D models render there) so the dot
+# doesn't show through the model.
+func _draw_tile_overlay_3d(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect: Rect2, is_visible: bool, coord: Vector2i) -> void:
 	var alpha_mult: float = 1.0 if is_visible else 0.3
 	match tile_data.tile_type:
 		CP2020DatafortLayout.TileType.EMPTY:
+			if _is_tile_occupied(coord):
+				return
 			var center = cell_rect.get_center()
 			canvas.draw_circle(center, 2.0, _a(color_empty_dot, alpha_mult))
-		CP2020DatafortLayout.TileType.ENTRY:
-			canvas.draw_rect(cell_rect, _a(color_entry_fill, alpha_mult), true)
-			var has_up := tile_data.can_go_up
-			var has_down := tile_data.can_go_down
-			if has_up and has_down:
-				var half := Rect2(cell_rect.position, Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
-				canvas.draw_rect(half, _a(color_entry_up, alpha_mult), false, 2.0)
-				var half2 := Rect2(cell_rect.position + Vector2(0, cell_rect.size.y * 0.5), Vector2(cell_rect.size.x, cell_rect.size.y * 0.5))
-				canvas.draw_rect(half2, _a(color_entry_down, alpha_mult), false, 2.0)
-			elif has_up:
-				canvas.draw_rect(cell_rect, _a(color_entry_up, alpha_mult), false, 2.0)
-			elif has_down:
-				canvas.draw_rect(cell_rect, _a(color_entry_down, alpha_mult), false, 2.0)
-			else:
-				canvas.draw_rect(cell_rect, _a(color_entry_frame, alpha_mult), false, 2.0)
-			if has_up or has_down:
-				var font := _get_default_font()
-				var glyph_size := 8
-				if has_up:
-					canvas.draw_string(font, cell_rect.position + Vector2(2, glyph_size + 1), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, _a(color_entry_up_glyph, alpha_mult))
-				if has_down:
-					canvas.draw_string(font, cell_rect.position + Vector2(2, cell_rect.size.y - 1), "↓", HORIZONTAL_ALIGNMENT_LEFT, -1, glyph_size, _a(color_entry_down_glyph, alpha_mult))
-			if tile_data.is_primary_entry:
-				var mark := Rect2(cell_rect.position + Vector2(cell_rect.size.x - 12, 4), Vector2(8, 8))
-				canvas.draw_rect(mark, _a(color_primary_entry_mark, alpha_mult), true)
 		_:
 			pass
-	_draw_worm_overlay(canvas, tile_data, cell_rect, is_visible)
+
+
+# True if the runner or a rezzed attack-program node currently occupies
+# `coord` on the current floor — used to suppress the empty-path dot under
+# their 3D models. NPCs/ICE sit on their own tile types (not EMPTY) so they
+# never reach this check.
+func _is_tile_occupied(coord: Vector2i) -> bool:
+	if runner_coord.x >= 0 and runner_coord == coord:
+		return true
+	for rez in rezzed_program_nodes:
+		if is_instance_valid(rez) and rez.current_position == coord:
+			return true
+	return false
 
 
 # Worm-in-progress overlay. Drawn even when terrain fills are disabled so

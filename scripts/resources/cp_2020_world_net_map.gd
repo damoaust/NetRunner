@@ -611,8 +611,12 @@ func _hack_jump(dest: Dictionary) -> void:
 	var roll := randi_range(1, 10)
 	_log_terminal("HACK LDL -> %s — 1D10 %d vs Sec %d." % [dest.name, roll, int(dest.security_code)], COLOR_LOG_SYS)
 	if roll >= int(dest.security_code):
-		var trace_reduction: int = RunState.selected_deck.effective_trace_reduction() if RunState.selected_deck != null else 0
-		RunState.accumulated_trace += max(0, int(dest.trace_value) - trace_reduction)
+		# LDL hops add the full destination trace_value to the run trace —
+		# building up trace makes Watchdog trace checks harder (they must beat
+		# the accumulated trace). The Trace Dampener options module no longer
+		# reduces this gain; instead it adds its bonus to the Watchdog trace
+		# check target (see WatchdogProgram.take_ice_turn).
+		RunState.accumulated_trace += int(dest.trace_value)
 		runner_pos = dest.pos
 		_center_camera_on_runner()
 		_log_terminal("JUMP OK -> %s // trace %d." % [dest.name, RunState.accumulated_trace], COLOR_LOG_OK)

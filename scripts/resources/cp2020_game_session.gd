@@ -52,6 +52,18 @@ var combat_animator: CombatEffectAnimator = null
 # 3D compositing layer — renders extruded walls, 3D ICE, beacons behind the
 # 2D neon overlay. Created in _ready, synced on load_subnet / floor change.
 var board_3d: CP2020Board3D = null
+# True when the 3D board is active — entity 2D visuals are hidden and 3D
+# proxies render instead. Set in _ready after board_3d setup.
+var _entity_3d_mode_active: bool = false
+
+# Camera zoom (shared 2D Camera2D.zoom + 3D ortho size). Mouse wheel scrolls
+# in/out; the 2D neon grid and the 3D board stay pixel-aligned because the 3D
+# camera centre is synced from get_screen_center_position() (zoom-aware) and
+# the ortho size is divided by this factor in sync_camera_2d.
+var _camera_zoom: float = 1.0
+const ZOOM_MIN: float = 0.5
+const ZOOM_MAX: float = 2.5
+const ZOOM_STEP: float = 1.15
 
 # One-shot guard for end-of-run scene transitions (flatline / busted). An
 # adversary coroutine (notably the datafort's multi-action take_turn loop)
@@ -159,6 +171,17 @@ func _ready() -> void:
 			netrunner.shield_raised.connect(update_deck_info)
 		if not netrunner.shield_consumed.is_connected(update_deck_info):
 			netrunner.shield_consumed.connect(update_deck_info)
+		# 3D shield/armor glow on the runner proxy: refresh whenever a
+		# defensive program (Shield / Aegis SHIELD, or ARMOR) is raised or
+		# consumed so the blue glow shell appears/disappears promptly.
+		if not netrunner.shield_raised.is_connected(_refresh_runner_defense_glow):
+			netrunner.shield_raised.connect(_refresh_runner_defense_glow)
+		if not netrunner.shield_consumed.is_connected(_refresh_runner_defense_glow):
+			netrunner.shield_consumed.connect(_refresh_runner_defense_glow)
+		if not netrunner.armor_raised.is_connected(_refresh_runner_defense_glow):
+			netrunner.armor_raised.connect(_refresh_runner_defense_glow)
+		if not netrunner.armor_consumed.is_connected(_refresh_runner_defense_glow):
+			netrunner.armor_consumed.connect(_refresh_runner_defense_glow)
 		# Invisibility cloak: refresh the trace/status label on raise/pierce
 		# so the CLOAK indicator appears/disappears promptly.
 		if not netrunner.cloak_raised.is_connected(_update_trace):
@@ -226,6 +249,10 @@ func _ready() -> void:
 		var ui_layer := get_node_or_null("UI") as CanvasLayer
 		if ui_layer:
 			ui_layer.layer = 1
+		# 3D mode is active: hide entity 2D visuals (3D proxies render them).
+		_entity_3d_mode_active = true
+		if netrunner:
+			netrunner.set_visual_3d_mode(true)
 
 	# Load the subnet chosen on the world map (fall back to default)
 	var subnet_path := RunState.selected_subnet_path if RunState.selected_subnet_path != "" else starting_subnet_path
@@ -249,6 +276,8 @@ func _notification(what: int) -> void:
 				Vector2i(current_layout.columns, current_layout.rows),
 				current_floor
 			)
+			# Re-apply zoom after a resize rebuilds camera/viewport sizes.
+			_apply_camera_zoom()
 
 func _update_floor_hud_label() -> void:
 	if floor_hud_label == null or current_layout == null:
@@ -320,10 +349,15 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		# Clear any rezzed attack-program nodes from a prior dive — they do
 		# not persist across dataforts (a fresh dive starts un-rezzed).
 		_clear_rezzed_programs()
+		# Clear 3D entity proxies (runner/NPC/rezzed/worm/entry arrows) from a
+		# prior dive; they're respawned below / as entities spawn.
+		if board_3d:
+			board_3d.clear_entity_proxies()
 
 		# Let the Netrunner handle its own spawning!
 		if netrunner:
 			netrunner.initialize(current_layout, entry_coord)
+			netrunner.set_visual_3d_mode(_entity_3d_mode_active)
 		_current_security_tier = _resolve_security_tier(path)
 		spawn_black_ice()
 		spawn_npcs()
@@ -340,6 +374,18 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 			var root_size := get_tree().root.size if get_tree() else Vector2i(1920, 1080)
 			board_3d.resize_viewport(root_size.x, root_size.y)
 			board_3d.sync_from_layout(current_layout, current_floor)
+			# Spawn the 3D runner avatar at its entry tile (replaces the 2D
+			# ring/diamond in 3D mode); it follows the runner on each move via
+			# _center_camera_on_runner.
+			if netrunner:
+				board_3d.spawn_runner_proxy(netrunner.current_position, current_floor)
+			# Gate 3D entity proxies (ICE/NPC/rezzed) to the current floor so
+			# entities on other floors don't overlap on the ortho top-down view.
+			board_3d.refresh_entity_proxy_floors(current_floor)
+	# Apply the runner's current defensive-buff glow (in case a shield/armor
+	# is already active on dive) + the current zoom to the fresh 2D/3D cameras.
+	_refresh_runner_defense_glow()
+	_apply_camera_zoom()
 	return true
 
 func _update_trace(_unused: Variant = null) -> void:
@@ -368,6 +414,15 @@ func _center_camera_on_runner(_new_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	# actual screen center (which respects map-edge clamping + smoothing), so
 	# the 3D tiles stay aligned with the 2D grid even near map edges.
 	_sync_3d_camera()
+	# Keep the 3D runner avatar on the runner's tile.
+	if board_3d:
+		board_3d.update_runner_proxy(netrunner.current_position, current_floor)
+	# Publish the runner's coord to the board renderer so the 3D-mode
+	# empty-path dot is suppressed on the runner's tile (the 3D model renders
+	# there) — avoids the dot showing through the model.
+	if board_renderer:
+		board_renderer.runner_coord = netrunner.current_position
+		board_renderer.request_redraw()
 
 
 # Keep the 3D camera locked to the 2D Camera2D's real view center every frame.
@@ -386,6 +441,25 @@ func _sync_3d_camera() -> void:
 
 func _process(_delta: float) -> void:
 	_sync_3d_camera()
+
+
+# Toggle the runner proxy's blue defensive-buff glow shell based on whether a
+# Shield/Aegis (SHIELD) or Armor program is currently active. Connected to
+# the netrunner's shield_raised/consumed + armor_raised/consumed signals and
+# called on dive after the runner proxy spawns.
+func _refresh_runner_defense_glow(_program: NetProgram = null) -> void:
+	if board_3d and is_instance_valid(netrunner):
+		board_3d.set_runner_shield_glow(netrunner.raised_shield != null or netrunner.active_armor != null)
+
+# Apply the current zoom factor to the 2D Camera2D and the 3D board camera.
+# Called on wheel input, on dive (load_subnet), and on window resize. The 3D
+# camera's ortho size is divided by this factor inside sync_camera_2d (run
+# every frame via _sync_3d_camera), so the 3D scene scales with the 2D grid.
+func _apply_camera_zoom() -> void:
+	if camera:
+		camera.zoom = Vector2(_camera_zoom, _camera_zoom)
+	if board_3d:
+		board_3d.set_zoom_factor(_camera_zoom)
 
 # Sets the current floor and propagates it to the layout + netrunner so every
 # floor-scoped read (get_tile / line_of_sight / renderer / pathfinding) agrees.
@@ -480,6 +554,11 @@ func _do_travel_vertical(up: bool, clicked_coord: Vector2i) -> void:
 	# Re-sync 3D walls for the new floor.
 	if board_3d and current_layout:
 		board_3d.sync_from_layout(current_layout, current_floor)
+		# Hide 3D entity proxies (ICE/NPC/rezzed) not on the new floor — they
+		# are floor-bound and would otherwise overlap on the ortho top-down
+		# view. Prevents a rezzed program rezzed on another floor from
+		# appearing to follow the runner across floors.
+		board_3d.refresh_entity_proxy_floors(current_floor)
 	var floor_name := current_layout.floors[target_floor].floor_name if current_layout.floors[target_floor].floor_name != "" else "Floor %d" % target_floor
 	log_to_terminal("Travelling %s to %s (entry %s). Trace preserved.\n" % ["up" if up else "down", floor_name, target_coord])
 
@@ -490,6 +569,21 @@ func _flash_floor_label() -> void:
 		board_renderer.flash_floor_label()
 
 func _input(event: InputEvent) -> void:
+	# Mouse-wheel camera zoom (applied to both the 2D Camera2D and the 3D
+	# ortho camera so the neon grid and 3D board stay aligned). Handled first
+	# so the wheel never leaks into movement / menu handling.
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_camera_zoom = clampf(_camera_zoom * ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
+			_apply_camera_zoom()
+			accept_event()
+			return
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_camera_zoom = clampf(_camera_zoom / ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
+			_apply_camera_zoom()
+			accept_event()
+			return
+
 	# Track mouse motion for the hover highlight outline. Computes the grid
 	# coord under the cursor and checks whether that tile/entity offers a
 	# right-click context menu; feeds the result to the board renderer.
@@ -886,6 +980,9 @@ func _execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 		tile.is_unlocked = true
 		if board_renderer:
 			board_renderer.request_redraw()
+		# Refresh the 3D gate proxy so it turns green immediately (was red).
+		if board_3d:
+			board_3d.refresh_tile_3d(target_coord, tile, current_floor)
 
 func _execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord, current_floor)
@@ -896,6 +993,9 @@ func _execute_wall_breach(program: NetProgram, target_coord: Vector2i) -> void:
 		log_to_terminal("Datawall breached! Path cleared.\n")
 		if board_renderer:
 			board_renderer.request_redraw()
+		# Remove the 3D wall proxy now that the tile is empty.
+		if board_3d:
+			board_3d.refresh_tile_3d(target_coord, tile, current_floor)
 
 func _execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
 	# Worm is a stealth opener: it slips behind a DATAWALL or locked CODE_GATE
@@ -919,6 +1019,9 @@ func _execute_worm(program: NetProgram, target_coord: Vector2i) -> void:
 	log_to_terminal("Worm '%s' deployed behind the %s at %s — opening from the inside in 2 turns. No alert triggered.\n" % [program.program_name, label, target_coord])
 	if board_renderer:
 		board_renderer.request_redraw()
+	# Spawn a 3D worm proxy on the tile (replaces the 2D "W" overlay).
+	if board_3d:
+		board_3d.spawn_worm_proxy(target_coord, Color(0.7, 0.3, 0.9), current_floor)
 
 func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 	var target_ice: BlackIce = null
@@ -948,7 +1051,7 @@ func _execute_ice_attack(program: NetProgram, target_coord: Vector2i) -> void:
 		if target_ice.take_damage(dmg):
 			ice_nodes.erase(target_ice)
 			if board_3d:
-				board_3d.remove_ice_proxy(target_coord)
+				board_3d.remove_ice_proxy(target_ice)
 	elif not result.tie:
 		log_to_terminal("%s repels the attack — no damage.\n" % target_ice.program.program_name)
 	else:
@@ -1311,6 +1414,7 @@ func _rez_program(prog: NetProgram) -> bool:
 		demon.setup_subroutines(prog as DemonProgram)
 		demon.initialize(spawn_pos, layout_size)
 		demon.apply_visual_from_program()
+		demon.set_visual_3d_mode(_entity_3d_mode_active)
 		demon.message_logged.connect(log_to_terminal)
 		demon.moved_to.connect(_on_rezzed_program_moved)
 		demon.destroyed.connect(_on_rezzed_program_destroyed.bind(demon))
@@ -1318,6 +1422,11 @@ func _rez_program(prog: NetProgram) -> bool:
 		if board_renderer:
 			board_renderer.rezzed_program_nodes = rezzed_program_nodes
 			board_renderer.request_redraw()
+		if board_3d:
+			board_3d.spawn_rezzed_proxy(demon, spawn_pos, current_floor)
+			demon.moved_to.connect(func(_np: Vector2i) -> void:
+				if board_3d and is_instance_valid(demon):
+					board_3d.update_rezzed_proxy(demon, demon.current_position, demon.home_floor))
 		var sub_names: String = ""
 		for s in demon.get_commandable_subroutines():
 			sub_names += "%s%s" % ["" if sub_names.is_empty() else ", ", s.program_name]
@@ -1337,6 +1446,7 @@ func _rez_program(prog: NetProgram) -> bool:
 	rez.grid_offset_y = int(board_renderer.grid_offset_y) if board_renderer else 90
 	rez.initialize(spawn_pos, layout_size)
 	rez.apply_visual_from_program()
+	rez.set_visual_3d_mode(_entity_3d_mode_active)
 	rez.message_logged.connect(log_to_terminal)
 	rez.moved_to.connect(_on_rezzed_program_moved)
 	rez.destroyed.connect(_on_rezzed_program_destroyed.bind(rez))
@@ -1344,6 +1454,11 @@ func _rez_program(prog: NetProgram) -> bool:
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
 		board_renderer.request_redraw()
+	if board_3d:
+		board_3d.spawn_rezzed_proxy(rez, spawn_pos, current_floor)
+		rez.moved_to.connect(func(_np: Vector2i) -> void:
+			if board_3d and is_instance_valid(rez):
+				board_3d.update_rezzed_proxy(rez, rez.current_position, rez.home_floor))
 	log_to_terminal("Rezzing '%s' (STR %d) onto the net at %s.\n" % [rez.program.program_name, rez.program.strength, spawn_pos])
 	update_deck_info()
 	return true
@@ -1556,6 +1671,8 @@ func _on_rezzed_program_destroyed(rez: RezzedProgram) -> void:
 			rez_color = rez.program.get_visual().get("color", rez_color)
 		_spawn_derez_explosion(rez_pos, rez_color)
 		rezzed_program_nodes.erase(rez)
+		if board_3d:
+			board_3d.remove_rezzed_proxy(rez)
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
 		board_renderer.request_redraw()
@@ -1673,6 +1790,11 @@ func spawn_black_ice() -> void:
 		if is_instance_valid(ice):
 			ice.queue_free()
 	ice_nodes.clear()
+	# Clear stale 3D ICE proxies from a previous dive (sync_from_layout no
+	# longer wipes them — they persist across floor changes — so a full
+	# reset on load is done here before re-spawning).
+	if board_3d:
+		board_3d.clear_ice_proxies()
 
 	if not current_layout:
 		return
@@ -1707,6 +1829,7 @@ func spawn_black_ice() -> void:
 				ice.rezzed_programs = rezzed_program_nodes
 				ice.initialize(coord, layout_size)
 				ice.apply_visual_from_program(ice.program, "☠", Color.RED)
+				ice.set_visual_3d_mode(_entity_3d_mode_active)
 				ice.message_logged.connect(log_to_terminal)
 				ice.moved_to.connect(_on_ice_moved)
 				# Anti-personnel (DAMAGE_RUNNER) ICE attacks the runner's meat
@@ -1743,9 +1866,15 @@ func spawn_black_ice() -> void:
 					ice.trace_succeeded.connect(_on_ice_trace_succeeded)
 				ice_nodes.append(ice)
 				log_to_terminal("Black ICE '%s' deployed at %s.\n" % [ice.program.program_name, coord])
-				# Spawn a 3D glow proxy for this ICE in the compositing layer.
+				# Spawn a 3D proxy for this ICE in the compositing layer (replaces
+				# the 2D sprite/glyph in 3D mode), tinted with the program colour,
+				# and follow it when the ICE moves.
 				if board_3d:
-					board_3d.spawn_ice_proxy(coord, f)
+					var vis: Dictionary = ice.program.get_visual()
+					board_3d.spawn_ice_proxy(ice, coord, f, vis.get("color", Color.RED))
+					ice.moved_to.connect(func(_np: Vector2i) -> void:
+						if board_3d and is_instance_valid(ice):
+							board_3d.update_ice_proxy(ice, ice.current_position, ice.home_floor))
 
 
 func spawn_npcs() -> void:
@@ -1828,6 +1957,7 @@ func spawn_npcs() -> void:
 
 			npc.initialize(coord, layout_size)
 			npc.home_floor = f
+			npc.set_visual_3d_mode(_entity_3d_mode_active)
 			npc.message_logged.connect(log_to_terminal)
 			npc.moved_to.connect(_on_ice_moved)
 			npc.attacked_netrunner.connect(func(strength: int) -> void:
@@ -1838,6 +1968,11 @@ func spawn_npcs() -> void:
 			npc_nodes.append(npc)
 			var faction_label = "NetWatch" if faction == CP2020NpcNetrunner.Faction.NETWATCH else "Netrunner"
 			log_to_terminal("%s NPC '%s' (%s) deployed at %s.\n" % [faction_label, npc.npc_name, npc.deck_name, coord])
+			if board_3d:
+				board_3d.spawn_npc_proxy(npc, coord, faction == CP2020NpcNetrunner.Faction.NETWATCH, f)
+				npc.moved_to.connect(func(_np: Vector2i) -> void:
+					if board_3d and is_instance_valid(npc):
+						board_3d.update_npc_proxy(npc, npc.current_position, npc.home_floor))
 
 
 # Load + duplicate program resources listed by .tres path in a template, so
@@ -1886,6 +2021,8 @@ func _collect_template_paths(paths: Array) -> Array[String]:
 
 func _on_npc_destroyed(npc: CP2020NpcNetrunner) -> void:
 	npc_nodes.erase(npc)
+	if board_3d and npc != null:
+		board_3d.remove_npc_proxy(npc)
 	if npc == null:
 		return
 	# Unlock the defeated NPC's programs into the persistent vendor catalogue.
@@ -2057,6 +2194,18 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 				_trigger_security_raid()
 				return
 
+# Worm proxy colour from a tile's worm integrity: purple (full) -> orange
+# (damaged) -> red (critical). Mirrors the 2D worm overlay palette.
+func _worm_color_for(t: CP2020TileData) -> Color:
+	var max_int: int = t.worm_max_integrity if t.worm_max_integrity > 0 else 1
+	var ratio: float = float(t.worm_integrity) / float(max_int)
+	if ratio <= 0.34:
+		return Color(0.9, 0.2, 0.2)
+	if ratio < 1.0:
+		return Color(0.9, 0.5, 0.2)
+	return Color(0.7, 0.3, 0.9)
+
+
 # Tick all worm-active tiles: decrement worm_turns_remaining and open the tile
 # when the counter reaches 0 (DATAWALL -> EMPTY, CODE_GATE -> is_unlocked).
 # Called at the start of each netrunner turn by _on_turn_ended.
@@ -2074,6 +2223,9 @@ func _tick_worm_programs() -> void:
 			t.worm_turns_remaining -= 1
 			if t.worm_turns_remaining > 0:
 				log_to_terminal("Worm working on %s — %d turn(s) remaining.\n" % [c, t.worm_turns_remaining])
+				# Update the 3D worm proxy colour to reflect remaining integrity.
+				if board_3d:
+					board_3d.update_worm_proxy(c, _worm_color_for(t))
 				continue
 			# Counter reached 0 — open the tile from the inside.
 			var is_wall: bool = t.tile_type == CP2020DatafortLayout.TileType.DATAWALL
@@ -2088,6 +2240,14 @@ func _tick_worm_programs() -> void:
 			# counter so a fresh deployment on the same tile starts at full.
 			t.worm_integrity = 0
 			t.worm_max_integrity = 0
+			# Remove the 3D worm proxy for the opened tile.
+			if board_3d:
+				board_3d.remove_worm_proxy(c)
+			# Refresh the tile's 3D proxy: a breached wall becomes empty
+			# (proxy removed), an opened gate turns green. Worms only run on
+			# the runner's current floor, so current_floor is correct here.
+			if board_3d:
+				board_3d.refresh_tile_3d(c, t, current_floor)
 			opened = true
 	if opened:
 		# Newly opened tiles may reveal previously-occluded grid — recalc fog.

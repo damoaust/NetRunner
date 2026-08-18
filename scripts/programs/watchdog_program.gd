@@ -21,13 +21,22 @@ func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLa
 		# CP2020 trace check: on first detection the Watchdog tries to trace the
 		# runner's signal back to its physical location. Roll 1D10 + STR vs the
 		# runner's total LDL Trace Value (RunState.accumulated_trace — the
-		# defensive target number built from bouncing through LDLs). Success
-		# emits trace_succeeded so the game session starts the meatspace
-		# security-dispatch countdown + escalates the datafort's ICE. A runner
-		# who didn't bounce through any LDLs (trace 0) is trivially pinpointed.
+		# defensive target number built from bouncing through LDLs) PLUS any
+		# Trace Dampener options module on the runner's deck (its bonus is added
+		# to the target, making the trace harder — the dampener no longer
+		# reduces LDL trace gain). Success emits trace_succeeded so the game
+		# session starts the meatspace security-dispatch countdown + escalates
+		# the datafort's ICE. A runner who didn't bounce through any LDLs
+		# (trace 0) and has no dampener is trivially pinpointed.
 		var trace_roll := randi_range(1, 10) + strength
-		var trace_target := RunState.accumulated_trace
-		ice.emit_log("TRACE CHECK: %s rolls 1D10+%d = %d vs your LDL Trace Value %d." % [program_name, strength, trace_roll, trace_target])
+		var dampening: int = 0
+		if RunState.selected_deck != null:
+			dampening = RunState.selected_deck.effective_trace_reduction()
+		var trace_target: int = RunState.accumulated_trace + dampening
+		if dampening > 0:
+			ice.emit_log("TRACE CHECK: %s rolls 1D10+%d = %d vs your LDL Trace Value %d (+%d dampener) = %d." % [program_name, strength, trace_roll, RunState.accumulated_trace, dampening, trace_target])
+		else:
+			ice.emit_log("TRACE CHECK: %s rolls 1D10+%d = %d vs your LDL Trace Value %d." % [program_name, strength, trace_roll, trace_target])
 		if trace_roll >= trace_target:
 			ice.emit_log("TRACE SUCCESS — %s has pinpointed your physical location! Meatspace team dispatched." % program_name)
 			ice.emit_trace_succeeded(self)

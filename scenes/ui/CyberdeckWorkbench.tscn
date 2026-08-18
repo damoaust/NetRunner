@@ -273,7 +273,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
 
-[node name="UnloadButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=1909914907]
+[node name="UnloadButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=1909914907 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 propagate_maximum_size = true
 layout_mode = 2
@@ -281,7 +281,7 @@ size_flags_horizontal = 3
 tooltip_text = "Unload the selected program from the deck [U]"
 text = "[U] ▶"
 
-[node name="LoadButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=929522467]
+[node name="LoadButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=929522467 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 propagate_maximum_size = true
 layout_mode = 2
@@ -289,14 +289,14 @@ size_flags_horizontal = 3
 tooltip_text = "Load the highlighted library program into the deck [L]"
 text = "[L] LOAD ▶"
 
-[node name="ClearButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182858]
+[node name="ClearButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182858 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Clear ALL loaded programs from the deck [C]"
 text = "[C] CLR"
 
-[node name="ConfigureSubroutinesButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182859]
+[node name="ConfigureSubroutinesButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182859 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -304,7 +304,7 @@ tooltip_text = "Assign subroutines to a loaded Demon program"
 disabled = true
 text = "⚙ SUBS"
 
-[node name="UpgradesButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182860]
+[node name="UpgradesButton" type="Button" parent="Margin/RootVBox/Tabs/Loadout/LoadedCol/VBox/Btns" unique_id=429182860 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -568,13 +568,13 @@ size_flags_vertical = 3
 [node name="HBoxContainer" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox" unique_id=1245337083]
 layout_mode = 2
 
-[node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox/HBoxContainer" unique_id=774056144]
+[node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox/HBoxContainer" unique_id=774056144 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "PURCHASE UNLOCKS"
 
-[node name="BuyDeckButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox/HBoxContainer" unique_id=1818837854]
+[node name="BuyDeckButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyDecksPanel/VBox/HBoxContainer" unique_id=1818837854 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -606,12 +606,12 @@ size_flags_vertical = 3
 [node name="HBoxContainer" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox" unique_id=1930168445]
 layout_mode = 2
 
-[node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox/HBoxContainer" unique_id=442898238]
+[node name="UnlockButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox/HBoxContainer" unique_id=442898238 groups=["pulse_buttons"]]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "PURCHASE UNLOCKS"
 
-[node name="BuyProgramButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox/HBoxContainer" unique_id=212743116]
+[node name="BuyProgramButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyProgramsPanel/VBox/HBoxContainer" unique_id=212743116 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -640,7 +640,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="SellLootButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=190411751]
+[node name="SellLootButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellLootPanel/VBox" unique_id=190411751 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 text = "SELL"
@@ -668,7 +668,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="BuyModuleButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyModulesPanel/VBox" unique_id=212743117]
+[node name="BuyModuleButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/BuyModulesPanel/VBox" unique_id=212743117 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -700,13 +700,13 @@ size_flags_vertical = 3
 [node name="HBoxContainer" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox" unique_id=207463091]
 layout_mode = 2
 
-[node name="SellFileButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox/HBoxContainer" unique_id=1037721656]
+[node name="SellFileButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox/HBoxContainer" unique_id=1037721656 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "SELL FILE"
 
-[node name="SellAllFilesButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox/HBoxContainer" unique_id=1768899918]
+[node name="SellAllFilesButton" type="Button" parent="Margin/RootVBox/Tabs/SHOP/Grid/SellFilesPanel/VBox/HBoxContainer" unique_id=1768899918 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -726,13 +726,13 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "→ Last subnet: —"
 
-[node name="JackButton" type="Button" parent="Margin/RootVBox/Footer" unique_id=1899427227]
+[node name="JackButton" type="Button" parent="Margin/RootVBox/Footer" unique_id=1899427227 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Jack into the Net using the selected deck and loaded programs (Shortcut: J)"
 text = "[ J ]  JACK IN"
 
-[node name="ExitButton" type="Button" parent="Margin/RootVBox/Footer" unique_id=701122338]
+[node name="ExitButton" type="Button" parent="Margin/RootVBox/Footer" unique_id=701122338 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Exit the game"

@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://drmp5uj0blr6i"]
+
+[ext_resource type="PackedScene" uid="uid://c1q4sli60cmdi" path="res://scenes/models/cat.glb" id="1_uab6p"]
+
+[node name="Sketchfab_Scene" unique_id=1091033765 instance=ExtResource("1_uab6p")]
+
+[node name="Sketchfab_model" parent="." index="0" unique_id=955903664]
+transform = Transform3D(6.119594e-06, 140, -1.2239188e-05, 140, -6.119594e-06, 0, -5.349919e-13, -1.2239188e-05, -140, 0, 0, 2.260748)
+
+[node name="Object_4" parent="Sketchfab_model/root/GLTF_SceneRootNode/Cat_low_0" parent_id_path=PackedInt32Array(2074980928) index="0" unique_id=1358071097]
+transform = Transform3D(0.9999999, 3.5527137e-15, -1.6940659e-21, -3.5527137e-15, 0.9999999, -3.5527137e-15, -2.1175824e-22, 3.5527137e-15, 0.9999999, -4.773826e-09, -0.10921238, -4.773826e-09)

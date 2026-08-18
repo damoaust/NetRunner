@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://bx5a16kubf18e"]
+[gd_resource type="Resource" script_class="NetProgram" format=3 uid="uid://caem1pjiuhd6y"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_woyn7"]
 [ext_resource type="Texture2D" uid="uid://c1tat3okva5vk" path="res://sprites/ghosts/Gotoku/Idle.png" id="2_ix2oc"]
@@ -13,4 +13,6 @@ price = 570
 description = "Anti-personnel virus. Damages a runner directly through the net."
 glyph_auto_center = false
 sprite_texture = ExtResource("2_ix2oc")
+sprite_offset = Vector2(0, -40)
+sprite_scale = 3.0
 metadata/_custom_type_script = "uid://bpf1htwhbqhr1"

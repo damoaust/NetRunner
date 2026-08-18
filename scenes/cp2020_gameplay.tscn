@@ -4,9 +4,12 @@
 [ext_resource type="Texture2D" uid="uid://dc13kp1hi7m4e" path="res://background_city.jpg" id="2_d1l68"]
 [ext_resource type="PackedScene" uid="uid://d5ren1w5dywy" path="res://scenes/ui/cp2020_netrunner.tscn" id="3_ei0ny"]
 [ext_resource type="Script" uid="uid://cv3qbo8qed61v" path="res://scripts/resources/cp2020_netrunner.gd" id="4_byruw"]
+[ext_resource type="PackedScene" uid="uid://cr0ltjpnq22pv" path="res://scenes/models/dog_rotated.tscn" id="5_cv3ux"]
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="5_y7tfe"]
-[ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="6_eihqs"]
-[ext_resource type="Resource" uid="uid://bxf3rnkpngeh3" path="res://data/killer2.tres" id="7_rqnxn"]
+[ext_resource type="Resource" uid="uid://dfw5c76bl6480" path="res://data/codecracker.tres" id="6_eihqs"]
+[ext_resource type="PackedScene" uid="uid://bpt7bpvh4qswd" path="res://scenes/models/skull_rotated.tscn" id="6_hhrs3"]
+[ext_resource type="PackedScene" uid="uid://drmp5uj0blr6i" path="res://scenes/models/cat_rotated.tscn" id="6_toign"]
+[ext_resource type="Resource" uid="uid://ddwd6bm8dh4g7" path="res://data/killer2.tres" id="7_rqnxn"]
 [ext_resource type="Script" uid="uid://dkjy1jvw2xgfp" path="res://scripts/resources/cp2020_board_renderer.gd" id="8_eihqs"]
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="8_llsot"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="9_e28di"]
@@ -14,20 +17,19 @@
 [ext_resource type="Script" uid="uid://dmhndh2wedfxx" path="res://scripts/resources/cp2020_turn_manager.gd" id="10_llsot"]
 [ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="10_v6n4y"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="11_owktc"]
-[ext_resource type="Resource" uid="uid://cswmssw4eot6i" path="res://data/flatline.tres" id="12_d1l68"]
+[ext_resource type="Resource" uid="uid://caem1pjiuhd6y" path="res://data/flatline.tres" id="12_d1l68"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="13_80o14"]
 [ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="14_owktc"]
-[ext_resource type="Resource" uid="uid://c2i647ws004kk" path="res://data/killer6.tres" id="15_d1l68"]
+[ext_resource type="Resource" uid="uid://4n2q6jfblrav" path="res://data/killer6.tres" id="15_d1l68"]
 [ext_resource type="Theme" uid="uid://kphrmsxee22v" path="res://themes/cool_blue.tres" id="16_theme"]
 [ext_resource type="Script" uid="uid://bhaev1dkh72a8" path="res://scripts/resources/cp2020_combat_effect_animator.gd" id="17_combat"]
-[ext_resource type="Script" path="res://scripts/resources/cp2020_board_3d.gd" id="18_board3d"]
+[ext_resource type="Script" uid="uid://jqb8m54osri5" path="res://scripts/resources/cp2020_board_3d.gd" id="18_board3d"]
 
 [sub_resource type="Environment" id="Environment_3d"]
 background_mode = 1
 background_color = Color(0.01, 0.02, 0.04, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.05, 0.08, 0.12, 1)
-ambient_light_energy = 0.4
+ambient_light_color = Color(0.3, 0.35, 0.4, 1)
 
 [node name="Cp2020Gameplay" type="Control" unique_id=170105146]
 layout_mode = 3
@@ -63,17 +65,21 @@ flip_h = true
 
 [node name="Board3D" type="Node3D" parent="." unique_id=170105154]
 script = ExtResource("18_board3d")
+runner_mesh = ExtResource("5_cv3ux")
+black_ice_mesh = ExtResource("6_hhrs3")
+rezzed_mesh = ExtResource("6_toign")
+force_opaque_models = false
 
 [node name="Camera3D" type="Camera3D" parent="Board3D" unique_id=170105150]
 transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 1000, 0)
 projection = 1
-size = 1080.0
 current = true
+size = 1080.0
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="Board3D" unique_id=170105151]
 transform = Transform3D(0.707107, 0.5, -0.5, 0, 0.707107, 0.707107, 0.707107, -0.5, 0.5, 200, 400, 200)
-light_color = Color(0.4, 0.6, 0.8, 1)
-light_energy = 0.6
+light_color = Color(0.7, 0.8, 1, 1)
+light_energy = 1.5
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Board3D" unique_id=170105152]
 environment = SubResource("Environment_3d")
@@ -134,9 +140,8 @@ text = "NET: 0 ns"
 
 [node name="SecurityDispatchLabel" type="Label" parent="UI/PanelContainer/VBoxContainer" unique_id=900000001]
 unique_name_in_owner = true
-layout_mode = 2
 visible = false
-text = ""
+layout_mode = 2
 
 [node name="DatafortLabel" type="Label" parent="UI/PanelContainer/VBoxContainer" unique_id=347801992]
 unique_name_in_owner = true
@@ -177,6 +182,5 @@ script = ExtResource("9_rqnxn")
 
 [node name="TurnManager" type="Node2D" parent="." unique_id=1795720484]
 script = ExtResource("10_llsot")
-
 
 [connection signal="pressed" from="UI/PanelContainer/VBoxContainer/JackOutButton" to="." method="_on_jack_out_pressed"]
