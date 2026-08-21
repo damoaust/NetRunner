@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_ffqvh"]
+
+[resource]
+script = ExtResource("1_ffqvh")
+mission_id = "dh_cityhall_schematics"
+title = "City Hall Schematics Heist"
+description = "City Hall's old mainframe still hosts the original architectural schematics of the Night City municipal vault. Break in, copy the file labelled \"Corporate Schematics\", and bring it back. The file sits on a memory unit deep in the datafort."
+reward_credits = 1500
+target_location_label = "Night City: City Hall"
+target_subnet_path = "res://scenes/forts/night_city_subnet.tres"
+target_file_name = "Corporate Schematics"
+objective_summary = "Steal \"Corporate Schematics\" from City Hall"

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_g6f0k"]
+
+[resource]
+script = ExtResource("1_g6f0k")
+mission_id = "sab_london_netwatch"
+title = "London NetWatch Crack"
+description = "A NetWatch hub in London is coordinating a city-wide sweep. Hit the CPU at grid (12,5) and crash it with an anti-system program to blind them for the night."
+mission_type = 1
+reward_credits = 2200
+target_location_label = "London: NetWatch Hub"
+target_subnet_path = "res://scenes/forts/london_subnet.tres"
+target_coord = Vector2i(12, 5)
+objective_summary = "Crash the CPU at (12,5) in London"

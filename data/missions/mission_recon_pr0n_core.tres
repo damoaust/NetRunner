@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_wbj1e"]
+
+[resource]
+script = ExtResource("1_wbj1e")
+mission_id = "recon_pr0n_core"
+title = "Probe Pr0n Palace Core"
+description = "Map the central control node of the Pr0n Palace datafort. Step onto grid (20,6) to complete the survey and jack out."
+mission_type = 2
+reward_credits = 800
+target_location_label = "Night City: Pr0n Palace"
+target_subnet_path = "res://scenes/forts/pr0n1.tres"
+target_coord = Vector2i(20, 6)
+objective_summary = "Reach grid (20,6) in Pr0n Palace"

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_6h231"]
+
+[resource]
+script = ExtResource("1_6h231")
+mission_id = "dh_piratebbs_voice"
+title = "Pirate BBS Voice Sample"
+description = "A blackmailer is hawking a voice recording on the Pirate BBS node. Copy the \"Blackmail Voice Recording\" file and bring it back so we can scrub it."
+reward_credits = 1000
+target_location_label = "Night City: Pirate BBS"
+target_subnet_path = "res://scenes/forts/p2.tres"
+target_file_name = "Blackmail Voice Recording"
+objective_summary = "Steal \"Blackmail Voice Recording\" from Pirate BBS"

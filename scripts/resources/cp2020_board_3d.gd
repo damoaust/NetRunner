@@ -61,6 +61,15 @@ var _zoom_factor: float = 1.0
 @export var black_ice_mesh: PackedScene = null
 @export var npc_mesh: PackedScene = null
 @export var rezzed_mesh: PackedScene = null
+# Per-effect-type default 3D models for rezzed attack programs. Each is an
+# optional middle-tier default: a program's own `mesh_scene` (on its .tres)
+# takes priority, then the matching slot here, then the generic `rezzed_mesh`.
+# Leave null to fall through to `rezzed_mesh`. Author a .tscn from a .glb and
+# drop it onto the slot in the editor.
+@export var rezzed_derez_mesh: PackedScene = null   # DEREZ_ICE (Killer family)
+@export var rezzed_damage_mesh: PackedScene = null  # DAMAGE_RUNNER (Hellhound/Flatline)
+@export var rezzed_crash_mesh: PackedScene = null   # CRASH_CPU (Krash)
+@export var rezzed_demon_mesh: PackedScene = null    # DEMON (Imp/Afreet/Succubus/Balron)
 @export var worm_mesh: PackedScene = null
 @export var entry_arrow_up_mesh: PackedScene = null
 @export var entry_arrow_down_mesh: PackedScene = null
@@ -632,7 +641,7 @@ func clear_walls() -> void:
 	_tile_proxy_by_coord.clear()
 	# NOTE: ICE 3D proxies (_ice_meshes) are NOT cleared here. They are entity
 	# proxies (like NPC/rezzed), positioned at their home-floor Y and gated by
-	# refresh_entity_proxy_floors. They must persist across floor changes
+	# refresh_entity_proxy_visibility. They must persist across floor changes
 	# (sync_from_layout calls this on every floor switch) — clearing them here
 	# wiped the ICE models immediately after spawn_black_ice created them, so
 	# ICE 3D models never rendered. Use clear_ice_proxies() for a full reset
@@ -951,10 +960,38 @@ func remove_npc_proxy(entity: Node) -> void:
 
 
 # --- Rezzed attack-program proxy (replaces the 2D "◆" glyph) ---
+# Resolves the 3D PackedScene for a rezzed program: the program's own
+# `mesh_scene` (per-program override) wins, then the Board3D per-effect-type
+# default slot, then the generic `rezzed_mesh`. Returns null when nothing is
+# assigned (spawn falls back to the default neon box + _rezzed_material).
+func _resolve_rezzed_mesh(prog: NetProgram) -> PackedScene:
+	if prog == null:
+		return rezzed_mesh
+	if prog.mesh_scene != null:
+		return prog.mesh_scene
+	match prog.effect_type:
+		NetProgram.EffectType.DEREZ_ICE:
+			if rezzed_derez_mesh != null:
+				return rezzed_derez_mesh
+		NetProgram.EffectType.DAMAGE_RUNNER:
+			if rezzed_damage_mesh != null:
+				return rezzed_damage_mesh
+		NetProgram.EffectType.CRASH_CPU:
+			if rezzed_crash_mesh != null:
+				return rezzed_crash_mesh
+		NetProgram.EffectType.DEMON:
+			if rezzed_demon_mesh != null:
+				return rezzed_demon_mesh
+		_:
+			pass
+	return rezzed_mesh
+
 func spawn_rezzed_proxy(entity: Node, coord: Vector2i, floor_idx: int = 0) -> void:
 	if _rezzed_proxies.has(entity):
 		return
-	var mesh := _spawn_proxy(rezzed_mesh, Vector3(cell_size * 0.4, 12.0, cell_size * 0.4), _rezzed_material, coord, floor_idx, 45.0)
+	var prog: NetProgram = entity.get("program") as NetProgram
+	var scene: PackedScene = _resolve_rezzed_mesh(prog)
+	var mesh := _spawn_proxy(scene, Vector3(cell_size * 0.4, 12.0, cell_size * 0.4), _rezzed_material, coord, floor_idx, 45.0)
 	if mesh != null:
 		mesh.set_meta("home_floor", floor_idx)
 		_rezzed_proxies[entity] = mesh
@@ -1029,25 +1066,71 @@ func clear_entry_arrows() -> void:
 	_entry_arrow_proxies.clear()
 
 
-# Toggle visibility of every entity proxy (ICE / NPC / rezzed program) based on
-# whether its home floor matches the current floor. Entity proxies are floor-
-# bound (ICE/NPC/rezzed never follow the runner between floors), and the
-# orthographic top-down camera would otherwise render every floor's proxies
-# overlapping on screen. Call on floor change and after spawning entities so
-# only the current floor's 3D entities are visible. The runner proxy is
-# always on the current floor and is left visible.
-func refresh_entity_proxy_floors(current_floor_idx: int) -> void:
-	_refresh_proxy_dict_floors(_ice_meshes, current_floor_idx)
-	_refresh_proxy_dict_floors(_npc_proxies, current_floor_idx)
-	_refresh_proxy_dict_floors(_rezzed_proxies, current_floor_idx)
-
-func _refresh_proxy_dict_floors(dict: Dictionary, current_floor_idx: int) -> void:
-	for key in dict.keys():
-		var m: Node3D = dict[key]
-		if not is_instance_valid(m):
+# Toggle visibility of every 3D tile proxy (walls / gates / MU / CPU / entry
+# arrows) based on the fog-of-war `is_explored` flag of its tile. The 3D
+# compositing layer renders on top of the 2D fog overlay (additive blend), so
+# without this gating the 3D geometry of unexplored tiles would shine through
+# the fog. Explored tiles (seen before, even if not currently in LoS) stay
+# visible, matching the 2D fog's "explored = revealed" semantics; unexplored
+# tiles are hidden. Call after sync_from_layout, after recalculate_fog_of_war,
+# and after Sensor/Probe fog lifts.
+func refresh_tile_proxy_fog(layout: CP2020DatafortLayout, floor_idx: int) -> void:
+	if layout == null:
+		return
+	for coord in _tile_proxy_by_coord.keys():
+		var proxy: Node3D = _tile_proxy_by_coord[coord]
+		if not is_instance_valid(proxy):
 			continue
-		var hf: int = int(m.get_meta("home_floor", 0))
-		m.visible = hf == current_floor_idx
+		var tile = layout.get_tile(coord, floor_idx)
+		proxy.visible = tile != null and tile.is_explored
+	for coord in _entry_arrow_proxies.keys():
+		var proxy: Node3D = _entry_arrow_proxies[coord]
+		if not is_instance_valid(proxy):
+			continue
+		var tile = layout.get_tile(coord, floor_idx)
+		proxy.visible = tile != null and tile.is_explored
+
+
+# Toggle visibility of every entity proxy (ICE / NPC / rezzed program) based on
+# whether its home floor matches the current floor AND its tile is currently
+# in line of sight (fog-of-war). Entity proxies are floor-bound (ICE/NPC/rezzed
+# never follow the runner between floors), and the orthographic top-down
+# camera would otherwise render every floor's proxies overlapping on screen;
+# the 3D compositing layer also renders on top of the 2D fog overlay, so
+# without the LoS gate an ICE/NPC behind a locked gate would shine through
+# the fog. Matching the 2D glyph rule (update_visibility uses is_visible),
+# the 3D proxy shows only when the entity's tile is_visible this turn. Call
+# on load, floor change, and after every recalculate_fog_of_war / Sensor-Probe
+# fog lift. The runner proxy is always on the current floor and is left
+# visible (the runner can always see itself).
+func refresh_entity_proxy_visibility(layout: CP2020DatafortLayout, current_floor_idx: int) -> void:
+	_refresh_proxy_dict_visibility(_ice_meshes, layout, current_floor_idx)
+	_refresh_proxy_dict_visibility(_npc_proxies, layout, current_floor_idx)
+	_refresh_proxy_dict_visibility(_rezzed_proxies, layout, current_floor_idx)
+
+func _refresh_proxy_dict_visibility(dict: Dictionary, layout: CP2020DatafortLayout, current_floor_idx: int) -> void:
+	for key in dict.keys():
+		var proxy: Node3D = dict[key]
+		if not is_instance_valid(proxy):
+			continue
+		# Validate the key before the typed assignment: a queue_free()'d
+		# entity still lingers in the dict as a key, and assigning a freed
+		# instance to a typed `Node` variable raises "Trying to assign
+		# invalid previously freed instance" before we can check it.
+		if not is_instance_valid(key):
+			proxy.visible = false
+			continue
+		var entity: Node = key
+		var home_floor: int = entity.get("home_floor")
+		if home_floor != current_floor_idx:
+			proxy.visible = false
+			continue
+		if layout == null:
+			proxy.visible = true
+			continue
+		var pos = entity.get("current_position")
+		var tile = layout.get_tile(pos, home_floor)
+		proxy.visible = tile != null and tile.is_visible
 
 
 # Clear every entity proxy (runner, NPCs, rezzed programs, worm, entry arrows).
@@ -1283,6 +1366,11 @@ func refresh_tile_3d(coord: Vector2i, tile: CP2020TileData, floor_idx: int) -> v
 			# EMPTY / removed wall: no proxy. Entry arrows are handled by
 			# sync_from_layout on floor change; mid-game arrow changes are rare.
 			pass
+	# Match the freshly spawned proxy's visibility to the tile's fog state so
+	# it never shines through the fog (e.g. a gate just unlocked out of LoS).
+	var new_proxy: Node3D = _tile_proxy_by_coord.get(coord)
+	if new_proxy != null and is_instance_valid(new_proxy):
+		new_proxy.visible = tile.is_explored
 
 
 # Resize the 3D camera's orthographic size to match the 2D rendering

@@ -3,7 +3,6 @@
 [ext_resource type="PackedScene" uid="uid://cf5mnt5qco055" path="res://skull.glb" id="1_0mo1s"]
 
 [node name="Sketchfab_Scene" unique_id=2121420648 instance=ExtResource("1_0mo1s")]
-transform = Transform3D(13, 0, 0, 0, -5.68248e-07, 13, 0, -13, -5.68248e-07, 0, 0, 0)
 
 [node name="Sketchfab_model" parent="." index="0" unique_id=683038954]
-transform = Transform3D(0.99999994, 0, 0, 0, 0, 0.99999994, 0, -0.99999994, 0, 0, 0.3819347, 1.6694898e-08)
+transform = Transform3D(13, 0, 0, 0, -13, 1.136496e-06, 0, -1.136496e-06, -13, 0, 0.3819347, -5.3802023)

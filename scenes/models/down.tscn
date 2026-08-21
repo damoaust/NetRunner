@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://rxyw8tvvw7mr"]
+
+[sub_resource type="TextMesh" id="TextMesh_rybyy"]
+text = "DOWN"
+
+[node name="ModelTest" type="Node3D" unique_id=494641561]
+
+[node name="CSGMesh3D" type="CSGMesh3D" parent="." unique_id=144861540]
+transform = Transform3D(100, 0, 0, 0, -4.371139e-06, 100, 0, -100, -4.371139e-06, 0, 0, 0)
+autosmooth = true
+mesh = SubResource("TextMesh_rybyy")

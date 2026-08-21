@@ -3,4 +3,6 @@
 [ext_resource type="PackedScene" uid="uid://do33mbdyi5yjh" path="res://sprites/little_cartoon_dog.glb" id="1_f7r0y"]
 
 [node name="Sketchfab_Scene" unique_id=1707076741 instance=ExtResource("1_f7r0y")]
-transform = Transform3D(20, 0, 0, 0, -8.742278e-07, 20, 0, -20, -8.742278e-07, 0, 0, 0)
+
+[node name="Sketchfab_model" parent="." index="0" unique_id=838421667]
+transform = Transform3D(20, 0, 0, 0, -20, 1.7484556e-06, 0, -1.7484556e-06, -20, 0, 0, 0)

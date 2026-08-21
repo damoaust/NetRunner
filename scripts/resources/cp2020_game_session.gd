@@ -36,6 +36,13 @@ var ice_nodes: Array[BlackIce] = []
 var npc_nodes: Array[CP2020NpcNetrunner] = []
 var datafort: CP2020Datafort = null
 
+# Resource path of the subnet currently loaded into current_layout. Updated by
+# load_subnet (including mid-run LDL travel) so mission objective checks can
+# compare against a mission's target_subnet_path. Distinct from
+# RunState.selected_subnet_path, which is set once by the city-grid DIVE and
+# is NOT updated on LDL travel.
+var current_subnet_path: String = ""
+
 # Runner-owned attack programs rezzed onto the net as active, visible nodes.
 # Each node owns a duplicate of an installed program copy (one rezzed node per
 # installed copy). Rezzed programs auto-follow the runner each turn and can be
@@ -192,6 +199,10 @@ func _ready() -> void:
 			netrunner.health_changed.connect(_on_health_changed)
 		if netrunner.position_changed.is_connected(_center_camera_on_runner) == false:
 			netrunner.position_changed.connect(_center_camera_on_runner)
+		# Mission hook: RECON objectives complete when the runner steps onto the
+		# exact mission coordinate in the target subnet.
+		if netrunner.position_changed.is_connected(_on_netrunner_position_changed_mission) == false:
+			netrunner.position_changed.connect(_on_netrunner_position_changed_mission)
 		if not netrunner.stunned.is_connected(_on_stunned):
 			netrunner.stunned.connect(_on_stunned)
 
@@ -300,6 +311,10 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 		push_error("load_subnet: %s is not a CP2020DatafortLayout." % path)
 		return false
 	current_layout = loaded
+	# Track the currently-loaded subnet's resource path for mission objective
+	# checks (SABOTAGE/RECON compare against the mission's target_subnet_path).
+	# Updated on every load_subnet, including mid-run LDL travel.
+	current_subnet_path = path
 	if board_renderer and current_layout:
 		board_renderer.current_layout = current_layout
 
@@ -381,7 +396,10 @@ func load_subnet(path: String, entry_coord: Vector2i = Vector2i(-1, -1)) -> bool
 				board_3d.spawn_runner_proxy(netrunner.current_position, current_floor)
 			# Gate 3D entity proxies (ICE/NPC/rezzed) to the current floor so
 			# entities on other floors don't overlap on the ortho top-down view.
-			board_3d.refresh_entity_proxy_floors(current_floor)
+			board_3d.refresh_entity_proxy_visibility(current_layout, current_floor)
+			# Gate 3D tile proxies (walls/gates/MU/CPU/arrows) by fog-of-war so
+			# unexplored tiles' geometry doesn't shine through the fog overlay.
+			board_3d.refresh_tile_proxy_fog(current_layout, current_floor)
 	# Apply the runner's current defensive-buff glow (in case a shield/armor
 	# is already active on dive) + the current zoom to the fresh 2D/3D cameras.
 	_refresh_runner_defense_glow()
@@ -423,6 +441,16 @@ func _center_camera_on_runner(_new_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	if board_renderer:
 		board_renderer.runner_coord = netrunner.current_position
 		board_renderer.request_redraw()
+
+
+# Mission hook (RECON): fired on netrunner.position_changed. Sets the mission
+# objective flag when the runner steps onto the active RECON mission's exact
+# target coordinate inside the target subnet. No-ops for non-RECON missions.
+func _on_netrunner_position_changed_mission(new_pos: Vector2i) -> void:
+	RunState.notify_position(current_subnet_path, new_pos)
+	if RunState.active_mission != null and RunState.mission_objective_met \
+			and RunState.active_mission.mission_type == CP2020Mission.MissionType.RECON:
+		log_to_terminal(">> MISSION OBJECTIVE MET: %s — jack out and hand in at the workbench.\n" % RunState.active_mission.title)
 
 
 # Keep the 3D camera locked to the 2D Camera2D's real view center every frame.
@@ -558,7 +586,11 @@ func _do_travel_vertical(up: bool, clicked_coord: Vector2i) -> void:
 		# are floor-bound and would otherwise overlap on the ortho top-down
 		# view. Prevents a rezzed program rezzed on another floor from
 		# appearing to follow the runner across floors.
-		board_3d.refresh_entity_proxy_floors(current_floor)
+		board_3d.refresh_entity_proxy_visibility(current_layout, current_floor)
+		# Gate 3D tile proxies by the new floor's fog state so unexplored
+		# geometry doesn't shine through the fog (each floor keeps its own
+		# is_explored flags, so a revisited floor shows its explored tiles).
+		board_3d.refresh_tile_proxy_fog(current_layout, current_floor)
 	var floor_name := current_layout.floors[target_floor].floor_name if current_layout.floors[target_floor].floor_name != "" else "Floor %d" % target_floor
 	log_to_terminal("Travelling %s to %s (entry %s). Trace preserved.\n" % ["up" if up else "down", floor_name, target_coord])
 
@@ -740,6 +772,16 @@ func _has_available_program_of_type(effect_type: NetProgram.EffectType) -> bool:
 	return false
 
 func _on_action_triggered(action_name: String, target_coord: Vector2i, program = null) -> void:
+	# Mission hook: SABOTAGE objectives complete when an offensive/interact
+	# action targets the exact mission coordinate in the target subnet. The
+	# notify helper no-ops unless the active mission is SABOTAGE and the coord
+	# + subnet match, so calling it here is safe for every action.
+	match action_name:
+		"attack_with_rezzed", "command_demon", "loot_tile":
+			RunState.notify_action_at_coord(current_subnet_path, target_coord)
+			if RunState.active_mission != null and RunState.mission_objective_met \
+					and RunState.active_mission.mission_type == CP2020Mission.MissionType.SABOTAGE:
+				log_to_terminal(">> MISSION OBJECTIVE MET: %s — jack out and hand in at the workbench.\n" % RunState.active_mission.title)
 	match action_name:
 		"use_program":
 			if program is NetProgram and current_layout:
@@ -904,6 +946,12 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				RunState.copy_file(file)
 				tile.copied_file_paths.append(str(idx))
 				log_to_terminal("Copied %s to deck memory (%d MU).\n" % [file.file_name, file.mu_size])
+				# Mission hook: a DATA_HARVEST objective is met the moment the
+				# target file is copied (hand-in still re-verifies it's carried).
+				RunState.notify_file_copied(file)
+				if RunState.active_mission != null and RunState.mission_objective_met \
+						and RunState.active_mission.mission_type == CP2020Mission.MissionType.DATA_HARVEST:
+					log_to_terminal(">> MISSION OBJECTIVE MET: %s — jack out and hand in at the workbench.\n" % RunState.active_mission.title)
 				update_deck_info()
 				if board_renderer:
 					board_renderer.request_redraw()
@@ -931,6 +979,9 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 							tile.copied_file_paths.append(str(i))
 							free_mu -= f.mu_size
 							log_to_terminal("Copied %s to deck memory (%d MU).\n" % [f.file_name, f.mu_size])
+							# Mission hook (batch): a DATA_HARVEST target copied via
+							# "Copy All" also satisfies the objective.
+							RunState.notify_file_copied(f)
 						else:
 							log_to_terminal("Skipped %s — not enough free deck memory.\n" % f.file_name)
 				if board_renderer:
@@ -1228,6 +1279,11 @@ func _sync_entity_visibility() -> void:
 			var rez_tile = current_layout.get_tile(rez.current_position, rez.home_floor)
 			if rez_tile:
 				rez.update_visibility(rez_tile.is_explored, rez_tile.is_visible)
+	# Gate 3D tile proxies by the lifted fog so newly explored geometry
+	# appears and unexplored geometry stays hidden.
+	if board_3d:
+		board_3d.refresh_tile_proxy_fog(current_layout, current_floor)
+		board_3d.refresh_entity_proxy_visibility(current_layout, current_floor)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MODIFY_MU programs (Toolbox / Speed). Per-run utility boosts. Toolbox raises
@@ -2563,6 +2619,16 @@ func recalculate_fog_of_war(player_pos: Vector2i) -> void:
 			var rez_tile = current_layout.get_tile(rez.current_position, rez.home_floor)
 			if rez_tile:
 				rez.update_visibility(rez_tile.is_explored, rez_tile.is_visible)
+	# Gate 3D tile proxies (walls/gates/MU/CPU/entry arrows) by the freshly
+	# computed fog so unexplored tiles' geometry doesn't shine through the
+	# fog overlay on top. Covers every move (this runs each step) and the
+	# recalc that follows door/wall reveals.
+	if board_3d:
+		board_3d.refresh_tile_proxy_fog(current_layout, current_floor)
+		# Gate 3D entity proxies (ICE/NPC/rezzed) by LoS too — matching the
+		# 2D glyph rule (is_visible) so an ICE/NPC behind a locked gate or
+		# out of sight doesn't shine through the fog overlay.
+		board_3d.refresh_entity_proxy_visibility(current_layout, current_floor)
 
 
 # Thin wrapper around the shared CP2020DatafortLayout.line_of_sight helper,

@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cgidxitekor65"]
+
+[ext_resource type="PackedScene" uid="uid://chorfieaca5kh" path="res://lady_in_blue.glb" id="1_f5cj5"]
+
+[node name="Sketchfab_Scene" unique_id=412838172 instance=ExtResource("1_f5cj5")]
+
+[node name="Sketchfab_model" parent="." index="0" unique_id=1465283238]
+transform = Transform3D(20, 0, 0, 0, -20, 1.7484556e-06, 0, -1.7484556e-06, -20, 0, 0, 17.216642)

@@ -39,6 +39,26 @@ extends Resource
 @export var last_death_cause: String = ""
 @export var last_run_summary: Dictionary = {}
 
+# --- Missions system (per-life) ---
+# The available mission board is a rotating subset of the static mission
+# library (res://data/missions/*.tres). It persists across app restarts
+# within a life and resets on new life (alongside net_time_seconds, which
+# drives the refresh clock). Stored as resource paths; reloaded + duplicated
+# by RunState._load_run.
+@export var available_mission_paths: Array[String] = []
+# Resource path of the currently accepted mission ("" = none). Reloaded as a
+# read-only template by path.
+@export var active_mission_path: String = ""
+# True once the active mission's objective has been satisfied in the Net this
+# run (file copied / coordinate sabotaged / coordinate reconned). Reset on new
+# life. Re-verified at hand-in time (DATA_HARVEST also requires the file still
+# carried).
+@export var mission_objective_met: bool = false
+# net_time_seconds snapshot at the last board refresh. The workbench compares
+# the current net_time_seconds against this to decide if an hour has elapsed
+# and a new mission should be rotated in. Resets on new life.
+@export var last_mission_refresh_time: float = 0.0
+
 # Schema version for forward-compatible save migrations. Increment when the
 # RunStateData layout changes; _load_run / meta_state._migrate_paths branch on
 # this to upgrade older saves in place. Defaults to 1 (the version at which the

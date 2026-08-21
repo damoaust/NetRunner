@@ -92,6 +92,25 @@ var _runner_characters: Array[NetrunnerCharacter] = []
 @onready var sell_file_button: Button = get_node_or_null("%SellFileButton")
 @onready var sell_all_files_button: Button = get_node_or_null("%SellAllFilesButton")
 @onready var unlock_button: Button = get_node_or_null("%UnlockButton")
+# --- Missions tab references (scene-tree nodes) ---
+@onready var mission_list: ItemList = get_node_or_null("%MissionList")
+@onready var mission_refresh_label: Label = get_node_or_null("%MissionRefreshLabel")
+@onready var accept_mission_button: Button = get_node_or_null("%AcceptMissionButton")
+@onready var mission_title: Label = get_node_or_null("%MissionTitle")
+@onready var mission_type: Label = get_node_or_null("%MissionType")
+@onready var mission_location: Label = get_node_or_null("%MissionLocation")
+@onready var mission_objective: Label = get_node_or_null("%MissionObjective")
+@onready var mission_reward: Label = get_node_or_null("%MissionReward")
+@onready var mission_desc: Label = get_node_or_null("%MissionDesc")
+@onready var active_mission_label: Label = get_node_or_null("%ActiveMissionLabel")
+@onready var active_objective_label: Label = get_node_or_null("%ActiveObjectiveLabel")
+@onready var hand_in_mission_button: Button = get_node_or_null("%HandInMissionButton")
+@onready var abandon_mission_button: Button = get_node_or_null("%AbandonMissionButton")
+# Selection state for the available missions list.
+var _selected_mission_idx: int = -1
+# Cached copy of RunState.available_missions for the current list render (so
+# item metadata indices line up with the displayed rows).
+var _shown_missions: Array[CP2020Mission] = []
 # --- Purchase Unlocks window (scene-based popup: PurchaseUnlocksWindow.tscn) ---
 var unlock_window: Window
 var unlock_list: ItemList
@@ -248,7 +267,7 @@ func _ready() -> void:
 	
 	_connect_signals()
 	_populate_filter()
-	for list in [loaded_list, library_list, shop_buy_decks_list, shop_buy_programs_list, shop_buy_modules_list, shop_sell_loot_list, shop_sell_files_list]:
+	for list in [loaded_list, library_list, shop_buy_decks_list, shop_buy_programs_list, shop_buy_modules_list, shop_sell_loot_list, shop_sell_files_list, mission_list]:
 		if list:
 			_style_scrollbars(list)
 			
@@ -283,6 +302,10 @@ func _ready() -> void:
 	_refresh_deck_selector()
 	update_deck_ui()
 	_refresh_shop()
+	# Missions: rotate the board if an hour of net-time has elapsed since the
+	# last refresh, then populate the available list + active status box.
+	RunState.check_mission_refresh()
+	_refresh_missions()
 	_start_cursor_blink()
 	_setup_drag_drop()
 
@@ -348,6 +371,15 @@ func _connect_signals() -> void:
 		shop_sell_loot_list.item_selected.connect(_on_sell_loot_selected)
 	if shop_sell_files_list:
 		shop_sell_files_list.item_selected.connect(_on_sell_file_selected)
+	# Missions tab.
+	if mission_list:
+		mission_list.item_selected.connect(_on_mission_selected)
+	if accept_mission_button:
+		accept_mission_button.pressed.connect(_on_accept_mission_pressed)
+	if hand_in_mission_button:
+		hand_in_mission_button.pressed.connect(_on_hand_in_mission_pressed)
+	if abandon_mission_button:
+		abandon_mission_button.pressed.connect(_on_abandon_mission_pressed)
 	# TabContainer is in the scene tree; wire its tab_changed signal here.
 	var tabs := get_node_or_null("%Tabs") as TabContainer
 	if tabs:
@@ -764,9 +796,14 @@ func _on_exit_pressed() -> void:
 	get_tree().quit()
 
 # Clear the persistent status banner when switching tabs so SHOP messages
-# (e.g. "Select loot to sell.") don't bleed into LOADOUT.
-func _on_tab_changed(_tab: int) -> void:
+# (e.g. "Select loot to sell.") don't bleed into LOADOUT. Also re-check the
+# mission board + refresh the Missions tab display when it becomes active
+# (net-time may have advanced since the last visit).
+func _on_tab_changed(tab: int) -> void:
 	_clear_message()
+	if tab == 2:
+		RunState.check_mission_refresh()
+		_refresh_missions()
 
 # Keyboard shortcuts: [L] load, [U] unload, [C] clear, [J] jack in. Case-
 # insensitive so caps lock doesn't get in the way of n00bs.
@@ -856,6 +893,181 @@ func _refresh_shop() -> void:
 	_refresh_shop_sell_loot()
 	_refresh_shop_sell_files()
 	_refresh_credits()
+
+# ---------------------------------------------------------------------------
+# Missions tab
+# ---------------------------------------------------------------------------
+# Populate the available-contracts list, the detail card, the active-contract
+# status box, and the refresh countdown label. Called on workbench entry and
+# after any accept / hand-in / abandon action.
+func _refresh_missions() -> void:
+	_refresh_mission_list()
+	_refresh_active_mission()
+	_refresh_mission_detail(null)
+	_refresh_mission_refresh_label()
+	if accept_mission_button:
+		accept_mission_button.disabled = true
+
+func _refresh_mission_list() -> void:
+	if mission_list == null:
+		return
+	mission_list.clear()
+	_selected_mission_idx = -1
+	_shown_missions = RunState.available_missions.duplicate()
+	if _shown_missions.is_empty():
+		mission_list.add_item("No contracts on the board — jack in to advance the clock.", null, false)
+		mission_list.set_item_custom_fg_color(0, COL_GREY)
+		mission_list.set_item_disabled(0, true)
+		return
+	for m in _shown_missions:
+		if m == null:
+			continue
+		var tag: String = CP2020Mission.type_tag(m.mission_type)
+		var row: String = "%s  [%s]  %s  — %d eb  → %s" % [
+			String.chr(0x258E), tag, m.title, m.reward_credits, m.target_location_label
+		]
+		var idx: int = mission_list.add_item(row, null, true)
+		mission_list.set_item_metadata(idx, m)
+		# Colour-code by type: harvest=green, sabotage=red, recon=cyan.
+		var col: Color = COL_TEXT
+		match m.mission_type:
+			CP2020Mission.MissionType.DATA_HARVEST:
+				col = COL_GREEN
+			CP2020Mission.MissionType.SABOTAGE:
+				col = COL_RED
+			CP2020Mission.MissionType.RECON:
+				col = Color(0.25, 0.9, 1.0)
+		mission_list.set_item_custom_fg_color(idx, col)
+
+func _refresh_mission_detail(m: CP2020Mission) -> void:
+	if mission_title == null:
+		return
+	if m == null:
+		mission_title.text = "— select a contract —"
+		mission_title.add_theme_color_override("font_color", COL_HEADER)
+		mission_type.text = ""
+		mission_location.text = ""
+		mission_objective.text = ""
+		mission_reward.text = ""
+		mission_desc.text = ""
+		return
+	mission_title.text = m.title
+	mission_title.add_theme_color_override("font_color", COL_HEADER)
+	mission_type.text = "Type: " + CP2020Mission.type_label(m.mission_type)
+	mission_location.text = "Target: " + m.target_location_label
+	mission_objective.text = "Objective: " + m.objective_text()
+	mission_reward.text = "Reward: %d eb" % m.reward_credits
+	mission_desc.text = m.description if m.description != "" else "No briefing on file."
+
+func _refresh_active_mission() -> void:
+	var m: CP2020Mission = RunState.active_mission
+	if active_mission_label == null:
+		return
+	if m == null:
+		active_mission_label.text = "No active contract."
+		active_mission_label.add_theme_color_override("font_color", COL_DIM)
+		active_objective_label.text = "Accept a contract from the board to begin."
+		active_objective_label.add_theme_color_override("font_color", COL_DIM)
+		if hand_in_mission_button:
+			hand_in_mission_button.disabled = true
+		if abandon_mission_button:
+			abandon_mission_button.disabled = true
+		return
+	active_mission_label.text = "%s  [%s]  — %d eb" % [
+		m.title, CP2020Mission.type_tag(m.mission_type), m.reward_credits
+	]
+	active_mission_label.add_theme_color_override("font_color", COL_HEADER)
+	# Show objective + completion status. For DATA_HARVEST the live proof is
+	# whether the target file is currently carried; for SABOTAGE/RECON it's the
+	# per-run objective flag.
+	var status_text: String = m.objective_text()
+	var can_hand_in: bool = RunState.can_hand_in_mission()
+	if can_hand_in:
+		status_text += "   ✓ READY TO HAND IN"
+		active_objective_label.add_theme_color_override("font_color", COL_GREEN)
+	elif RunState.mission_objective_met and m.mission_type != CP2020Mission.MissionType.DATA_HARVEST:
+		status_text += "   (objective met — return to hub)"
+		active_objective_label.add_theme_color_override("font_color", COL_AMBER)
+	else:
+		active_objective_label.add_theme_color_override("font_color", COL_AMBER)
+	active_objective_label.text = status_text
+	if hand_in_mission_button:
+		hand_in_mission_button.disabled = not can_hand_in
+	if abandon_mission_button:
+		abandon_mission_button.disabled = false
+
+func _refresh_mission_refresh_label() -> void:
+	if mission_refresh_label == null:
+		return
+	if RunState.available_missions.is_empty() and RunState.active_mission == null:
+		mission_refresh_label.text = "Board empty — jack in to advance the clock."
+		return
+	# Time until the next rotation. The board only ticks while jacked in, so at
+	# the hub this is a "how much more net-time until the next contract" read.
+	var elapsed: float = RunState.net_time_seconds - RunState.last_mission_refresh_time
+	var remaining: float = RunState.MISSION_REFRESH_SECONDS - elapsed
+	if remaining <= 0.0:
+		mission_refresh_label.text = "New contract available — re-enter to refresh."
+	else:
+		var mins: int = int(remaining / 60.0)
+		var secs: int = int(remaining) - mins * 60
+		mission_refresh_label.text = "Next contract in: %dm %ds of net-time" % [mins, secs]
+
+func _on_mission_selected(index: int) -> void:
+	if mission_list == null or mission_list.is_item_disabled(index):
+		_selected_mission_idx = -1
+		if accept_mission_button:
+			accept_mission_button.disabled = true
+		return
+	_selected_mission_idx = index
+	var m := mission_list.get_item_metadata(index) as CP2020Mission
+	_refresh_mission_detail(m)
+	# Can only accept if no active mission is already in progress.
+	if accept_mission_button:
+		accept_mission_button.disabled = (RunState.active_mission != null)
+
+func _on_accept_mission_pressed() -> void:
+	if _selected_mission_idx < 0 or mission_list == null:
+		_show_message("Select a contract to accept.", COL_AMBER)
+		return
+	if RunState.active_mission != null:
+		_show_message("A contract is already active — hand it in or abandon it first.", COL_AMBER)
+		return
+	var m := mission_list.get_item_metadata(_selected_mission_idx) as CP2020Mission
+	if m == null:
+		return
+	if RunState.accept_mission(m):
+		_show_message("Accepted: %s — %s" % [m.title, m.objective_text()], COL_GREEN)
+		_refresh_missions()
+		_refresh_credits()
+	else:
+		_show_message("Could not accept that contract.")
+
+func _on_hand_in_mission_pressed() -> void:
+	var m: CP2020Mission = RunState.active_mission
+	if m == null:
+		_show_message("No active contract to hand in.", COL_AMBER)
+		return
+	if not RunState.can_hand_in_mission():
+		_show_message("Objective not yet completed — check the active contract status.", COL_AMBER)
+		return
+	var reward: int = RunState.hand_in_mission()
+	if reward > 0:
+		_show_message("Contract complete! Paid %d eb for %s." % [reward, m.title], COL_GREEN)
+		_refresh_missions()
+		_refresh_credits()
+		update_deck_ui()
+	else:
+		_show_message("Hand-in failed.")
+
+func _on_abandon_mission_pressed() -> void:
+	if RunState.active_mission == null:
+		return
+	var title: String = RunState.active_mission.title
+	if RunState.abandon_mission():
+		_show_message("Abandoned: %s — returned to the board." % title, COL_AMBER)
+		_refresh_missions()
+		_refresh_credits()
 
 func _refresh_shop_buy_decks() -> void:
 	shop_buy_decks_list.clear()

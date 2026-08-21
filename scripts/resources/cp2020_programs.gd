@@ -114,6 +114,16 @@ const DEFAULT_VISUALS: Dictionary = {
 # Path to the original .tres this program was duplicated from. Used by run-state
 # persistence to reconstruct owned programs after app restart.
 @export var source_path: String = ""
+# Optional per-program 3D model used when this program is rezzed onto the net
+# (replaces the default neon box / shared rezzed mesh). Assign a PackedScene
+# (.tscn authored from a .glb, with scale/rotation/position set in the editor)
+# in the Inspector. Leave null to fall back to the Board3D per-effect-type
+# rezzed mesh slot, then the generic `rezzed_mesh`. Only rezzed attack
+# programs (DEREZ_ICE / DAMAGE_RUNNER / CRASH_CPU / DEMON) render a 3D proxy;
+# Shield/Armor/Invisibility etc. buff the runner and never spawn a rezzed
+# node, so this field is ignored for them. The model's own materials are kept
+# (no material override is applied when a scene is set).
+@export var mesh_scene: PackedScene = null
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Program behavior (virtual). Subclasses override these to define program-

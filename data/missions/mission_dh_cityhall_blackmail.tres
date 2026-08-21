@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_b23es"]
+
+[resource]
+script = ExtResource("1_b23es")
+mission_id = "dh_cityhall_blackmail"
+title = "Blackmail Drop Recovery"
+description = "A fixer needs the \"Blackmail Files\" cached on City Hall's memory units before a rival crew fences them. Dive in, copy the file, jack out clean, and hand it to me."
+reward_credits = 1200
+target_location_label = "Night City: City Hall"
+target_subnet_path = "res://scenes/forts/night_city_subnet.tres"
+target_file_name = "Blackmail Files"
+objective_summary = "Steal \"Blackmail Files\" from City Hall"

@@ -72,6 +72,32 @@ var owned_modules: Array[DeckModule] = []
 # programs while carried. Lost on death.
 var carried_files: Array[NetFile] = []
 
+# --- Missions system (per-life) ---
+# The currently accepted contract (at most one). null = no active mission.
+# Held as a duplicated template so runtime never mutates the library .tres.
+var active_mission: CP2020Mission = null
+# The rotating board of available contracts shown on the workbench Missions
+# tab. A subset of the static library (res://data/missions/*.tres). Refreshed
+# over time by check_mission_refresh() against net_time_seconds.
+var available_missions: Array[CP2020Mission] = []
+# True once the active mission's objective has been satisfied this run. Set by
+# the game session when a target file is copied (DATA_HARVEST), an offensive
+# action hits the exact target coord (SABOTAGE), or the runner steps onto the
+# target coord (RECON). Re-verified at hand-in.
+var mission_objective_met: bool = false
+# net_time_seconds snapshot at the last board refresh. The workbench rotates
+# one new mission onto the board when net_time_seconds - last_mission_refresh_time
+# >= MISSION_REFRESH_SECONDS. Resets on new life alongside the clock.
+var last_mission_refresh_time: float = 0.0
+
+# One new mission is rotated onto the board every hour of net-time. The board
+# only ticks while the runner is jacked in (net_time_seconds advances on
+# action_consumed); it does not advance at the hub.
+const MISSION_REFRESH_SECONDS: float = 3600.0
+# How many contracts the board holds at once. Seeded from the static library
+# on new life; refresh swaps the oldest for a fresh one.
+const MISSION_BOARD_SIZE: int = 4
+
 func _ready() -> void:
 	_load_run()
 
@@ -92,6 +118,10 @@ func reset() -> void:
 	owned_programs.clear()
 	owned_modules.clear()
 	carried_files.clear()
+	active_mission = null
+	available_missions.clear()
+	mission_objective_met = false
+	last_mission_refresh_time = 0.0
 	last_death_cause = ""
 	last_run_summary.clear()
 
@@ -131,6 +161,11 @@ func start_new_life() -> void:
 		selected_character = character
 	else:
 		push_error("RunState: failed to load starting character '%s'." % char_path)
+
+	# Seed the mission board with a random subset of the static library so a
+	# fresh life has contracts available immediately. The board rotates over
+	# time via check_mission_refresh() once the runner starts jacking in.
+	_seed_mission_board()
 
 	# Persist the fresh state immediately so a crash/quit before the workbench
 	# saves doesn't leave a stale (or missing) save file. GameOver clears the
@@ -379,6 +414,20 @@ func save_run() -> void:
 			"credit_value": file.credit_value,
 			"mu_size": file.mu_size,
 		})
+	# Missions: store the available board + active mission by resource path so
+	# they survive app restarts within a life. The templates are reloaded and
+	# duplicated on load (never mutating the library .tres).
+	for mission: CP2020Mission in available_missions:
+		if mission == null:
+			continue
+		var m_path: String = mission.resource_path if mission.resource_path != "" else mission.source_path
+		if m_path != "":
+			data.available_mission_paths.append(m_path)
+	if active_mission != null:
+		var am_path: String = active_mission.resource_path if active_mission.resource_path != "" else active_mission.source_path
+		data.active_mission_path = am_path
+	data.mission_objective_met = mission_objective_met
+	data.last_mission_refresh_time = last_mission_refresh_time
 	var err: int = ResourceSaver.save(data, RUN_SAVE_PATH)
 	if err != OK:
 		push_error("RunState: failed to save run state (error %d)." % err)
@@ -485,6 +534,232 @@ func _load_run() -> void:
 		file.credit_value = entry.get("credit_value", 0)
 		file.mu_size = entry.get("mu_size", 1)
 		carried_files.append(file)
+	# Missions: rebuild the available board + active mission from saved paths.
+	# If the save predates the missions system (empty arrays) or a library
+	# path no longer exists, we silently skip and re-seed at the workbench.
+	available_missions.clear()
+	for m_path: String in data.available_mission_paths:
+		var mission: CP2020Mission = _load_mission_template(m_path)
+		if mission != null:
+			available_missions.append(mission)
+	active_mission = null
+	if data.active_mission_path != "":
+		active_mission = _load_mission_template(data.active_mission_path)
+	mission_objective_met = data.mission_objective_met
+	last_mission_refresh_time = data.last_mission_refresh_time
+	# Older saves (pre-missions) load with an empty board and no active
+	# mission — seed a fresh board so the Missions tab isn't blank on upgrade.
+	# Only seed when truly empty so an in-progress board is preserved.
+	if available_missions.is_empty() and active_mission == null:
+		_seed_mission_board()
+
+# ---------------------------------------------------------------------------
+# Missions system
+# ---------------------------------------------------------------------------
+# Scans res://data/missions/ for the static mission library and returns the
+# sorted list of .tres paths. The library is authored content (no procedural
+# generation for now); drop a new mission_*.tres in the folder to extend it.
+func _mission_library_paths() -> Array[String]:
+	var dir: DirAccess = DirAccess.open("res://data/missions")
+	if dir == null:
+		push_warning("RunState: could not open res://data/missions — mission board empty.")
+		return []
+	var paths: Array[String] = []
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir() and fname.ends_with(".tres"):
+			paths.append("res://data/missions/" + fname)
+		fname = dir.get_next()
+	dir.list_dir_end()
+	paths.sort()
+	return paths
+
+# Loads a mission template from a library path and returns a duplicate so the
+# runtime never mutates the cached .tres. Tags source_path for save/load.
+# Returns null if the path is missing or not a CP2020Mission.
+func _load_mission_template(path: String) -> CP2020Mission:
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	var res := load(path)
+	if res is CP2020Mission:
+		var dup := (res as CP2020Mission).duplicate()
+		dup.source_path = path
+		return dup
+	return null
+
+# Seeds the available board with a random subset of the static library. Called
+# on new life. If the library is smaller than MISSION_BOARD_SIZE, takes all.
+func _seed_mission_board() -> void:
+	available_missions.clear()
+	var lib := _mission_library_paths()
+	if lib.is_empty():
+		return
+	# Shuffle a copy of the path list and take the first N for the board.
+	var pool: Array[String] = lib.duplicate()
+	pool.shuffle()
+	var count := mini(MISSION_BOARD_SIZE, pool.size())
+	for i in range(count):
+		var m: CP2020Mission = _load_mission_template(pool[i])
+		if m != null:
+			available_missions.append(m)
+	last_mission_refresh_time = net_time_seconds
+
+# Rotates the mission board if at least MISSION_REFRESH_SECONDS of net-time has
+# elapsed since the last refresh: drops the oldest entry and appends a fresh
+# mission from the library that isn't already on the board. Called by the
+# workbench on entry. Returns true if a rotation happened.
+func check_mission_refresh() -> bool:
+	if net_time_seconds - last_mission_refresh_time < MISSION_REFRESH_SECONDS:
+		return false
+	# Only rotate if there's something to rotate in.
+	var lib := _mission_library_paths()
+	if lib.is_empty():
+		return false
+	# Build the set of paths currently on the board (and the active mission) so
+	# we don't add a duplicate.
+	var present := {}
+	for m in available_missions:
+		if m != null and m.resource_path != "":
+			present[m.resource_path] = true
+	if active_mission != null and active_mission.resource_path != "":
+		present[active_mission.resource_path] = true
+	var candidates: Array[String] = []
+	for path in lib:
+		if not present.has(path):
+			candidates.append(path)
+	if candidates.is_empty():
+		# Library exhausted (everything already on the board / active) — reset
+		# the timer so we don't re-check every frame, but change nothing.
+		last_mission_refresh_time = net_time_seconds
+		return false
+	candidates.shuffle()
+	var fresh: CP2020Mission = _load_mission_template(candidates[0])
+	if fresh == null:
+		last_mission_refresh_time = net_time_seconds
+		return false
+	# Drop the oldest (front) entry and append the fresh one at the back so the
+	# board reads newest-last / oldest-first.
+	if not available_missions.is_empty():
+		available_missions.pop_front()
+	available_missions.append(fresh)
+	last_mission_refresh_time = net_time_seconds
+	save_run()
+	return true
+
+# Accepts a mission from the available board. At most one active mission at a
+# time. Removes it from the available list. Returns true on success.
+func accept_mission(mission: CP2020Mission) -> bool:
+	if mission == null or active_mission != null:
+		return false
+	var idx: int = available_missions.find(mission)
+	if idx < 0:
+		return false
+	available_missions.remove_at(idx)
+	active_mission = mission
+	mission_objective_met = false
+	save_run()
+	return true
+
+# Abandons the active mission (returns it to the board). No penalty. Returns
+# true if there was an active mission to abandon.
+func abandon_mission() -> bool:
+	if active_mission == null:
+		return false
+	# Only return to the board if its objective wasn't already met (a met
+	# mission should be handed in, not recycled). Either way clear it.
+	if not mission_objective_met:
+		available_missions.append(active_mission)
+	active_mission = null
+	mission_objective_met = false
+	save_run()
+	return true
+
+# Returns true if the active mission's objective proof is currently in hand and
+# the mission can be handed in for its reward.
+func can_hand_in_mission() -> bool:
+	if active_mission == null:
+		return false
+	match active_mission.mission_type:
+		CP2020Mission.MissionType.DATA_HARVEST:
+			# Proof: the target file must currently be carried. (The runner
+			# could have fenced it after copying — in that case they must go
+			# fetch another copy before hand-in.)
+			return _carries_target_file()
+		CP2020Mission.MissionType.SABOTAGE, CP2020Mission.MissionType.RECON:
+			# Proof: the objective flag was set this run (coordinate hit /
+			# reached). The flag is reset on new life, so it is a valid proof
+			# that the runner did the job this life.
+			return mission_objective_met
+	return false
+
+# Returns true if a file matching the active mission's target_file_name is
+# currently in carried_files.
+func _carries_target_file() -> bool:
+	if active_mission == null or active_mission.target_file_name == "":
+		return false
+	for f: NetFile in carried_files:
+		if f != null and f.file_name == active_mission.target_file_name:
+			return true
+	return false
+
+# Hands in the active mission: pays the flat reward into credits, clears the
+# active mission (and, for DATA_HARVEST, removes the proof file from carried
+# files — the file is "delivered" to the fixer). Returns the reward paid, or 0
+# on failure.
+func hand_in_mission() -> int:
+	if not can_hand_in_mission():
+		return 0
+	var reward: int = active_mission.reward_credits
+	credits += reward
+	# DATA_HARVEST: remove one copy of the target file from carried_files (it
+	# is handed over to the fixer, not fenced separately).
+	if active_mission.mission_type == CP2020Mission.MissionType.DATA_HARVEST:
+		var target_name: String = active_mission.target_file_name
+		for i in range(carried_files.size()):
+			if carried_files[i] != null and carried_files[i].file_name == target_name:
+				carried_files.remove_at(i)
+				break
+	active_mission = null
+	mission_objective_met = false
+	save_run()
+	return reward
+
+# --- Objective notification hooks (called by the game session) ---
+# Called after a file is copied to the deck. Sets mission_objective_met if the
+# active mission is DATA_HARVEST and the copied file matches the target name.
+func notify_file_copied(file: NetFile) -> void:
+	if active_mission == null or file == null:
+		return
+	if active_mission.mission_type == CP2020Mission.MissionType.DATA_HARVEST \
+			and file.file_name == active_mission.target_file_name:
+		mission_objective_met = true
+
+# Called when an offensive/interact action targets a grid coord in the current
+# subnet. Sets mission_objective_met if the active mission is SABOTAGE, the
+# current subnet is the target subnet, and the coord matches the target.
+func notify_action_at_coord(current_subnet_path: String, coord: Vector2i) -> void:
+	if active_mission == null:
+		return
+	if active_mission.mission_type != CP2020Mission.MissionType.SABOTAGE:
+		return
+	if current_subnet_path != active_mission.target_subnet_path:
+		return
+	if coord == active_mission.target_coord:
+		mission_objective_met = true
+
+# Called when the netrunner moves. Sets mission_objective_met if the active
+# mission is RECON, the current subnet is the target, and the runner is on the
+# target coord.
+func notify_position(current_subnet_path: String, coord: Vector2i) -> void:
+	if active_mission == null:
+		return
+	if active_mission.mission_type != CP2020Mission.MissionType.RECON:
+		return
+	if current_subnet_path != active_mission.target_subnet_path:
+		return
+	if coord == active_mission.target_coord:
+		mission_objective_met = true
 
 func clear_run_save() -> void:
 	var dir: DirAccess = DirAccess.open("user://")

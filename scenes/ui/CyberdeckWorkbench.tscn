@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="3_prog"]
 [ext_resource type="Resource" uid="uid://de803c64n74d3" path="res://data/aegis.tres" id="4_aegis"]
 [ext_resource type="Resource" uid="uid://dfw5c76bl6480" path="res://data/codecracker.tres" id="5_codecracker"]
-[ext_resource type="Resource" uid="uid://bx5a16kubf18e" path="res://data/flatline.tres" id="6_flatline"]
+[ext_resource type="Resource" uid="uid://caem1pjiuhd6y" path="res://data/flatline.tres" id="6_flatline"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="7_hammer"]
 [ext_resource type="Resource" uid="uid://buomiv2a6oild" path="res://data/jackhammer.tres" id="8_jackhammer"]
 [ext_resource type="Resource" uid="uid://ddwd6bm8dh4g7" path="res://data/killer2.tres" id="9_killer"]
@@ -711,6 +711,161 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "SELL ALL"
+
+[node name="MISSIONS" type="VBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=940278442]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 2
+
+[node name="MissionHeaderRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS" unique_id=940278443]
+layout_mode = 2
+
+[node name="MissionHeader" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionHeaderRow" unique_id=940278444]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MyHeader"
+text = "MISSIONS BOARD"
+
+[node name="MissionRefreshLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionHeaderRow" unique_id=940278445]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
+text = "Next contract in: —"
+horizontal_alignment = 2
+
+[node name="MissionGrid" type="GridContainer" parent="Margin/RootVBox/Tabs/MISSIONS" unique_id=940278446]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 20
+columns = 2
+
+[node name="AvailablePanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid" unique_id=940278447]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/AvailablePanel" unique_id=940278448]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/AvailablePanel/VBox" unique_id=940278449]
+layout_mode = 2
+theme_type_variation = &"MyHeader"
+text = "AVAILABLE CONTRACTS"
+
+[node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/AvailablePanel/VBox" unique_id=940278450]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0, 0.45490196, 1, 0.5764706)
+
+[node name="MissionList" type="ItemList" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/AvailablePanel/VBox" unique_id=940278451]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AcceptMissionButton" type="Button" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/AvailablePanel/VBox" unique_id=940278452 groups=["pulse_buttons"]]
+unique_name_in_owner = true
+layout_mode = 2
+text = "ACCEPT CONTRACT"
+
+[node name="DetailPanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid" unique_id=940278453]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel" unique_id=940278454]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278455]
+layout_mode = 2
+theme_type_variation = &"MyHeader"
+text = "CONTRACT DETAILS"
+
+[node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278456]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0, 0.45490196, 1, 0.5764706)
+
+[node name="MissionTitle" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278457]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
+text = "— select a contract —"
+
+[node name="MissionType" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278458]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="MissionLocation" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278459]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="MissionObjective" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278460]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
+text = ""
+
+[node name="MissionReward" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278461]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 1, 0.4, 1)
+text = ""
+
+[node name="MissionDesc" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278462]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 1, 0.78, 1)
+autowrap_mode = 3
+text = ""
+
+[node name="ActivePanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/MISSIONS" unique_id=940278463]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel" unique_id=940278464]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278465]
+layout_mode = 2
+theme_type_variation = &"MyHeader"
+text = "ACTIVE CONTRACT"
+
+[node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278466]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0, 0.45490196, 1, 0.5764706)
+
+[node name="ActiveMissionLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278467]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
+text = "No active contract."
+
+[node name="ActiveObjectiveLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278468]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
+text = ""
+
+[node name="ActiveButtonRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278469]
+layout_mode = 2
+
+[node name="HandInMissionButton" type="Button" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox/ActiveButtonRow" unique_id=940278470 groups=["pulse_buttons"]]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "HAND IN CONTRACT"
+
+[node name="AbandonMissionButton" type="Button" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox/ActiveButtonRow" unique_id=940278471 groups=["pulse_buttons"]]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ABANDON"
 
 [node name="Footer" type="HBoxContainer" parent="Margin/RootVBox" unique_id=1610942416]
 layout_mode = 2

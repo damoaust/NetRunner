@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_23dp6"]
+
+[resource]
+script = ExtResource("1_23dp6")
+mission_id = "recon_lucky7"
+title = "Survey Lucky 7 Mall"
+description = "A client wants the layout of the Lucky 7 Mall datafort verified. Reach grid (6,6) inside the datafort and confirm the control node is active. No need to crack anything — just get eyes on the target."
+mission_type = 2
+reward_credits = 600
+target_location_label = "Night City: Lucky 7 Mall"
+target_subnet_path = "res://scenes/forts/fort1.tres"
+target_coord = Vector2i(6, 6)
+objective_summary = "Reach grid (6,6) in Lucky 7 Mall"

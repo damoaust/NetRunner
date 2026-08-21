@@ -58,8 +58,20 @@ pos = Vector2i(7, 7)
 subnet_path = "res://scenes/forts/ice_test_map.tres"
 security_tier = 0
 
+[sub_resource type="Resource" id="Resource_mm14k"]
+script = ExtResource("1_vo1hh")
+name = "Pirate BBS"
+pos = Vector2i(11, 10)
+subnet_path = "res://scenes/forts/p2.tres"
+
+[sub_resource type="Resource" id="Resource_ighnf"]
+script = ExtResource("1_vo1hh")
+name = "Warez Node"
+pos = Vector2i(15, 10)
+subnet_path = "res://scenes/forts/p5.tres"
+
 [resource]
 script = ExtResource("2_kjwcc")
 city_name = "Night City"
-dataforts = Array[ExtResource("1_vo1hh")]([SubResource("Resource_kj5fi"), SubResource("Resource_rljcg"), SubResource("Resource_0jgxg"), SubResource("Resource_404ch"), SubResource("Resource_6hw6t"), SubResource("Resource_vo1hh"), SubResource("Resource_kjwcc")])
+dataforts = Array[ExtResource("1_vo1hh")]([SubResource("Resource_kj5fi"), SubResource("Resource_rljcg"), SubResource("Resource_0jgxg"), SubResource("Resource_404ch"), SubResource("Resource_6hw6t"), SubResource("Resource_vo1hh"), SubResource("Resource_kjwcc"), SubResource("Resource_mm14k"), SubResource("Resource_ighnf")])
 ldl_entry = Vector2i(9, 5)

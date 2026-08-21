@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://2kwgvq1twp6q"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u5re8"]
+albedo_color = Color(5.0296635e-06, 0.56358427, 0.023190936, 1)
+emission_energy_multiplier = 0.0
+
+[sub_resource type="TextMesh" id="TextMesh_rybyy"]
+material = SubResource("StandardMaterial3D_u5re8")
+text = "↑"
+
+[node name="ModelTest" type="Node3D" unique_id=494641561]
+
+[node name="CSGMesh3D" type="CSGMesh3D" parent="." unique_id=144861540]
+transform = Transform3D(150, 0, 0, 0, -6.5567083e-06, 150, 0, -150, -6.5567083e-06, -7.8037186, -4.2837212e-07, -9.800013)
+autosmooth = true
+mesh = SubResource("TextMesh_rybyy")

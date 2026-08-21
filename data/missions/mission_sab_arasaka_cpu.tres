@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_ique1"]
+
+[resource]
+script = ExtResource("1_ique1")
+mission_id = "sab_arasaka_cpu"
+title = "Arasaka CPU Strike"
+description = "Arasaka's Tokyo-built arcology mainframe is running an intrusive trace program. Crash the CPU at grid (11,11) inside the datafort to take it offline. Use a Krash anti-system program on the exact node."
+mission_type = 1
+reward_credits = 2000
+target_location_label = "Night City: Arasaka Arcology"
+target_subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+target_coord = Vector2i(11, 11)
+objective_summary = "Crash the CPU at (11,11) in Arasaka Arcology"

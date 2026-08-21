@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/cp2020_mission.gd" id="1_jdrfy"]
+
+[resource]
+script = ExtResource("1_jdrfy")
+mission_id = "recon_tokyo_mem"
+title = "Tokyo Memory Scan"
+description = "Arasaka's Tokyo subnet holds a memory bank at grid (10,10). Get a runner on that tile to scan the storage layout and report back."
+mission_type = 2
+reward_credits = 700
+target_location_label = "Night City: Arasaka Arcology"
+target_subnet_path = "res://scenes/forts/tokyo_subnet.tres"
+target_coord = Vector2i(10, 10)
+objective_summary = "Reach grid (10,10) in Arasaka Arcology"
