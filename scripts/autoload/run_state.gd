@@ -40,6 +40,12 @@ var security_dispatch_turns: int = 0
 # turn manager's `action_consumed` signal in each scene. Reset per run like
 # accumulated_trace; persisted across app restarts via RunStateData.
 var net_time_seconds: float = 0.0
+# Life-accumulative net time (seconds): same advancement as net_time_seconds
+# but NOT reset on jack-out / run-start — only cleared on new life (reset()).
+# Display-only (the workbench header shows it across tabs). The per-run
+# net_time_seconds above still drives the mission-board refresh clock, so
+# mission rotation timing is unchanged. Persisted across app restarts.
+var life_net_time_seconds: float = 0.0
 # City Grid currently in play (set by the world map ENTER action). The
 # datafort LDL-return uses this to go back to the right city grid.
 var selected_city_grid_path: String = ""
@@ -111,6 +117,7 @@ func reset() -> void:
 	accumulated_trace = 0
 	security_dispatch_turns = 0
 	net_time_seconds = 0.0
+	life_net_time_seconds = 0.0
 	selected_city_grid_path = ""
 	selected_security_tier = 0
 	loot.clear()
@@ -124,6 +131,14 @@ func reset() -> void:
 	last_mission_refresh_time = 0.0
 	last_death_cause = ""
 	last_run_summary.clear()
+
+# Advance net time by `seconds` (a scene's grid-scale constant). Advances BOTH
+# the per-run net_time_seconds (drives mission refresh) and the life-accumulative
+# life_net_time_seconds (workbench display). Scenes MUST call this instead of
+# directly mutating net_time_seconds so the life accumulator stays in sync.
+func add_net_time(seconds: float) -> void:
+	net_time_seconds += seconds
+	life_net_time_seconds += seconds
 
 # Called when a new life begins (after permadeath, or the very first life).
 # Wipes state then populates the starting gear.
@@ -360,6 +375,7 @@ func save_run() -> void:
 	data.accumulated_trace = accumulated_trace
 	data.security_dispatch_turns = security_dispatch_turns
 	data.net_time_seconds = net_time_seconds
+	data.life_net_time_seconds = life_net_time_seconds
 	data.selected_subnet_path = selected_subnet_path
 	data.selected_city_grid_path = selected_city_grid_path
 	data.selected_security_tier = selected_security_tier
@@ -444,6 +460,7 @@ func _load_run() -> void:
 	accumulated_trace = data.accumulated_trace
 	security_dispatch_turns = data.security_dispatch_turns
 	net_time_seconds = data.net_time_seconds
+	life_net_time_seconds = data.life_net_time_seconds
 	selected_subnet_path = data.selected_subnet_path
 	selected_city_grid_path = data.selected_city_grid_path
 	selected_security_tier = data.selected_security_tier

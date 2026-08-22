@@ -107,6 +107,16 @@ theme_override_fonts/font = ExtResource("20_ldt4r")
 theme_override_font_sizes/font_size = 87
 text = "CYBERDECK WORKBENCH"
 
+[node name="NetTimeLabel" type="Label" parent="Margin/RootVBox/TitleRow" unique_id=691350371]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 30
+text = "NET: 0 ns"
+horizontal_alignment = 2
+
 [node name="CreditsLabel" type="Label" parent="Margin/RootVBox/TitleRow" unique_id=691350370]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 0)
@@ -122,10 +132,9 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-current_tab = 2
+current_tab = 0
 
 [node name="Loadout" type="HBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=702334731]
-visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -320,7 +329,6 @@ size_flags_horizontal = 3
 [node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol" unique_id=1890936601]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
 
 [node name="HeaderRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox" unique_id=207048271]
 layout_mode = 2
@@ -360,7 +368,6 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="DetailVBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard" unique_id=1092008068]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -368,51 +375,38 @@ size_flags_vertical = 3
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 24
 text = "— select a program —"
-
-[node name="DetailCursorLabel" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1937939128]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 1, 0.4, 1)
-theme_override_font_sizes/font_size = 21
-text = "_"
 
 [node name="DetailType" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1509774549]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 
 [node name="DetailEffect" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=487755847]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 
 [node name="DetailStr" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1306083617]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 
 [node name="DetailMu" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=77934205]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 
 [node name="DetailPrice" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=576253301]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42, 0.58, 0.5, 1)
 
 [node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1363610318]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0, 0.55, 0.3, 0.5)
 
 [node name="DetailDesc" type="Label" parent="Margin/RootVBox/Tabs/Loadout/LibraryCol/VBox/DetailCard/DetailVBox" unique_id=1320126957]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 size_flags_vertical = 3
+autowrap_mode = 3
 
 [node name="RunnerCol" type="PanelContainer" parent="Margin/RootVBox/Tabs/Loadout" unique_id=1190838670]
 custom_minimum_size = Vector2(280, 0)
@@ -711,6 +705,7 @@ size_flags_horizontal = 3
 text = "SELL ALL"
 
 [node name="MISSIONS" type="VBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=940278442]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 4

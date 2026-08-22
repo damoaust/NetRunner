@@ -2381,7 +2381,7 @@ func _on_movement_changed(remaining: int, max_movement: int) -> void:
 	log_to_terminal("Move: %d / %d\n" % [remaining, max_movement])
 
 func _on_action_consumed() -> void:
-	RunState.net_time_seconds += CP2020TimeScale.DATAFORT_SECONDS
+	RunState.add_net_time(CP2020TimeScale.DATAFORT_SECONDS)
 	_update_clock_label()
 
 func _update_clock_label() -> void:

@@ -80,6 +80,10 @@ var _runner_characters: Array[NetrunnerCharacter] = []
 @onready var destination_label: Label = get_node_or_null("%DestinationLabel")
 # --- Shop panel references (scene-tree nodes) ---
 @onready var credits_label: Label = get_node_or_null("%CreditsLabel")
+# Life-accumulative net-time clock shown in the TitleRow (visible across all
+# tabs). Reflects RunState.life_net_time_seconds, which persists across runs
+# within a life and only resets on new life.
+@onready var net_time_label: Label = get_node_or_null("%NetTimeLabel")
 @onready var shop_buy_decks_list: ItemList = get_node_or_null("%ShopBuyDecksList")
 @onready var shop_buy_programs_list: ItemList = get_node_or_null("%ShopBuyProgramsList")
 @onready var shop_sell_loot_list: ItemList = get_node_or_null("%ShopSellLootList")
@@ -669,7 +673,11 @@ func _setup_drag_drop() -> void:
 	if loaded_list:
 		loaded_list.set_drag_forwarding(_on_loaded_drag, _can_drop_from_library, _on_drop_into_loaded)
 
-func _on_library_drag(at_index: int) -> Variant:
+func _on_library_drag(at_position: Vector2) -> Variant:
+	# set_drag_forwarding forwards the mouse position (Vector2), not an index.
+	var at_index := library_list.get_item_at_position(at_position, true)
+	if at_index < 0:
+		return null
 	var prog := library_list.get_item_metadata(at_index) as NetProgram
 	if prog == null or library_list.is_item_disabled(at_index):
 		return null
@@ -682,7 +690,9 @@ func _on_library_drag(at_index: int) -> Variant:
 		"index": at_index,
 	}
 
-func _on_loaded_drag(at_index: int) -> Variant:
+func _on_loaded_drag(at_position: Vector2) -> Variant:
+	# set_drag_forwarding forwards the mouse position (Vector2), not an index.
+	var at_index := loaded_list.get_item_at_position(at_position, true)
 	if at_index < 0 or at_index >= active_deck.installed_programs.size():
 		return null
 	var prog := active_deck.installed_programs[at_index] as NetProgram
@@ -885,6 +895,14 @@ func _refresh_deck_selector() -> void:
 func _refresh_credits() -> void:
 	if credits_label:
 		credits_label.text = "CREDITS: %d eb" % RunState.credits
+	_refresh_net_time()
+
+# Life-accumulative net time (persists across runs, resets only on new life).
+# The clock only advances while jacked in, so refreshing on entry / after
+# purchases (via _refresh_credits) is sufficient — it does not tick at the hub.
+func _refresh_net_time() -> void:
+	if net_time_label:
+		net_time_label.text = "NET: %s" % CP2020TimeScale.format_clock(RunState.life_net_time_seconds)
 
 func _refresh_shop() -> void:
 	_refresh_shop_buy_decks()

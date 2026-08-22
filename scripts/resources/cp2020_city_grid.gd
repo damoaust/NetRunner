@@ -211,7 +211,7 @@ func _on_actions_changed(remaining: int, max_actions: int) -> void:
 
 
 func _on_action_consumed() -> void:
-	RunState.net_time_seconds += CP2020TimeScale.CITY_GRID_SECONDS
+	RunState.add_net_time(CP2020TimeScale.CITY_GRID_SECONDS)
 	_update_clock_label()
 
 

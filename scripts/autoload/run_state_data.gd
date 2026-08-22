@@ -13,6 +13,10 @@ extends Resource
 # Cumulative net time (seconds) spent jacked in this run, scaled by grid level
 # (world map action = 60 s, city grid = 1 s, datafort = 1 ns). Reset per run.
 @export var net_time_seconds: float = 0.0
+# Life-accumulative net time (seconds): same advancement as net_time_seconds
+# but persists across runs within a life (only cleared on new life). Used for
+# the workbench header display; does NOT drive mission refresh.
+@export var life_net_time_seconds: float = 0.0
 
 @export var selected_deck_path: String = ""
 @export var selected_subnet_path: String = ""
