@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CP2020Mission" format=3 uid="uid://dqafi6qa7vthi"]
+
+[ext_resource type="Script" uid="uid://bnt0jbf07s1jr" path="res://scripts/resources/cp2020_mission.gd" id="1_0sype"]
+
+[resource]
+script = ExtResource("1_0sype")
+mission_id = "sab_cityhall_cpu"
+title = "Crash City Hall"
+description = "EBM's regional mainframe is the bottleneck for a rival corp's payroll run. Crash the CPU at grid (9,4) inside the EBM datafort to halt processing."
+mission_type = 1
+reward_credits = 2000
+target_location_label = "Night City: City Hall"
+target_subnet_path = "res://scenes/forts/fort2.tres"
+target_coord = Vector2i(12, 4)
+objective_summary = "Crash the CPU at (12,4) in City Hall"
