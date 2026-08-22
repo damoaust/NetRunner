@@ -205,6 +205,8 @@ func _ready() -> void:
 			netrunner.position_changed.connect(_on_netrunner_position_changed_mission)
 		if not netrunner.stunned.is_connected(_on_stunned):
 			netrunner.stunned.connect(_on_stunned)
+		if not netrunner.program_derezzed.is_connected(_on_runner_program_derezzed):
+			netrunner.program_derezzed.connect(_on_runner_program_derezzed)
 
 	# Apply the selected cyberdeck from the workbench (if any)
 	if RunState.selected_deck:
@@ -1567,12 +1569,23 @@ func _derez_program(rez: RezzedProgram) -> void:
 		rez_color = rez.program.get_visual().get("color", rez_color)
 	_spawn_derez_explosion(rez_pos, rez_color)
 	rezzed_program_nodes.erase(rez)
+	if board_3d:
+		board_3d.remove_rezzed_proxy(rez)
 	rez.queue_free()
 	if board_renderer:
 		board_renderer.rezzed_program_nodes = rezzed_program_nodes
 		board_renderer.request_redraw()
 	log_to_terminal("De-rezzing '%s' — returned to deck memory.\n" % prog_name)
 	update_deck_info()
+
+# Triggered when an opposing ICE derezzes a runner's program.
+func _on_runner_program_derezzed(prog: NetProgram) -> void:
+	if not is_instance_valid(netrunner):
+		return
+	var prog_color: Color = Color(1, 0.3, 0.1)
+	if prog:
+		prog_color = prog.get_visual().get("color", prog_color)
+	_spawn_derez_explosion(netrunner.current_position, prog_color)
 
 # Spawn a fire-and-forget de-rez explosion effect at `grid_pos`. The effect
 # node is added as a child of the BoardRenderer (same parent as the
@@ -2532,27 +2545,7 @@ func _on_jack_out_pressed() -> void:
 	if is_instance_valid(netrunner) and netrunner.is_stunned:
 		log_to_terminal("Cannot jack out while stunned — unconscious in meatspace!\n")
 		return
-	# Busted check FIRST — before clearing trace (the summary needs it). If the
-	# runner's accumulated trace has hit the threshold, NetWatch arrests them
-	# on jack-out: permadeath, run ends in a BUSTED game-over.
-	if RunState.accumulated_trace >= BUSTED_THRESHOLD:
-		log_to_terminal("BUSTED — NetWatch traced your signal and busted you on jack-out. They confiscated everything.\n")
-		var summary: Dictionary = {
-			"cause": "Busted",
-			"trace": RunState.accumulated_trace,
-			"credits": RunState.credits,
-			"loot_count": RunState.loot.size(),
-			"files_count": RunState.carried_files.size(),
-			"datafort": RunState.selected_subnet_path,
-			"security_tier": RunState.selected_security_tier,
-			}
-		MetaState.record_run(summary)
-		RunState.last_death_cause = "Busted"
-		RunState.last_run_summary = summary
-		_game_over_queued = true
-		if is_inside_tree():
-			get_tree().change_scene_to_file("res://scenes/ui/GameOver.tscn")
-		return
+	# High trace values prevent tracking and we will address Netwatch interactions in future features.
 	# Successful jack-out — escape with loot intact to fence at the hub.
 	# Ends the run: trace + run context cleared, back to the Workbench.
 	log_to_terminal("Jacking out...\n")

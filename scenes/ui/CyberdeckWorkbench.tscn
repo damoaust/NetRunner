@@ -122,9 +122,10 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-current_tab = 0
+current_tab = 2
 
 [node name="Loadout" type="HBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=702334731]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -532,9 +533,6 @@ layout_mode = 2
 size_flags_vertical = 3
 metadata/_tab_index = 1
 
-[node name="UnlockRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/SHOP" unique_id=295451701]
-layout_mode = 2
-
 [node name="Grid" type="GridContainer" parent="Margin/RootVBox/Tabs/SHOP" unique_id=1220882878]
 layout_mode = 2
 size_flags_vertical = 3
@@ -713,26 +711,10 @@ size_flags_horizontal = 3
 text = "SELL ALL"
 
 [node name="MISSIONS" type="VBoxContainer" parent="Margin/RootVBox/Tabs" unique_id=940278442]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/separation = 4
 metadata/_tab_index = 2
-
-[node name="MissionHeaderRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS" unique_id=940278443]
-layout_mode = 2
-
-[node name="MissionHeader" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionHeaderRow" unique_id=940278444]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"MyHeader"
-text = "MISSIONS BOARD"
-
-[node name="MissionRefreshLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionHeaderRow" unique_id=940278445]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-text = "Next contract in: —"
-horizontal_alignment = 2
 
 [node name="MissionGrid" type="GridContainer" parent="Margin/RootVBox/Tabs/MISSIONS" unique_id=940278446]
 layout_mode = 2
@@ -796,24 +778,20 @@ text = "— select a contract —"
 [node name="MissionType" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278458]
 unique_name_in_owner = true
 layout_mode = 2
-text = ""
 
 [node name="MissionLocation" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278459]
 unique_name_in_owner = true
 layout_mode = 2
-text = ""
 
 [node name="MissionObjective" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278460]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-text = ""
 
 [node name="MissionReward" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278461]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2, 1, 0.4, 1)
-text = ""
 
 [node name="MissionDesc" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/DetailPanel/VBox" unique_id=940278462]
 unique_name_in_owner = true
@@ -821,47 +799,45 @@ custom_minimum_size = Vector2(0, 90)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 1, 0.78, 1)
 autowrap_mode = 3
-text = ""
 
-[node name="ActivePanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/MISSIONS" unique_id=940278463]
+[node name="ActivePanel" type="PanelContainer" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid" unique_id=940278463]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel" unique_id=940278464]
+[node name="VBox" type="VBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel" unique_id=940278464]
 layout_mode = 2
 
-[node name="Header" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278465]
+[node name="Header" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel/VBox" unique_id=940278465]
 layout_mode = 2
 theme_type_variation = &"MyHeader"
 text = "ACTIVE CONTRACT"
 
-[node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278466]
+[node name="Rule" type="ColorRect" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel/VBox" unique_id=940278466]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 color = Color(0, 0.45490196, 1, 0.5764706)
 
-[node name="ActiveMissionLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278467]
+[node name="ActiveMissionLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel/VBox" unique_id=940278467]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.25, 1, 0.6, 1)
 text = "No active contract."
 
-[node name="ActiveObjectiveLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278468]
+[node name="ActiveObjectiveLabel" type="Label" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel/VBox" unique_id=940278468]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
-text = ""
 
-[node name="ActiveButtonRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox" unique_id=940278469]
+[node name="ActiveButtonRow" type="HBoxContainer" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel/VBox" unique_id=940278469]
 layout_mode = 2
 
-[node name="HandInMissionButton" type="Button" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox/ActiveButtonRow" unique_id=940278470 groups=["pulse_buttons"]]
+[node name="HandInMissionButton" type="Button" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel/VBox/ActiveButtonRow" unique_id=940278470 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "HAND IN CONTRACT"
 
-[node name="AbandonMissionButton" type="Button" parent="Margin/RootVBox/Tabs/MISSIONS/ActivePanel/VBox/ActiveButtonRow" unique_id=940278471 groups=["pulse_buttons"]]
+[node name="AbandonMissionButton" type="Button" parent="Margin/RootVBox/Tabs/MISSIONS/MissionGrid/ActivePanel/VBox/ActiveButtonRow" unique_id=940278471 groups=["pulse_buttons"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

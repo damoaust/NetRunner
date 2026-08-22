@@ -4,6 +4,7 @@ extends Node2D
 signal position_changed(new_pos: Vector2i)
 signal interacted_with_tile(tile_data: CP2020TileData, pos: Vector2i)
 signal deck_updated()
+signal program_derezzed(program: NetProgram)
 signal message_logged(msg: String)
 signal health_changed(current_health: int, max_health: int)
 signal shield_raised(program: NetProgram)
@@ -303,6 +304,7 @@ func damage_program(amount: int, attacker_name: String) -> void:
 	message_logged.emit("%s's DEREZ_ICE hits %s for %d (Integrity %d/%d)." % [attacker_name, target.program_name, amount, new_int, target.strength])
 	if new_int <= 0:
 		message_logged.emit("%s DEREZZED! Program crashed — clogging MU (clear it to free memory)." % target.program_name)
+		program_derezzed.emit(target)
 		deck_updated.emit()
 
 # Directly damage a specific program (used by the runner's anti-IC opposed
@@ -318,6 +320,7 @@ func damage_specific_program(prog: NetProgram, amount: int, attacker_name: Strin
 	message_logged.emit("%s hits %s for %d (Integrity %d/%d)." % [attacker_name, prog.program_name, amount, new_int, prog.strength])
 	if new_int <= 0:
 		message_logged.emit("%s DEREZZED! Program crashed — clogging MU (clear it to free memory)." % prog.program_name)
+		program_derezzed.emit(prog)
 		deck_updated.emit()
 
 # Clear a crashed (integrity 0) program from the deck, freeing its MU. Called

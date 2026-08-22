@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 RunState="*res://scripts/autoload/run_state.gd"
 MetaState="*res://scripts/autoload/meta_state.gd"
 McpInteractionServer="*res://autoload/mcp_interaction_server.gd"
+
 [display]
 
 window/size/viewport_width=1920
