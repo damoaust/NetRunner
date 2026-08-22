@@ -1,12 +1,12 @@
 [gd_resource type="Resource" script_class="Cyberdeck" format=3 uid="uid://d2g5vsrs436ao"]
 
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_x0hyd"]
-[ext_resource type="Resource" uid="uid://dbsraorurql1m" path="res://data/codecracker.tres" id="2_c8vba"]
+[ext_resource type="Resource" uid="uid://dfw5c76bl6480" path="res://data/codecracker.tres" id="2_c8vba"]
 [ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_tsrmj"]
 [ext_resource type="Resource" uid="uid://b8bjpni7mu108" path="res://data/worm.tres" id="3_kylw5"]
 [ext_resource type="Resource" uid="uid://c8mm5nxvjwuc" path="res://data/hammer.tres" id="4_dnonk"]
 [ext_resource type="Resource" uid="uid://by6m0ajyn5bm2" path="res://data/shield.tres" id="5_y8atb"]
-[ext_resource type="Resource" uid="uid://bxf3rnkpngeh3" path="res://data/killer2.tres" id="6_87luw"]
+[ext_resource type="Resource" uid="uid://ddwd6bm8dh4g7" path="res://data/killer2.tres" id="6_87luw"]
 [ext_resource type="Resource" uid="uid://dq0ccst4vu0ry" path="res://data/wizardsbook.tres" id="7_7015w"]
 [ext_resource type="Resource" uid="uid://b4jnan1twtjo" path="res://data/killer4.tres" id="8_kylw5"]
 
