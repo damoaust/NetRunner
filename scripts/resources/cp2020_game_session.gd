@@ -628,12 +628,17 @@ func _input(event: InputEvent) -> void:
 		var grid_x: int = floori(mouse_pos.x / cs)
 		var grid_y: int = floori((mouse_pos.y - go_y) / cs)
 		var coord := Vector2i(grid_x, grid_y)
+		var interactable := false
 		if grid_x >= 0 and grid_x < current_layout.columns and grid_y >= 0 and grid_y < current_layout.rows:
 			board_renderer.hovered_coord = coord
-			board_renderer.hover_interactable = _is_hover_interactable(coord)
+			interactable = _is_hover_interactable(coord)
+			board_renderer.hover_interactable = interactable
 		else:
 			board_renderer.hovered_coord = Vector2i(-1, -1)
 			board_renderer.hover_interactable = false
+			
+		if board_3d:
+			board_3d.update_hover_proxy(board_renderer.hovered_coord, interactable, current_layout.current_floor)
 
 	# Right-click is handled here in _input (NOT _unhandled_input) because the root
 	# Control node's GUI system consumes mouse events before _unhandled_input fires.

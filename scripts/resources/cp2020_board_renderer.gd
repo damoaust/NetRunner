@@ -70,8 +70,6 @@ extends Node2D
 @export_group("Floor HUD")
 @export var color_flash: Color = Color(1.0, 1.0, 1.0, 1.0)
 
-@export_group("Hover Highlight")
-@export var color_hover_outline: Color = Color(1.0, 1.0, 1.0, 0.9)
 
 # Reference to the current layout being displayed
 var current_layout: CP2020DatafortLayout
@@ -138,7 +136,6 @@ func _draw() -> void:
 	if current_layout:
 		draw_grid(self, current_layout)
 	_draw_floor_hud()
-	_draw_hover_highlight()
 
 # Persistent HUD floor label (top header area) + centered floor-change flash.
 # The HUD label always shows the current floor so the player knows which
@@ -545,21 +542,3 @@ func _draw_worm_overlay(canvas: CanvasItem, tile_data: CP2020TileData, cell_rect
 		var txt := "%d/%d" % [tile_data.worm_integrity, tile_data.worm_max_integrity]
 		var font := _get_default_font()
 		canvas.draw_string(font, center + Vector2(-10, s + 12.0), txt, HORIZONTAL_ALIGNMENT_CENTER, 20, 8, worm_color)
-
-
-# ─── Hover highlight ───
-# Draws a neon rect outline over the hovered tile when hover_interactable is
-# true (i.e. the tile offers a right-click context menu). Drawn directly in
-# the board renderer's _draw() — no shader, no BackBufferCopy, no child node.
-# Inset by 2px so the outline sits just inside the tile border.
-func _draw_hover_highlight() -> void:
-	if not hover_interactable or hovered_coord.x < 0:
-		return
-	const _inset: int = 2
-	var rect := Rect2(
-		float(hovered_coord.x * cell_size + _inset),
-		float(grid_offset_y + hovered_coord.y * cell_size + _inset),
-		float(cell_size - _inset * 2),
-		float(cell_size - _inset * 2)
-	)
-	draw_rect(rect, color_hover_outline, false, 2.0)

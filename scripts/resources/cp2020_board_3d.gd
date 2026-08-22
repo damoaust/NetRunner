@@ -138,6 +138,10 @@ var _rezzed_material: StandardMaterial3D
 var _entry_arrow_up_material: StandardMaterial3D
 var _entry_arrow_down_material: StandardMaterial3D
 
+# The outline shader material applied as material_overlay on the hovered entity's meshes.
+var _hover_material: ShaderMaterial
+var _currently_hovered_meshes: Array[MeshInstance3D] = []
+
 
 func _ready() -> void:
 	# Create shared materials up front; actual SubViewport/camera/world setup
@@ -228,6 +232,15 @@ func _create_infrastructure() -> void:
 	# Give the SubViewport its own 3D world so the Camera3D and
 	# WorldEnvironment inside it actually render.
 	sub_viewport.own_world_3d = true
+	# This viewport renders only 3D content — disable 2D MSAA to avoid the
+	# "2D MSAA enabled with no 2D content" performance warning.
+	sub_viewport.msaa_2d = Viewport.MSAA_DISABLED
+	# Anti-alias the 3D pass. The hover highlight is a thin, high-contrast
+	# Fresnel rim drawn over proxy silhouettes — without AA it staircases
+	# badly (the "pixelated outline" symptom). MSAA covers geometry edges;
+	# FXAA smooths the shader-driven rim alpha that MSAA can't reach.
+	sub_viewport.msaa_3d = Viewport.MSAA_4X
+	sub_viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	add_child(sub_viewport)
 
 	world_root = Node3D.new()
@@ -318,6 +331,12 @@ func create_pip_preview() -> void:
 
 # Create all shader/standard materials for 3D tile meshes.
 func _create_materials() -> void:
+	_hover_material = ShaderMaterial.new()
+	var outline_shader = preload("res://scripts/shaders/3d_outline.gdshader")
+	_hover_material.shader = outline_shader
+	_hover_material.set_shader_parameter("outline_color", Color(1.0, 1.0, 1.0, 1.0))
+	_hover_material.set_shader_parameter("outline_thickness", 0.05)
+
 	# Wall: cyan neon edges on a visible teal block (top-down needs a
 	# distinctly-coloured fill so walls read as solid blocks against the
 	# dark floor, not just thin outlines).
@@ -788,6 +807,10 @@ func _spawn_proxy(scene: PackedScene, default_size: Vector3, material: Material,
 		node.position = grid_to_3d(coord, floor_idx)
 		# Raise the model so its AABB bottom sits on the floor surface.
 		node.position.y = floor_idx * floor_gap - aabb.position.y
+	# Tag with grid coord and floor for hover lookup (floor needed for multi-floor grids
+	# where the same coord exists on multiple floors).
+	node.set_meta("grid_coord", coord)
+	node.set_meta("grid_floor", floor_idx)
 	world_root.add_child(node)
 	return node
 
@@ -872,6 +895,9 @@ func spawn_runner_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
 		_runner_proxy.queue_free()
 	# Diamond top-down (box rotated 45°) like the 2D runner diamond.
 	_runner_proxy = _spawn_proxy(runner_mesh, Vector3(cell_size * 0.5, 20.0, cell_size * 0.5), _runner_material, coord, floor_idx, 45.0)
+	if _runner_proxy != null:
+		_runner_proxy.set_meta("grid_coord", coord)
+		_runner_proxy.set_meta("grid_floor", floor_idx)
 	# Defensive-buff glow shell (Shield/Aegis/Armor). Sibling of the proxy
 	# under world_root so the custom .glb's authored scale doesn't distort
 	# the sphere; positioned manually to follow the runner. Hidden until a
@@ -884,6 +910,8 @@ func update_runner_proxy(coord: Vector2i, floor_idx: int = 0) -> void:
 		return
 	_runner_proxy.position = grid_to_3d(coord, floor_idx)
 	_runner_proxy.position.y = floor_idx * floor_gap - _runner_proxy.get_meta("aabb_bottom", 0.0)
+	_runner_proxy.set_meta("grid_coord", coord)
+	_runner_proxy.set_meta("grid_floor", floor_idx)
 	# Keep the glow shell centred on the runner as it moves.
 	_position_runner_glow(coord, floor_idx)
 
@@ -1395,3 +1423,72 @@ func resize_viewport(width: int, height: int) -> void:
 # the field is enough — the new zoom takes effect on the very next frame.
 func set_zoom_factor(z: float) -> void:
 	_zoom_factor = clampf(z, 0.1, 10.0)
+
+func _get_all_meshes(node: Node, arr: Array[MeshInstance3D]) -> void:
+	if node is MeshInstance3D:
+		arr.append(node)
+	for child in node.get_children():
+		_get_all_meshes(child, arr)
+
+# Update the 3D hover highlight by applying the outline shader as a
+# material_overlay on the actual 3D model at the hovered coord/floor.
+# Uses "grid_coord" and "grid_floor" metadata stored on every proxy at spawn
+# time, so same-coord tiles on different floors are never confused.
+func update_hover_proxy(coord: Vector2i, is_interactable: bool, floor_idx: int = 0) -> void:
+	# Clear existing highlight.
+	for m in _currently_hovered_meshes:
+		if is_instance_valid(m):
+			m.material_overlay = null
+	_currently_hovered_meshes.clear()
+
+	if not is_interactable or coord.x < 0:
+		return
+
+	# Inline helper: true when a proxy's stored coord+floor match the cursor.
+	var _matches := func(proxy: Node3D) -> bool:
+		return (proxy.get_meta("grid_coord", Vector2i(-1, -1)) == coord
+				and proxy.get_meta("grid_floor", -1) == floor_idx)
+
+	# Priority order: runner > rezzed programs > NPCs > ICE > worm > entry arrow > tile mesh.
+	var target_proxy: Node3D = null
+
+	if _runner_proxy != null and is_instance_valid(_runner_proxy) and _matches.call(_runner_proxy):
+		target_proxy = _runner_proxy
+
+	if target_proxy == null:
+		for proxy in _rezzed_proxies.values():
+			if is_instance_valid(proxy) and _matches.call(proxy):
+				target_proxy = proxy
+				break
+
+	if target_proxy == null:
+		for proxy in _npc_proxies.values():
+			if is_instance_valid(proxy) and _matches.call(proxy):
+				target_proxy = proxy
+				break
+
+	if target_proxy == null:
+		for proxy in _ice_meshes.values():
+			if is_instance_valid(proxy) and _matches.call(proxy):
+				target_proxy = proxy
+				break
+
+	if target_proxy == null and _worm_proxies.has(coord):
+		var wp: Node3D = _worm_proxies[coord]
+		if is_instance_valid(wp) and _matches.call(wp):
+			target_proxy = wp
+
+	if target_proxy == null and _entry_arrow_proxies.has(coord):
+		var ep: Node3D = _entry_arrow_proxies[coord]
+		if is_instance_valid(ep) and _matches.call(ep):
+			target_proxy = ep
+
+	if target_proxy == null and _tile_proxy_by_coord.has(coord):
+		var tp: Node3D = _tile_proxy_by_coord[coord]
+		if is_instance_valid(tp) and _matches.call(tp):
+			target_proxy = tp
+
+	if target_proxy != null:
+		_get_all_meshes(target_proxy, _currently_hovered_meshes)
+		for m in _currently_hovered_meshes:
+			m.material_overlay = _hover_material
