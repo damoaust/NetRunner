@@ -1,5 +1,6 @@
 [gd_resource type="Resource" script_class="Cyberdeck" format=3 uid="uid://d2g5vsrs436ao"]
 
+[ext_resource type="Script" uid="uid://bv2m5f4xd44g6" path="res://scripts/resources/cp2020_deck_module.gd" id="1_dnonk"]
 [ext_resource type="Script" uid="uid://bpf1htwhbqhr1" path="res://scripts/resources/cp2020_programs.gd" id="1_x0hyd"]
 [ext_resource type="Resource" uid="uid://dfw5c76bl6480" path="res://data/codecracker.tres" id="2_c8vba"]
 [ext_resource type="Script" uid="uid://c8r70jm1siw14" path="res://scripts/resources/cp2020_cyberdecks.gd" id="2_tsrmj"]
@@ -13,6 +14,5 @@
 [resource]
 script = ExtResource("2_tsrmj")
 price = 2000
-upgrade_slots = 3
 installed_programs = Array[ExtResource("1_x0hyd")]([ExtResource("2_c8vba"), ExtResource("3_kylw5"), ExtResource("4_dnonk"), ExtResource("5_y8atb"), ExtResource("6_87luw"), ExtResource("7_7015w"), ExtResource("8_kylw5")])
 metadata/_custom_type_script = "uid://c8r70jm1siw14"
