@@ -8,6 +8,15 @@ const POPUP_THEME := preload("res://scripts/resources/cp2020_theme.gd")
 # Variable to hold our dynamically generated menu
 var _dynamic_menu: PopupMenu = null
 
+# Screen-space host for the right-click PopupMenu. Kept separate from the
+# board's World2D canvas so the RunnerCamera2D zoom does not scale the menu
+# (children of a Node2D that shares the board's canvas are zoomed by the
+# Camera2D; a CanvasLayer renders in its own screen-space layer, like the UI
+# HUD, and is immune to camera zoom). Created lazily on first right-click
+# (see handle_right_click). Mirrors the city-grid HUDLayer popup pattern
+# (cp2020_city_grid.gd _open_return_popup).
+var _popup_layer: CanvasLayer = null
+
 # Stores programs for lambda closure (survives after _gui_input returns)
 var _current_programs: Array[NetProgram] = []
 
@@ -49,9 +58,19 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 		return
 
 	# --- DYNAMIC MENU CREATION ---
+	# Host the PopupMenu in a dedicated CanvasLayer (screen-space, like the HUD)
+	# instead of as a child of this Node2D. Children of a Node2D that shares the
+	# board's World2D canvas are scaled by the RunnerCamera2D zoom, which made
+	# the right-click menu grow/shrink with the camera. A CanvasLayer renders
+	# in its own screen-space layer, independent of the Camera2D — matching how
+	# the UI CanvasLayer stays fixed.
+	if not _popup_layer:
+		_popup_layer = CanvasLayer.new()
+		_popup_layer.layer = 10  # above the UI HUD so the menu is never hidden
+		add_child(_popup_layer)
 	if not _dynamic_menu:
 		_dynamic_menu = PopupMenu.new()
-		add_child(_dynamic_menu) # Add it to the scene tree so it can be drawn
+		_popup_layer.add_child(_dynamic_menu)
 		POPUP_THEME.apply_cyberpunk_theme(_dynamic_menu, 16)
 
 	_dynamic_menu.clear()

@@ -81,6 +81,16 @@ const ZOOM_STEP: float = 1.15
 # makes _on_flatlined / _on_jack_out_pressed idempotent and null-safe.
 var _game_over_queued: bool = false
 
+# Auto-cycle queue: when the player attempts an action-consuming interaction
+# while mid-movement (movement action active, 1-4 spaces used), the action
+# can't fire this turn — the action is committed to movement. Instead of
+# forcing a Space press, we queue the intent, end the movement action
+# (actions_remaining -> 0 -> _check_actions_exhausted ends the round ->
+# adversary phase -> next round), and replay the queued action at the start
+# of the next netrunner turn (_on_turn_ended). One slot — a new attempt
+# during the cycle replaces it. Cleared on replay or scene exit.
+var _pending_action: Dictionary = {}  # {action_name, target_coord, program}
+
 # Default visual for enemy attacks that don't carry a NetProgram reference
 # (NPC netrunners, datafort resident programs). See NetProgram.ATTACK_VISUALS
 # for the per-effect-type config used by rezzed programs + ICE.
@@ -778,6 +788,37 @@ func _has_available_program_of_type(effect_type: NetProgram.EffectType) -> bool:
 			return true
 	return false
 
+# Returns true (caller should abort) when `action_name` is one of the four
+# action-consuming interactions, it's the runner's turn, programs aren't
+# blocked, and the ONLY reason can_use_programs() is false is that the runner
+# is mid-movement. In that case: queue the intent, spend the movement action
+# (which drops actions_remaining to 0 so _check_actions_exhausted ends the
+# round), and let the replay in _on_turn_ended fire it next turn. Returns
+# false (proceed, or show the existing block message) for every other case —
+# deck crash, genuinely out of actions, not the runner's turn, or a non-
+# action-consuming interaction. _movement_action_active is read across the
+# boundary here as it already is at the use_program gate below.
+func _try_defer_action_for_cycle(action_name: String, target_coord: Vector2i, program: Variant) -> bool:
+	if turn_manager == null or not turn_manager.is_netrunner_turn:
+		return false
+	if turn_manager.can_use_programs():
+		return false
+	if turn_manager.programs_blocked:
+		return false
+	if not turn_manager._movement_action_active:
+		return false
+	if not (action_name in ["use_program", "rez_program", "attack_with_rezzed", "command_demon"]):
+		return false
+	_pending_action = {
+		"action_name": action_name,
+		"target_coord": target_coord,
+		"program": program,
+	}
+	log_to_terminal("Ending movement — cycling to next turn to act.\n")
+	turn_manager.end_movement_action()
+	_check_actions_exhausted()
+	return true
+
 func _on_action_triggered(action_name: String, target_coord: Vector2i, program = null) -> void:
 	# Mission hook: SABOTAGE objectives complete when an offensive/interact
 	# action targets the exact mission coordinate in the target subnet. The
@@ -793,6 +834,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 		"use_program":
 			if program is NetProgram and current_layout:
 				if turn_manager and not turn_manager.can_use_programs():
+					if _try_defer_action_for_cycle("use_program", target_coord, program):
+						return
 					if turn_manager.programs_blocked:
 						log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
 					elif turn_manager._movement_action_active:
@@ -867,6 +910,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 			# adjacent tile) and auto-follows thereafter.
 			if program is NetProgram:
 				if turn_manager and not turn_manager.can_use_programs():
+					if _try_defer_action_for_cycle("rez_program", target_coord, program):
+						return
 					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
 					return
 				if _rez_program(program as NetProgram):
@@ -886,6 +931,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 			if program is RezzedProgram and current_layout:
 				var rez_node: RezzedProgram = program as RezzedProgram
 				if turn_manager and not turn_manager.can_use_programs():
+					if _try_defer_action_for_cycle("attack_with_rezzed", target_coord, program):
+						return
 					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
 					return
 				if not is_instance_valid(rez_node) or rez_node.program == null:
@@ -908,6 +955,8 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 						var demon_node: DemonNode = payload[0]
 						var sub_idx: int = int(payload[1])
 						if turn_manager and not turn_manager.can_use_programs():
+							if _try_defer_action_for_cycle("command_demon", target_coord, program):
+								return
 							log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
 							return
 						if not is_instance_valid(demon_node):
@@ -2168,9 +2217,18 @@ func spawn_datafort() -> void:
 	update_datafort_info()
 
 
-func _on_cpu_state_changed(_coord: Vector2i) -> void:
+func _on_cpu_state_changed(coord: Vector2i) -> void:
 	if board_renderer:
 		board_renderer.request_redraw()
+	# Refresh the 3D CPU proxy so the crashed-state material + 'X' marker
+	# appear immediately on Krash and disappear on reboot (the proxy is
+	# otherwise only rebuilt on floor change / load). refresh_tile_3d tracks
+	# only the current floor, so gate on current_floor + CONTROL_NODE; a
+	# crash/reboot on another floor rebuilds its proxy on the next floor change.
+	if board_3d and current_layout:
+		var tile := current_layout.get_tile(coord, current_floor)
+		if tile != null and tile.tile_type == CP2020DatafortLayout.TileType.CONTROL_NODE:
+			board_3d.refresh_tile_3d(coord, tile, current_floor)
 	update_datafort_info()
 
 
@@ -2267,6 +2325,29 @@ func _on_turn_ended(is_netrunner_turn: bool) -> void:
 				_update_security_dispatch_hud()
 				_trigger_security_raid()
 				return
+		# Replay an action deferred from the previous turn's auto-cycle (the
+		# player acted while mid-movement). Done after the per-turn ticks so
+		# deck-crash / stun are applied first; call_deferred breaks the
+		# synchronous re-entrancy on enemy-free boards (end_round ->
+		# start_netrunner_turn -> this signal) so the replay runs on a clean
+		# stack. On a fresh turn _movement_action_active is false, so a still-
+		# blocked replay (e.g. deck crashed by an enemy during the cycle) logs
+		# the normal block message and is NOT re-queued — no loop.
+		if not _pending_action.is_empty():
+			call_deferred("_replay_pending_action")
+
+# Snapshot, clear, and re-dispatch the deferred action on the fresh turn.
+# Called via call_deferred from _on_turn_ended. Guards against scene exit
+# between scheduling and execution (flatline / busted mid-cycle).
+func _replay_pending_action() -> void:
+	if not is_inside_tree():
+		_pending_action = {}
+		return
+	if _pending_action.is_empty():
+		return
+	var pending := _pending_action
+	_pending_action = {}
+	_on_action_triggered(pending["action_name"], pending["target_coord"], pending["program"])
 
 # Worm proxy colour from a tile's worm integrity: purple (full) -> orange
 # (damaged) -> red (critical). Mirrors the 2D worm overlay palette.

@@ -91,6 +91,13 @@ var _tile_meshes: Array[Node3D] = []
 # wall breach, worm open) without rebuilding the whole floor (which would
 # also wipe ICE proxies). Cleared alongside _tile_meshes in clear_walls.
 var _tile_proxy_by_coord: Dictionary = {}  # Vector2i -> Node3D
+# 3D 'X' markers above crashed CPU proxies, keyed by grid coord. Siblings of
+# the CPU proxy under world_root (world-space positioned) so the marker sits
+# above the CPU regardless of whether the proxy uses the default box or a
+# custom control_node_mesh (custom scenes keep their own materials, so the
+# dimmed-red material swap alone is not a reliable crash indicator). Freed on
+# reboot (crashed=false), floor change (clear_walls), and tile rebuild.
+var _cpu_crash_indicators: Dictionary = {}  # Vector2i -> Node3D
 var _beacon_meshes: Array[MeshInstance3D] = []
 var _ice_meshes: Dictionary = {}  # entity (Node) -> Node3D
 # 3D proxies for on-grid entities (replace the 2D sprites/glyphs in 3D mode).
@@ -658,6 +665,14 @@ func clear_walls() -> void:
 			w.queue_free()
 	_tile_meshes.clear()
 	_tile_proxy_by_coord.clear()
+	# Crashed-CPU 'X' markers are floor-bound like the tile proxies; free them
+	# on floor change. sync_from_layout re-spawns markers for crashed CPUs on
+	# the new floor via spawn_control_node.
+	for key in _cpu_crash_indicators.keys():
+		var m: Node3D = _cpu_crash_indicators[key]
+		if is_instance_valid(m):
+			m.queue_free()
+	_cpu_crash_indicators.clear()
 	# NOTE: ICE 3D proxies (_ice_meshes) are NOT cleared here. They are entity
 	# proxies (like NPC/rezzed), positioned at their home-floor Y and gated by
 	# refresh_entity_proxy_visibility. They must persist across floor changes
@@ -716,6 +731,53 @@ func spawn_control_node(coord: Vector2i, crashed: bool, floor_idx: int = 0) -> v
 	if mesh != null:
 		_tile_meshes.append(mesh)
 		_tile_proxy_by_coord[coord] = mesh
+	# 3D 'X' marker above a crashed CPU (reliable indicator whether or not a
+	# custom control_node_mesh is assigned — custom scenes keep their own
+	# materials so the dimmed-red swap may not show). Removed on reboot.
+	if crashed:
+		_spawn_cpu_crash_indicator(coord, floor_idx)
+	else:
+		_remove_cpu_crash_indicator(coord)
+
+
+# Build a 3D 'X' marker (two crossed emissive red bars) floating above a
+# crashed CPU proxy, matching the 2D crashed-CPU 'X' semantics. A sibling of
+# the CPU proxy under world_root, positioned in world space so it sits above
+# the CPU whether the proxy is the default box or a custom control_node_mesh.
+# Tracked by coord in _cpu_crash_indicators; freed on rebuild/clear/reboot.
+func _spawn_cpu_crash_indicator(coord: Vector2i, floor_idx: int) -> void:
+	if world_root == null:
+		return
+	_remove_cpu_crash_indicator(coord)
+	var marker := Node3D.new()
+	marker.name = "CpuCrashIndicator"
+	var bar_len: float = cell_size * 0.7
+	var bar_thick: float = 3.0
+	var mat := _make_emissive_mat(Color(1.0, 0.1, 0.1), 2.2)
+	# Two bars rotated +/-45deg around Y form an 'X' in the XZ plane, which
+	# reads clearly under the top-down ortho camera.
+	for rot_y in [45.0, -45.0]:
+		var box := BoxMesh.new()
+		box.size = Vector3(bar_len, bar_thick, bar_thick)
+		var bar := MeshInstance3D.new()
+		bar.mesh = box
+		bar.material_override = mat
+		bar.rotation_degrees.y = rot_y
+		marker.add_child(bar)
+	marker.position = grid_to_3d(coord, floor_idx)
+	marker.position.y = floor_idx * floor_gap + cpu_height + 6.0
+	marker.set_meta("grid_coord", coord)
+	marker.set_meta("grid_floor", floor_idx)
+	world_root.add_child(marker)
+	_cpu_crash_indicators[coord] = marker
+
+
+func _remove_cpu_crash_indicator(coord: Vector2i) -> void:
+	if _cpu_crash_indicators.has(coord):
+		var m: Node3D = _cpu_crash_indicators[coord]
+		if is_instance_valid(m):
+			m.queue_free()
+		_cpu_crash_indicators.erase(coord)
 
 
 # Spawn a 3D ICE proxy for an ICE entity — the ICE's on-map visual in 3D
@@ -1117,6 +1179,12 @@ func refresh_tile_proxy_fog(layout: CP2020DatafortLayout, floor_idx: int) -> voi
 			continue
 		var tile = layout.get_tile(coord, floor_idx)
 		proxy.visible = tile != null and tile.is_explored
+	for coord in _cpu_crash_indicators.keys():
+		var proxy: Node3D = _cpu_crash_indicators[coord]
+		if not is_instance_valid(proxy):
+			continue
+		var tile = layout.get_tile(coord, floor_idx)
+		proxy.visible = tile != null and tile.is_explored
 
 
 # Toggle visibility of every entity proxy (ICE / NPC / rezzed program) based on
@@ -1399,6 +1467,11 @@ func refresh_tile_3d(coord: Vector2i, tile: CP2020TileData, floor_idx: int) -> v
 	var new_proxy: Node3D = _tile_proxy_by_coord.get(coord)
 	if new_proxy != null and is_instance_valid(new_proxy):
 		new_proxy.visible = tile.is_explored
+	# Match the crashed-CPU 'X' marker's visibility too (spawned by
+	# spawn_control_node when crashed) so it never shines through the fog.
+	var crash_ind: Node3D = _cpu_crash_indicators.get(coord)
+	if crash_ind != null and is_instance_valid(crash_ind):
+		crash_ind.visible = tile.is_explored
 
 
 # Resize the 3D camera's orthographic size to match the 2D rendering
