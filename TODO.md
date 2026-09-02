@@ -26,10 +26,11 @@
 ## Open Items (triaged from CODE_REVIEW.md + plan docs — feature/2.5d-visual-upgrade)
 
 Refactors:
-- [ ] Split `cyberdeck_workbench.gd` (1876 lines) into sub-scripts (CR §6.4).
-- [ ] Extract per-arm handlers from `_on_action_triggered`'s ~230-line match; collapse `handle_right_click`'s long if/elif (CR §7.3/§7.4).
-- [ ] De-duplicate `_can_travel_vertical` — the interaction handler mirrors the game session's authoritative one (CR §7.10).
-- [ ] World-map designer: delegate rendering to the shared `CP2020NeonGridRenderer` (CR §5.1 — city-grid half is done).
+- [x] Split `cyberdeck_workbench.gd` into sub-scripts (CR §6.4) — popup windows extracted to `WorkbenchSubroutinesWindow` / `WorkbenchUpgradesWindow` (1880 → 1529 lines). Shop + missions domains remain:
+- [ ] Continue workbench split: shop + missions domains into sub-scripts (1529 lines remain).
+- [x] Extract per-arm handlers from `_on_action_triggered`'s ~230-line match; collapse `handle_right_click`'s long if/elif (CR §7.3/§7.4).
+- [x] De-duplicate `_can_travel_vertical` — the interaction handler mirrors the game session's authoritative one (CR §7.10).
+- [x] World-map designer: delegate rendering to the shared renderer (CR §5.1 — new `CP2020WorldMapRenderer` used by runtime + designer).
 
 Bugs / polish:
 - [x] Add `Protection` to the workbench `PROGRAM_TYPE_NAMES` map (rendered "?") — renamed the enum member to `PROTECTION` and added it to both label maps (CR §3.7).
@@ -43,7 +44,7 @@ Data model / perf:
 - [x] `CP2020Floor.floor_index` removed entirely — array position is the floor index; designer add/remove resync was already correct, and nothing read the field (CR §3.5).
 - [x] `generate_theme.gd` palette consts now alias `CP2020Theme` instead of re-declaring Colors (CR §5.4).
 - [x] Designer canvas `_ready` no longer creates a throwaway layout; parent owns the lifecycle (CR §5.7).
-- [ ] Per-frame `queue_redraw()` still runs in `cp2020_netrunner` and the world-map `_process` (CR §8.3 — board renderer is already gated).
+- [x] Per-frame `queue_redraw()` resolved: netrunner skips redraw in 3D mode / when hidden; world map delegates to the renderer child (CR §8.3).
 
 Future (flagged in plans, not scheduled):
 - [ ] `follows_across_floors` per-program flag so tracker ICE (Hellhound, Flatline) can pursue across floors (multi-floor plan §"Design decision: floors as escape hatches").

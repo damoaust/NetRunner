@@ -194,4 +194,5 @@ Everything in §1–§7 shipped on `feature/2.5d-visual-upgrade`, verified again
 Deviations from this document:
 - **§2b lazy per-floor spawning was not built.** There is no `_spawned_floors` tracking or `_spawn_floor_entities()`. Instead `spawn_black_ice` / `spawn_npcs` / `spawn_datafort` spawn **every floor's entities up front** on `load_subnet`, and activity/rendering are gated by `home_floor` (off-floor entities exist but are dormant and invisible). Same player-visible behaviour as designed; different mechanism and memory profile.
 - `flash_floor_label()` takes no argument — it reads the current floor's `floor_name` from the layout itself (§3 sketched a `floor_name` parameter).
+- `CP2020Floor.floor_index` was later **removed entirely** — the array position is the floor index (a stored duplicate could go stale silently on inspector reordering; see CODE_REVIEW §3.5).
 - The **`follows_across_floors`** homing-ICE flag (see "Design decision: floors as escape hatches" above) remains unbuilt — tracked as a future item in `TODO.md`.

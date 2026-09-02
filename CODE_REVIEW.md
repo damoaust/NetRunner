@@ -524,14 +524,14 @@ Violates "typed GDScript everywhere" convention (ARCHITECTURE line 10).
 |---|------|--------|
 | 1 | "Copy All" added once per file (§7.1) | ✅ fixed — item moved outside the file loop |
 | 2 | Tie-resolution inconsistency (§7.2) | ✅ fixed — defender-favored via `CP2020Dice.roll_opposed` |
-| 3 | NPC shield model dead (§4.1/§4.2) | ✅ rebuilt on integrity + `_shield_cooldown`; `max_health`/`current_health` fields now dead (TODO) |
+| 3 | NPC shield model dead (§4.1/§4.2) | ✅ rebuilt on integrity + `_shield_cooldown`; dead `max_health`/`current_health` fields removed |
 | 4 | Datafort alternation broken (§4.3) | ✅ fixed — `i % 2` + empty-list fallback, exactly as prescribed |
 | 5 | Rez-spawn NPC floor gate (§7.5) | ✅ fixed — `npc.home_floor == current_floor` |
 | 6 | Armor not `[ACTIVE]` (§7.6) | ✅ fixed |
 | 7 | city_grid `_ready` resets net_time (§6.7) | ✅ fixed — reset contract documented in `_ready` |
 | 8 | Extract `GridEntityBase` (§4.7) | ✅ done — also fixes the §4.4/§4.5 unguarded awaits |
-| 9 | Split `cyberdeck_workbench.gd` (§6.4) | ⬜ open — still one file, now 1876 lines |
-| 10 | Split `_on_action_triggered` + `handle_right_click` (§7.3/§7.4) | ⬜ open |
+| 9 | Split `cyberdeck_workbench.gd` (§6.4) | ◐ partially — popup windows extracted (1880 → 1529 lines); shop + missions domains remain (TODO) |
+| 10 | Split `_on_action_triggered` + `handle_right_click` (§7.3/§7.4) | ✅ done — per-arm `_handle_*` methods, shared `_programs_available`/`_consume_program_action`, shared `_add_rezzed_attack_options`/`_add_demon_subroutine_options` |
 | 11 | Unify city-grid rendering (§5.1/§2.1) | ✅ city grid uses shared `CP2020NeonGridRenderer` · ⬜ world-map designer still inline |
 | 12 | `CP2020Dice.roll_opposed` (§2.2) | ✅ done — 5+ call sites |
 | 13 | Cache `_theme_font()` (§6.2/§5.8) | ✅ done in all three files |
