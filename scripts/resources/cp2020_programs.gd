@@ -10,7 +10,7 @@ enum ProgramType {
 	ANTI_SYSTEM,     # Crashes CPUs / erases memory[cite: 16]
 	UTILITY,         # Cloak, Stealth, Speed boosters[cite: 16]
 	ICE,             # Stationary defense programs running on nodes[cite: 16]
-	Protection       # Shield
+	PROTECTION       # Shield
 }
 
 enum EffectType { 

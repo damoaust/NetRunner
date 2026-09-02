@@ -21,6 +21,7 @@
 - `wire_mission_subnets.gd` — adds the Pirate BBS / Warez Node datafort entries to the Night City grid (idempotent).
 - `author_missions.gd` — regenerates the `data/missions/*.tres` library from the spec table (idempotent).
 - `test_missions_runner.gd` / `.tscn` — headless functional test runner (backs up + restores the user's run save).
+- `check_scripts.gd` / `.tscn` — full-compile gate: load()s every `.gd` in the project; run as a scene so autoloads resolve. Run: `godot --headless --path . res://scripts/dsh/check_scripts.tscn`.
 
 ## Open Items (triaged from CODE_REVIEW.md + plan docs — feature/2.5d-visual-upgrade)
 
@@ -31,17 +32,17 @@ Refactors:
 - [ ] World-map designer: delegate rendering to the shared `CP2020NeonGridRenderer` (CR §5.1 — city-grid half is done).
 
 Bugs / polish:
-- [ ] Add `Protection` to the workbench `PROGRAM_TYPE_NAMES` map (currently renders "?"); consider deriving `type` from `effect_type` (CR §3.6/§3.7).
-- [ ] Workbench HP label prints `max_health` twice — always reads full (CR §6.6).
-- [ ] Watchdog trace tie uses `>=` (attacker-favored) — align with the defender-favored roll convention (CR §4.9).
-- [ ] Copy-menu `fits` check doesn't decrement `free_mu` per file — display-only, `copy_all_files` handles MU correctly (CR §7.11).
-- [ ] Remove dead NPC `max_health` / `current_health` fields (shield model moved to integrity + cooldown; CR §4.1 leftover).
-- [ ] Persist the run save at the end of `start_new_life()` (CR §6.5 — `schema_version` half is done).
+- [x] Add `Protection` to the workbench `PROGRAM_TYPE_NAMES` map (rendered "?") — renamed the enum member to `PROTECTION` and added it to both label maps (CR §3.7).
+- [x] Workbench HP label printed `max_health` twice — now reads "MAX HP: n" (CR §6.6).
+- [x] Watchdog trace tie used `>=` (attacker-favored) — now `>`, defender-favored like every other opposed roll (CR §4.9).
+- [x] Copy-menu `fits` check now decrements `free_mu` per copyable file, matching `copy_all_files` (CR §7.11).
+- [x] Removed dead NPC `max_health` / `current_health` fields + template/spawn writes (shield model lives on integrity; CR §4.1). `TileData.npc_max_health` kept, documented deprecated.
+- [x] Persist the run save at the end of `start_new_life()` — already implemented (`save_run()` with explanatory comment); no change needed (CR §6.5).
 
 Data model / perf:
-- [ ] `CP2020Floor.floor_index` is a stored duplicate of the array position — derive it or re-sync on save so reordering can't go stale (CR §3.5).
-- [ ] `generate_theme.gd` re-declares the palette consts; read `CP2020Theme` instead (CR §5.4).
-- [ ] Designer canvas `_ready` still creates a throwaway layout that the parent immediately replaces (CR §5.7).
+- [x] `CP2020Floor.floor_index` removed entirely — array position is the floor index; designer add/remove resync was already correct, and nothing read the field (CR §3.5).
+- [x] `generate_theme.gd` palette consts now alias `CP2020Theme` instead of re-declaring Colors (CR §5.4).
+- [x] Designer canvas `_ready` no longer creates a throwaway layout; parent owns the lifecycle (CR §5.7).
 - [ ] Per-frame `queue_redraw()` still runs in `cp2020_netrunner` and the world-map `_process` (CR §8.3 — board renderer is already gated).
 
 Future (flagged in plans, not scheduled):

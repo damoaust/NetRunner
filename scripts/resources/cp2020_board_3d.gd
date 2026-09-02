@@ -19,8 +19,8 @@ extends Node3D
 @export var cpu_height: float = 14.0
 @export var beacon_height: float = 80.0
 # Vertical separation between stacked floors in 3D. Each floor's mesh group
-# is offset by floor_index * FLOOR_GAP on the Y axis so multi-floor dataforts
-# can be rebuilt per-floor.
+# is offset by its array index * FLOOR_GAP on the Y axis so multi-floor
+# dataforts can be rebuilt per-floor.
 @export var floor_gap: float = 50.0
 # Height of the top-down Camera3D above the floor. Orthographic projection
 # means the exact value only affects near/far clipping, not screen scale.

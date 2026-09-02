@@ -202,6 +202,7 @@ const PROGRAM_TYPE_NAMES: Dictionary = {
 	NetProgram.ProgramType.ANTI_SYSTEM: "Anti-System",
 	NetProgram.ProgramType.UTILITY: "Utility",
 	NetProgram.ProgramType.ICE: "ICE",
+	NetProgram.ProgramType.PROTECTION: "Protection",
 }
 
 # Cyberpunk theme palette. These mirror CP2020Theme (above) and are kept here
@@ -482,7 +483,9 @@ func _refresh_netrunner_panel() -> void:
 	# is a deck property, not a character stat, so it is not shown here.
 	stat_ref_label.text = "REF/INT/BODY: %d / %d / %d" % [ch.reflex, ch.intelligence, ch.body]
 	stat_luck_label.text = "LUCK: %d" % ch.luck
-	hp_label.text = "HP: %d / %d" % [ch.max_health, ch.max_health]
+	# The workbench is the hub — HP is always full here (wounds only exist
+	# mid-run), so display the character's max HP rather than max/max.
+	hp_label.text = "MAX HP: %d" % ch.max_health
 	wounds_label.text = "WOUNDS: NONE"
 	trace_label.text = "TRACE: %d / 100" % int(RunState.accumulated_trace)
 	net_cred_label.text = "EBANK: %d eb" % RunState.credits
@@ -590,6 +593,7 @@ func _type_short(t: NetProgram.ProgramType) -> String:
 		NetProgram.ProgramType.DETECTION: return "DET"
 		NetProgram.ProgramType.UTILITY: return "UTL"
 		NetProgram.ProgramType.ICE: return "ICE"
+		NetProgram.ProgramType.PROTECTION: return "PRO"
 		_: return "?"
 
 func _is_loaded(prog: NetProgram) -> bool:

@@ -792,8 +792,7 @@ func _on_add_floor() -> void:
 	if not current_layout:
 		return
 	var nf := CP2020Floor.new()
-	nf.floor_index = current_layout.get_floor_count()
-	nf.floor_name = "Floor %d" % nf.floor_index
+	nf.floor_name = "Floor %d" % current_layout.get_floor_count()
 	current_layout.floors.append(nf)
 	# Switch to the new floor.
 	current_layout.current_floor = current_layout.floors.size() - 1
@@ -810,9 +809,6 @@ func _on_remove_floor() -> void:
 	# Don't remove floor 0 if it's the only one with tiles — but allow
 	# removing any non-last floor. Clamp selection to a valid floor after.
 	current_layout.floors.remove_at(f)
-	# Re-index remaining floors.
-	for i in range(current_layout.floors.size()):
-		current_layout.floors[i].floor_index = i
 	current_layout.current_floor = clampi(f, 0, current_layout.floors.size() - 1)
 	grid_canvas.current_layout = current_layout
 	_hide_all_panels()

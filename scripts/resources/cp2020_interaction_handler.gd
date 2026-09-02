@@ -444,6 +444,11 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 						_dynamic_menu.set_item_disabled(item_idx, true)
 					else:
 						any_copyable = true
+						# Consume this file's MU so subsequent files in the menu
+						# are judged against the memory that remains after
+						# copying the earlier ones (matches copy_all_files).
+						if free_mu >= 0:
+							free_mu -= file.mu_size
 				# "Copy All" — added once (outside the per-file loop) so a tile
 				# with N files shows exactly one Copy All row. Disabled when no
 				# copyable+fitting file remains.

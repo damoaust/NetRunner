@@ -44,10 +44,13 @@ signal tile_moved(from: Vector2i, to: Vector2i, tile: CP2020TileData)
 
 
 func _ready() -> void:
-	if not current_layout:
-		current_layout = CP2020DatafortLayout.new()
-	fill_empty_tiles()
-	queue_redraw()
+	# No fallback layout here: the parent designer owns the canvas's layout
+	# lifecycle and assigns current_layout before use. _draw() and
+	# fill_empty_tiles() both null-guard, so any pre-setup frame is a no-op
+	# instead of creating 225 throwaway tile resources (CODE_REVIEW §5.7).
+	if current_layout:
+		fill_empty_tiles()
+		queue_redraw()
 
 
 func fill_empty_tiles() -> void:

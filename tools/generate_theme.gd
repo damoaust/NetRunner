@@ -8,15 +8,17 @@ extends Node
 
 const OUT_PATH := "res://themes/cyberpunk_theme.tres"
 
-# Palette (mirrors CP2020Theme const class).
-const COL_BG := Color(0.0, 0.07, 0.04, 1.0)
-const COL_PANEL := Color(0.02, 0.06, 0.04, 0.96)
-const COL_BORDER := Color(0.0, 1.0, 0.35, 0.65)
-const COL_BORDER_DIM := Color(0.0, 0.55, 0.3, 0.5)
-const COL_TEXT := Color(0.72, 1.0, 0.78)
-const COL_DIM := Color(0.42, 0.58, 0.5)
-const COL_GREEN := Color(0.2, 1.0, 0.4)
-const COL_GREY := Color(0.38, 0.45, 0.42)
+# Palette: single source of truth is the CP2020Theme const class — these
+# aliases reference its consts directly so the generated Theme and the
+# runtime palette can never drift apart (CODE_REVIEW §5.4).
+const COL_BG := CP2020Theme.COL_BG
+const COL_PANEL := CP2020Theme.COL_PANEL
+const COL_BORDER := CP2020Theme.COL_BORDER
+const COL_BORDER_DIM := CP2020Theme.COL_BORDER_DIM
+const COL_TEXT := CP2020Theme.COL_TEXT
+const COL_DIM := CP2020Theme.COL_DIM
+const COL_GREEN := CP2020Theme.COL_GREEN
+const COL_GREY := CP2020Theme.COL_GREY
 
 func _ready() -> void:
 	var theme := Theme.new()

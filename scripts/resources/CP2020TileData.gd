@@ -68,6 +68,9 @@ func _init() -> void:
 @export var npc_strength: int = 0
 @export var npc_max_ap: int = 0
 @export var npc_max_integrity: int = 0
+# Deprecated/unwired: NPCs no longer carry a health model (damage goes through
+# current_integrity). Kept only so existing authored .tres files load cleanly;
+# the designer still writes it but no runtime code reads it.
 @export var npc_max_health: int = 0
 @export var npc_max_mu: int = 0
 @export var npc_deck_name: String = ""

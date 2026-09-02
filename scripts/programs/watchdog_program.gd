@@ -37,7 +37,11 @@ func take_ice_turn(ice: BlackIce, target_pos: Vector2i, layout: CP2020DatafortLa
 			ice.emit_log("TRACE CHECK: %s rolls 1D10+%d = %d vs your LDL Trace Value %d (+%d dampener) = %d." % [program_name, strength, trace_roll, RunState.accumulated_trace, dampening, trace_target])
 		else:
 			ice.emit_log("TRACE CHECK: %s rolls 1D10+%d = %d vs your LDL Trace Value %d." % [program_name, strength, trace_roll, trace_target])
-		if trace_roll >= trace_target:
+		# Ties go to the runner (defender) — matches the project-wide
+		# defender-favored opposed-roll convention. The trace only succeeds on
+		# a strictly higher roll. A trace value of 0 (no LDL bounces, no
+		# dampener) is still trivially pinpointed by any roll.
+		if trace_roll > trace_target:
 			ice.emit_log("TRACE SUCCESS — %s has pinpointed your physical location! Meatspace team dispatched." % program_name)
 			ice.emit_trace_succeeded(self)
 		else:

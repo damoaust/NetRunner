@@ -29,7 +29,6 @@ enum Disposition { HOSTILE, NEUTRAL }
 @export var max_ap: int = 3
 @export var strength: int = 4
 @export var max_integrity: int = 4
-@export var max_health: int = 10
 @export var max_memory_units: int = 10
 @export var installed_programs: Array[NetProgram] = []
 
@@ -46,7 +45,6 @@ enum Disposition { HOSTILE, NEUTRAL }
 var source_program_paths: Array[String] = []
 
 var current_integrity: int = 4
-var current_health: int = 10
 var _activated: bool = false
 # Tracks the previous turn's LoS state so transition messages log only on
 # the seen<->lost change.
@@ -74,7 +72,6 @@ func _ready() -> void:
 func initialize(start_pos: Vector2i, layout_size: Vector2i) -> void:
 	super.initialize(start_pos, layout_size)
 	current_integrity = max_integrity
-	current_health = max_health
 	_apply_glyph_style()
 
 

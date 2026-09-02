@@ -130,24 +130,24 @@ var _watchdog_alerted: Dictionary = {}
 # at spawn time so cached .tres resources are never mutated.
 const TIER_NPC_TEMPLATES: Dictionary = {
 	CP2020SecurityTier.Tier.GREY: {
-		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Scout",   "deck": "Patrol Deck",     "strength": 3, "max_ap": 2, "max_integrity": 4, "max_health": 8,  "max_mu": 8,  "programs": ["res://data/killer2.tres", "res://data/aegis.tres"]},
-		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Street Runner",    "deck": "Custom Deck",     "strength": 2, "max_ap": 2, "max_integrity": 3, "max_health": 6,  "max_mu": 6,  "programs": ["res://data/codecracker.tres", "res://data/hammer.tres"]},
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Scout",   "deck": "Patrol Deck",     "strength": 3, "max_ap": 2, "max_integrity": 4,  "max_mu": 8,  "programs": ["res://data/killer2.tres", "res://data/aegis.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Street Runner",    "deck": "Custom Deck",     "strength": 2, "max_ap": 2, "max_integrity": 3,  "max_mu": 6,  "programs": ["res://data/codecracker.tres", "res://data/hammer.tres"]},
 	},
 	CP2020SecurityTier.Tier.LEVEL_1: {
-		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Officer", "deck": "Issue Deck Mk1",  "strength": 4, "max_ap": 3, "max_integrity": 5, "max_health": 10, "max_mu": 10, "programs": ["res://data/killer4.tres", "res://data/aegis.tres", "res://data/codecracker.tres"]},
-		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Freelance Runner", "deck": "Hotrod Deck",     "strength": 3, "max_ap": 2, "max_integrity": 4, "max_health": 8,  "max_mu": 8,  "programs": ["res://data/hammer.tres", "res://data/codecracker.tres", "res://data/shield.tres"]},
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Officer", "deck": "Issue Deck Mk1",  "strength": 4, "max_ap": 3, "max_integrity": 5, "max_mu": 10, "programs": ["res://data/killer4.tres", "res://data/aegis.tres", "res://data/codecracker.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Freelance Runner", "deck": "Hotrod Deck",     "strength": 3, "max_ap": 2, "max_integrity": 4,  "max_mu": 8,  "programs": ["res://data/hammer.tres", "res://data/codecracker.tres", "res://data/shield.tres"]},
 	},
 	CP2020SecurityTier.Tier.LEVEL_2: {
-		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Sergeant", "deck": "Issue Deck Mk2",  "strength": 5, "max_ap": 3, "max_integrity": 6, "max_health": 12, "max_mu": 12, "programs": ["res://data/killer6.tres", "res://data/aegis.tres", "res://data/jackhammer.tres"]},
-		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Veteran Runner",   "deck": "Tuned Deck",      "strength": 4, "max_ap": 3, "max_integrity": 5, "max_health": 10, "max_mu": 10, "programs": ["res://data/jackhammer.tres", "res://data/killer2.tres", "res://data/shield.tres"]},
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Sergeant", "deck": "Issue Deck Mk2",  "strength": 5, "max_ap": 3, "max_integrity": 6, "max_mu": 12, "programs": ["res://data/killer6.tres", "res://data/aegis.tres", "res://data/jackhammer.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Veteran Runner",   "deck": "Tuned Deck",      "strength": 4, "max_ap": 3, "max_integrity": 5, "max_mu": 10, "programs": ["res://data/jackhammer.tres", "res://data/killer2.tres", "res://data/shield.tres"]},
 	},
 	CP2020SecurityTier.Tier.LEVEL_3: {
-		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Captain",  "deck": "Issue Deck Mk3",  "strength": 6, "max_ap": 3, "max_integrity": 7, "max_health": 14, "max_mu": 14, "programs": ["res://data/killer6.tres", "res://data/flatline.tres", "res://data/aegis.tres"]},
-		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Ace Runner",        "deck": "Race Deck",       "strength": 5, "max_ap": 3, "max_integrity": 6, "max_health": 12, "max_mu": 12, "programs": ["res://data/jackhammer.tres", "res://data/killer4.tres", "res://data/shield.tres"]},
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Captain",  "deck": "Issue Deck Mk3",  "strength": 6, "max_ap": 3, "max_integrity": 7, "max_mu": 14, "programs": ["res://data/killer6.tres", "res://data/flatline.tres", "res://data/aegis.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Ace Runner",        "deck": "Race Deck",       "strength": 5, "max_ap": 3, "max_integrity": 6, "max_mu": 12, "programs": ["res://data/jackhammer.tres", "res://data/killer4.tres", "res://data/shield.tres"]},
 	},
 	CP2020SecurityTier.Tier.BLACK: {
-		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Blackops", "deck": "Black Deck",      "strength": 7, "max_ap": 4, "max_integrity": 9, "max_health": 18, "max_mu": 18, "programs": ["res://data/flatline.tres", "res://data/killer6.tres", "res://data/aegis.tres"]},
-		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Legendary Runner",  "deck": "Master Deck",     "strength": 6, "max_ap": 3, "max_integrity": 7, "max_health": 14, "max_mu": 14, "programs": ["res://data/jackhammer.tres", "res://data/killer6.tres", "res://data/shield.tres"]},
+		CP2020NpcNetrunner.Faction.NETWATCH:  {"name": "NetWatch Blackops", "deck": "Black Deck",      "strength": 7, "max_ap": 4, "max_integrity": 9, "max_mu": 18, "programs": ["res://data/flatline.tres", "res://data/killer6.tres", "res://data/aegis.tres"]},
+		CP2020NpcNetrunner.Faction.NETRUNNER: {"name": "Legendary Runner",  "deck": "Master Deck",     "strength": 6, "max_ap": 3, "max_integrity": 7, "max_mu": 14, "programs": ["res://data/jackhammer.tres", "res://data/killer6.tres", "res://data/shield.tres"]},
 	},
 }
 
@@ -2033,8 +2033,8 @@ func spawn_npcs() -> void:
 			# Default disposition per faction; a tile override can force it.
 			npc.disposition = CP2020NpcNetrunner.Disposition.HOSTILE if faction == CP2020NpcNetrunner.Faction.NETWATCH else CP2020NpcNetrunner.Disposition.NEUTRAL
 
-			# Apply stats BEFORE initialize (initialize copies max_integrity /
-			# max_health into current). Per-tile override wins; otherwise use the
+			# Apply stats BEFORE initialize (initialize copies max_integrity
+			# into current). Per-tile override wins; otherwise use the
 			# tier NPC template for this faction.
 			if tile.npc_has_override:
 				if tile.npc_name != "":
@@ -2045,8 +2045,6 @@ func spawn_npcs() -> void:
 					npc.max_ap = tile.npc_max_ap
 				if tile.npc_max_integrity > 0:
 					npc.max_integrity = tile.npc_max_integrity
-				if tile.npc_max_health > 0:
-					npc.max_health = tile.npc_max_health
 				if tile.npc_max_mu > 0:
 					npc.max_memory_units = tile.npc_max_mu
 				if tile.npc_deck_name != "":
@@ -2071,7 +2069,6 @@ func spawn_npcs() -> void:
 				npc.strength = int(tmpl.get("strength", 4))
 				npc.max_ap = int(tmpl.get("max_ap", 3))
 				npc.max_integrity = int(tmpl.get("max_integrity", 5))
-				npc.max_health = int(tmpl.get("max_health", 10))
 				npc.max_memory_units = int(tmpl.get("max_mu", 10))
 				npc.installed_programs = _load_template_programs(tmpl.get("programs", []))
 				# Template "programs" is already an Array of .tres path strings;

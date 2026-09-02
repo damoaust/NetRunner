@@ -67,13 +67,11 @@ func _ensure_floors_migrated() -> void:
 		# New layout with no tiles yet — seed a single empty floor so the
 		# designer has something to paint on.
 		var f := CP2020Floor.new()
-		f.floor_index = 0
 		floors = [f]
 		return
 	# Legacy .tres: wrap grid_tiles into a single CP2020Floor (floor 0).
 	var f0 := CP2020Floor.new()
 	f0.tiles = grid_tiles
-	f0.floor_index = 0
 	floors = [f0]
 
 # Helper function to safely fetch and auto-instantiate tile data objects.

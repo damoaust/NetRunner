@@ -17,7 +17,7 @@ extends Resource
 # flash. Empty string is valid — the HUD falls back to "Floor N".
 @export var floor_name: String = ""
 
-# The floor's position in the layout's `floors` array. Redundant with array
-# position but stored so it survives designer reordering and is available
-# without an array lookup at the call site.
-@export var floor_index: int = 0
+# NOTE: there is deliberately no floor_index field — the position in the
+# layout's `floors` array IS the floor index. A stored duplicate went stale
+# silently on inspector reordering (CODE_REVIEW §3.5); enumerate the array
+# instead when a numeric index is needed.
