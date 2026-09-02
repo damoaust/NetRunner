@@ -30,7 +30,6 @@ const COLOR_GRID: Color = Color(0.0, 0.78, 0.92, 0.22)
 const COLOR_GRID_BRIGHT: Color = Color(0.0, 0.9, 1.0, 0.55)
 const COLOR_RUNNER: Color = Color(0.0, 1.0, 1.0, 1.0)
 const COLOR_SCANLINE: Color = Color(0.0, 0.0, 0.0, 0.12)
-const COLOR_HUB_GLOW: Color = Color(0.0, 1.0, 0.9, 0.35)
 const COLOR_TEXT_HEADER: Color = Color(0.85, 0.95, 1.0, 0.95)
 const COLOR_TEXT_LABEL: Color = Color(0.7, 0.9, 1.0, 0.9)
 
@@ -80,9 +79,8 @@ var spawn_hub_name: String = ""
 # the button signal callbacks can resolve which hub was clicked.
 var _ldl_panel_hubs: Array = []
 
-# Animation state for pulsing neon elements.
-var _pulse_time: float = 0.0
-var _font_cache: Font = null
+# Shared renderer child that draws the whole map (see _setup_map_renderer).
+var _map_renderer: CP2020WorldMapRenderer = null
 
 
 func _ready() -> void:
@@ -94,6 +92,7 @@ func _ready() -> void:
 		spawn_name = world_map_layout.runner_spawn_hub
 	spawn_hub_name = spawn_name
 	runner_pos = _find_hub(spawn_name)
+	_setup_map_renderer()
 	interface_rank = _resolve_interface_rank()
 	if turn_manager:
 		turn_manager.start_netrunner_turn()
@@ -106,12 +105,31 @@ func _ready() -> void:
 	_update_hud()
 	_update_camera_limits()
 	_center_camera_on_runner()
-	queue_redraw()
+	_sync_map_renderer()
 
 
-func _process(_delta: float) -> void:
-	_pulse_time += _delta
-	queue_redraw()
+# All pixel drawing lives in the shared CP2020WorldMapRenderer child
+# (CODE_REVIEW §5.1 — the world-map designer uses the same one). It animates
+# and redraws itself; this node only syncs state into it.
+func _setup_map_renderer() -> void:
+	_map_renderer = CP2020WorldMapRenderer.new()
+	add_child(_map_renderer)
+	_sync_map_renderer()
+
+
+func _sync_map_renderer() -> void:
+	if _map_renderer == null:
+		return
+	_map_renderer.grid_cols = grid_cols
+	_map_renderer.grid_rows = grid_rows
+	_map_renderer.grid_offset = SCREEN_OFFSET
+	_map_renderer.regions = regions
+	_map_renderer.tile_region = tile_region
+	_map_renderer.hubs = city_hubs
+	_map_renderer.runner_spawn_hub = spawn_hub_name
+	_map_renderer.show_ldl_tag = true
+	_map_renderer.runner_pos = runner_pos
+	_map_renderer.header_label = "WORLD NET MAP // PACIFIC RIM"
 
 
 # ---------------------------------------------------------------------------
@@ -219,225 +237,6 @@ func _resolve_interface_rank() -> int:
 
 
 # ---------------------------------------------------------------------------
-# Drawing
-# ---------------------------------------------------------------------------
-
-func _draw() -> void:
-	var font := _theme_font()
-	var pulse := _pulse_value()
-
-	_draw_background(pulse)
-	_draw_scanlines()
-	_draw_region_fills(pulse)
-	_draw_grid(pulse)
-	_draw_hubs(font, pulse)
-	_draw_runner(pulse)
-	_draw_header(font, pulse)
-
-
-func _pulse_value() -> float:
-	return 0.5 + 0.5 * sin(_pulse_time * 3.0)
-
-
-func _draw_background(pulse: float) -> void:
-	# Deep-space ocean fill.
-	draw_rect(Rect2(Vector2.ZERO, Vector2(W, H)), COLOR_BG, true)
-
-	# Subtle vignette: darkens edges so the neon grid pops.
-	var vignette := Color(0.0, 0.0, 0.0, 0.35)
-	var top := Rect2(0, 0, W, 120)
-	var bottom := Rect2(0, H - 120, W, 120)
-	var left := Rect2(0, 0, 120, H)
-	var right := Rect2(W - 120, 0, 120, H)
-	draw_rect(top, vignette, true)
-	draw_rect(bottom, vignette, true)
-	draw_rect(left, vignette, true)
-	draw_rect(right, vignette, true)
-
-	# Decorative horizon scan band behind the grid.
-	var band_alpha := 0.04 + 0.03 * pulse
-	draw_rect(Rect2(0, SCREEN_OFFSET.y - 4, W, 4), Color(COLOR_GRID.r, COLOR_GRID.g, COLOR_GRID.b, band_alpha), true)
-
-
-func _draw_scanlines() -> void:
-	# Classic CRT scanline overlay across the whole screen.
-	var y: float = 0.0
-	while y < H:
-		draw_line(Vector2(0, y), Vector2(W, y), COLOR_SCANLINE, 1.0)
-		y += 4.0
-
-
-func _draw_grid(pulse: float) -> void:
-	# Neon grid lines. Major divisions every 5 cells get a brighter pulse.
-	var origin := SCREEN_OFFSET
-	var grid_w := grid_cols * CELL
-	var grid_h := grid_rows * CELL
-	var bright_alpha := COLOR_GRID_BRIGHT.a * (0.5 + 0.5 * pulse)
-
-	for x in range(grid_cols + 1):
-		var line_color := COLOR_GRID
-		if x % 5 == 0:
-			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
-		draw_line(origin + Vector2(x * CELL, 0), origin + Vector2(x * CELL, grid_h), line_color, 1.0 if x % 5 != 0 else 1.5)
-
-	for y in range(grid_rows + 1):
-		var line_color := COLOR_GRID
-		if y % 5 == 0:
-			line_color = Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, bright_alpha)
-		draw_line(origin + Vector2(0, y * CELL), origin + Vector2(grid_w, y * CELL), line_color, 1.0 if y % 5 != 0 else 1.5)
-
-	# Outer tech frame around the grid.
-	_draw_tech_frame(origin, Vector2(grid_w, grid_h), COLOR_GRID_BRIGHT, 2.0)
-
-
-func _draw_region_fills(pulse: float) -> void:
-	# Dark neon region tiles with a soft inner glow.
-	for raw_key in tile_region.keys():
-		var coord: Vector2i = _parse_coord(raw_key)
-		var idx: int = int(tile_region[raw_key])
-		if idx < 0 or idx >= regions.size():
-			continue
-		var base: Color = regions[idx].color
-		var rect := Rect2(SCREEN_OFFSET + Vector2(coord.x * CELL, coord.y * CELL), Vector2(CELL, CELL))
-		# Darkened fill so the grid still reads through it.
-		var fill := Color(base.r * 0.35, base.g * 0.35, base.b * 0.35, 0.55)
-		draw_rect(rect, fill, true)
-		# Subtle top edge highlight.
-		var highlight := Color(base.r, base.g, base.b, 0.35 + 0.15 * pulse)
-		draw_line(rect.position, rect.position + Vector2(CELL, 0), highlight, 1.5)
-
-
-func _draw_hubs(font: Font, pulse: float) -> void:
-	for hub in city_hubs:
-		var center := SCREEN_OFFSET + Vector2(hub.pos.x * CELL + CELL / 2.0, hub.pos.y * CELL + CELL / 2.0)
-		var tier: int = clampi(int(hub.get("security_tier", 0)), 0, CP2020SecurityTier.Tier.size() - 1)
-		var tier_color: Color = CP2020SecurityTier.COLORS[tier]
-		var glyph: String = CP2020SecurityTier.GLYPHS[tier]
-
-		# Tier-colored neon glow behind the hub.
-		for i in range(3):
-			var glow_radius := CELL * (0.55 + i * 0.18)
-			var glow_alpha := (0.18 - i * 0.05) * (0.7 + 0.3 * pulse)
-			draw_arc(center, glow_radius, 0, TAU, 32, Color(tier_color.r, tier_color.g, tier_color.b, glow_alpha), 3.0)
-
-		# Tech corner brackets.
-		_draw_corner_brackets(center, CELL * 0.55, tier_color, 2.0)
-
-		# Central tier glyph.
-		var glyph_size := 16
-		var glyph_dims := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size)
-		var glyph_pos := center - glyph_dims * 0.5 + Vector2(0, glyph_size * 0.35)
-		draw_string(font, glyph_pos, glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, glyph_size, tier_color)
-
-		# City label below the marker.
-		var label_pos := SCREEN_OFFSET + Vector2(hub.pos.x * CELL + 4, hub.pos.y * CELL + CELL + 4)
-		draw_string(font, label_pos, hub.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COLOR_TEXT_LABEL)
-
-		# Spawn hub: rotating cyan ring + LDL tag.
-		if hub.name == spawn_hub_name:
-			var ring_alpha := 0.6 + 0.4 * pulse
-			draw_arc(center, CELL * 0.52, _pulse_time * 2.0, _pulse_time * 2.0 + TAU * 0.85, 32, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, ring_alpha), 2.5)
-			draw_string(font, Vector2(center.x - 12, center.y + 26), "LDL", HORIZONTAL_ALIGNMENT_CENTER, -1, 9, COLOR_RUNNER)
-
-
-func _draw_runner(pulse: float) -> void:
-	var center := SCREEN_OFFSET + Vector2(runner_pos.x * CELL + CELL / 2.0, runner_pos.y * CELL + CELL / 2.0)
-	var size := CELL * 0.32 * (0.9 + 0.1 * pulse)
-
-	# Outer rotating targeting ring.
-	var ring_alpha := 0.5 + 0.3 * pulse
-	draw_arc(center, CELL * 0.48, -_pulse_time * 3.0, -_pulse_time * 3.0 + TAU * 0.9, 32, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, ring_alpha), 2.0)
-
-	# Neon glow.
-	for i in range(3):
-		var glow_size := size + i * 4.0
-		var glow_alpha := 0.25 - i * 0.07
-		_draw_diamond(center, glow_size, Color(COLOR_RUNNER.r, COLOR_RUNNER.g, COLOR_RUNNER.b, glow_alpha), true)
-
-	# Solid diamond avatar.
-	_draw_diamond(center, size, COLOR_RUNNER, true)
-	_draw_diamond(center, size * 0.7, Color(0.0, 0.0, 0.0, 0.6), true)
-
-
-func _draw_diamond(center: Vector2, size: float, color: Color, filled: bool) -> void:
-	var points := PackedVector2Array([
-		center + Vector2(0, -size),
-		center + Vector2(size, 0),
-		center + Vector2(0, size),
-		center + Vector2(-size, 0),
-	])
-	if filled:
-		draw_polygon(points, PackedColorArray([color, color, color, color]))
-	else:
-		points.append(points[0])
-		draw_polyline(points, color, 2.0)
-
-
-func _draw_corner_brackets(center: Vector2, half_size: float, color: Color, width: float) -> void:
-	var inset := half_size * 0.55
-	var tl := center + Vector2(-half_size, -half_size)
-	var top_r := center + Vector2(half_size, -half_size)
-	var bl := center + Vector2(-half_size, half_size)
-	var bottom_r := center + Vector2(half_size, half_size)
-	# Top-left.
-	draw_line(tl, tl + Vector2(inset, 0), color, width)
-	draw_line(tl, tl + Vector2(0, inset), color, width)
-	# Top-right.
-	draw_line(top_r, top_r + Vector2(-inset, 0), color, width)
-	draw_line(top_r, top_r + Vector2(0, inset), color, width)
-	# Bottom-left.
-	draw_line(bl, bl + Vector2(inset, 0), color, width)
-	draw_line(bl, bl + Vector2(0, -inset), color, width)
-	# Bottom-right.
-	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width)
-	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width)
-
-
-func _draw_tech_frame(origin: Vector2, size: Vector2, color: Color, width: float) -> void:
-	var tl := origin
-	var top_r := origin + Vector2(size.x, 0)
-	var bl := origin + Vector2(0, size.y)
-	var bottom_r := origin + size
-	var inset := 18.0
-	# Outer rectangle.
-	draw_rect(Rect2(origin, size), color, false, width)
-	# Corner accents.
-	draw_line(tl, tl + Vector2(inset, 0), color, width + 1.0)
-	draw_line(tl, tl + Vector2(0, inset), color, width + 1.0)
-	draw_line(top_r, top_r + Vector2(-inset, 0), color, width + 1.0)
-	draw_line(top_r, top_r + Vector2(0, inset), color, width + 1.0)
-	draw_line(bl, bl + Vector2(inset, 0), color, width + 1.0)
-	draw_line(bl, bl + Vector2(0, -inset), color, width + 1.0)
-	draw_line(bottom_r, bottom_r + Vector2(-inset, 0), color, width + 1.0)
-	draw_line(bottom_r, bottom_r + Vector2(0, -inset), color, width + 1.0)
-
-
-func _draw_header(font: Font, pulse: float) -> void:
-	# Cyberpunk header bar with tech brackets, drawn below the HUD strip so
-	# it never overlaps the Location/Actions/Credits/Trace labels.
-	var header_y := 48.0
-	var title := "WORLD NET MAP // PACIFIC RIM"
-	draw_string(font, Vector2(18, header_y), "[", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, 0.7 + 0.3 * pulse))
-	draw_string(font, Vector2(30, header_y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, COLOR_TEXT_HEADER)
-	var title_width := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
-	draw_string(font, Vector2(34 + title_width, header_y), "]", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(COLOR_GRID_BRIGHT.r, COLOR_GRID_BRIGHT.g, COLOR_GRID_BRIGHT.b, 0.7 + 0.3 * pulse))
-
-	# Thin underline with a travelling pulse.
-	var line_y := header_y + 8
-	var pulse_x := 30 + fmod(_pulse_time * 80.0, title_width + 20)
-	draw_line(Vector2(18, line_y), Vector2(36 + title_width, line_y), COLOR_GRID_BRIGHT, 1.0)
-	draw_circle(Vector2(30 + pulse_x, line_y), 3.0, COLOR_RUNNER)
-
-
-func _theme_font() -> Font:
-	if _font_cache == null:
-		var label := Label.new()
-		_font_cache = label.get_theme_default_font()
-		label.free()
-	return _font_cache
-
-
-# ---------------------------------------------------------------------------
 # Input / movement
 # ---------------------------------------------------------------------------
 
@@ -471,6 +270,8 @@ func _try_move(target: Vector2i) -> bool:
 		if not turn_manager.consume_action():
 			return false
 	runner_pos = target
+	if _map_renderer:
+		_map_renderer.runner_pos = runner_pos
 	_center_camera_on_runner()
 	# Log arrival when stepping onto a city hub (movement signal without
 	# spamming every ocean tile).
@@ -618,6 +419,8 @@ func _hack_jump(dest: Dictionary) -> void:
 		# check target (see WatchdogProgram.take_ice_turn).
 		RunState.accumulated_trace += int(dest.trace_value)
 		runner_pos = dest.pos
+		if _map_renderer:
+			_map_renderer.runner_pos = runner_pos
 		_center_camera_on_runner()
 		_log_terminal("JUMP OK -> %s // trace %d." % [dest.name, RunState.accumulated_trace], COLOR_LOG_OK)
 		_update_hud()
