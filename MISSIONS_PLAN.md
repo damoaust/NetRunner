@@ -51,9 +51,9 @@ Extends `Resource`. Represents a single contract/mission.
 
 ## 4. State Management & Persistence
 
-### 4.1 MetaState Integration (`MetaState` / `MetaStateData`)
-- Persists available mission pools and timer state across runs (`user://netrunner_meta.tres`).
-- Tracks the last refresh timestamp to generate a new mission every hour.
+### 4.1 Mission State Location (corrected — see §7 for the shipped design)
+- Mission pools, the active mission, the objective flag, and `last_mission_refresh_time` live in **`RunState` / `RunStateData`** (run-scoped, reset on `start_new_life()`) — **not** in `MetaState`.
+- Refresh cadence: a new mission rotates onto the board when `net_time_seconds - last_mission_refresh_time >= 3600` (net-time only advances while jacked in).
 
 ### 4.2 RunState Integration (`RunState`)
 - `active_mission: CP2020Mission` (holds the currently accepted mission).
@@ -97,7 +97,7 @@ All three phases are implemented and validated.
 
 ### Data layer
 - `CP2020Mission` (`scripts/resources/cp2020_mission.gd`): `MissionType` enum (`DATA_HARVEST`, `SABOTAGE`, `RECON`), all targeting fields (`target_subnet_path`, `target_coord: Vector2i`, `target_file_name`), `reward_credits`, `objective_text()` / `type_tag()` / `type_label()` helpers, and a runtime `source_path` tag for save/load.
-- Static library: 10 authored `.tres` files in `data/missions/` (4 Data Harvest, 3 Sabotage, 3 Recon), each referencing a real, reachable subnet + exact coordinate / file name. Regenerable via `scripts/dsh/author_missions.gd`.
+- Static library: 11 authored `.tres` files in `data/missions/` (4 Data Harvest, 4 Sabotage, 3 Recon), each referencing a real, reachable subnet + exact coordinate / file name. Regenerable via `scripts/dsh/author_missions.gd`.
 
 ### State layer (per-life, in `RunState` / `RunStateData`)
 - `available_missions: Array[CP2020Mission]`, `active_mission: CP2020Mission`, `mission_objective_met: bool`, `last_mission_refresh_time: float`.

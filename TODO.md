@@ -7,7 +7,7 @@
 
 ## Missions System (IMPLEMENTED)
 - [x] Create `CP2020Mission` resource class (`scripts/resources/cp2020_mission.gd`).
-- [x] Author static mission library (10 `.tres` files in `data/missions/`).
+- [x] Author static mission library (11 `.tres` files in `data/missions/`).
 - [x] Extend `RunStateData` with mission persistence fields (available pool, active mission, objective flag, refresh timestamp).
 - [x] Extend `RunState` with `active_mission`, `available_missions`, `mission_objective_met`, `last_mission_refresh_time`; board seeding, hourly refresh, accept/abandon/hand-in, objective notify hooks, save/load.
 - [x] Wire objective checks in `cp2020_game_session.gd`: DATA_HARVEST (copy_file / copy_all_files), SABOTAGE (attack_with_rezzed / command_demon / loot_tile at target coord), RECON (netrunner position_changed). Added `current_subnet_path` tracking (LDL-travel-safe).
@@ -21,3 +21,28 @@
 - `wire_mission_subnets.gd` — adds the Pirate BBS / Warez Node datafort entries to the Night City grid (idempotent).
 - `author_missions.gd` — regenerates the `data/missions/*.tres` library from the spec table (idempotent).
 - `test_missions_runner.gd` / `.tscn` — headless functional test runner (backs up + restores the user's run save).
+
+## Open Items (triaged from CODE_REVIEW.md + plan docs — feature/2.5d-visual-upgrade)
+
+Refactors:
+- [ ] Split `cyberdeck_workbench.gd` (1876 lines) into sub-scripts (CR §6.4).
+- [ ] Extract per-arm handlers from `_on_action_triggered`'s ~230-line match; collapse `handle_right_click`'s long if/elif (CR §7.3/§7.4).
+- [ ] De-duplicate `_can_travel_vertical` — the interaction handler mirrors the game session's authoritative one (CR §7.10).
+- [ ] World-map designer: delegate rendering to the shared `CP2020NeonGridRenderer` (CR §5.1 — city-grid half is done).
+
+Bugs / polish:
+- [ ] Add `Protection` to the workbench `PROGRAM_TYPE_NAMES` map (currently renders "?"); consider deriving `type` from `effect_type` (CR §3.6/§3.7).
+- [ ] Workbench HP label prints `max_health` twice — always reads full (CR §6.6).
+- [ ] Watchdog trace tie uses `>=` (attacker-favored) — align with the defender-favored roll convention (CR §4.9).
+- [ ] Copy-menu `fits` check doesn't decrement `free_mu` per file — display-only, `copy_all_files` handles MU correctly (CR §7.11).
+- [ ] Remove dead NPC `max_health` / `current_health` fields (shield model moved to integrity + cooldown; CR §4.1 leftover).
+- [ ] Persist the run save at the end of `start_new_life()` (CR §6.5 — `schema_version` half is done).
+
+Data model / perf:
+- [ ] `CP2020Floor.floor_index` is a stored duplicate of the array position — derive it or re-sync on save so reordering can't go stale (CR §3.5).
+- [ ] `generate_theme.gd` re-declares the palette consts; read `CP2020Theme` instead (CR §5.4).
+- [ ] Designer canvas `_ready` still creates a throwaway layout that the parent immediately replaces (CR §5.7).
+- [ ] Per-frame `queue_redraw()` still runs in `cp2020_netrunner` and the world-map `_process` (CR §8.3 — board renderer is already gated).
+
+Future (flagged in plans, not scheduled):
+- [ ] `follows_across_floors` per-program flag so tracker ICE (Hellhound, Flatline) can pursue across floors (multi-floor plan §"Design decision: floors as escape hatches").

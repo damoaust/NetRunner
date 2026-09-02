@@ -47,3 +47,16 @@ A helper resource/script to manage time calculations.
 1. Verify time scaling in different environments (World Map vs. Subnet).
 2. Validate that `total_seconds` resets correctly upon initiating a `NewLife`.
 3. Verify mission rotation triggers after 3600 seconds of accumulated action-time.
+
+---
+
+## 5. Implementation Status (COMPLETE — shipped with deviations)
+
+The world-time system is implemented and in service, but the shipped design differs from this plan:
+
+- **No `WorldClock` resource was created** (`scripts/resources/world_clock.gd` does not exist). Time lives directly on the autoload:
+  - `RunState.net_time_seconds` — the per-life clock, reset by `start_new_life()` (and by the run-start / run-end paths in the world map, city grid, and game session).
+  - `RunState.life_net_time_seconds` — addition not in this plan: a life-accumulative clock that persists across runs; drives the workbench "NET:" readout.
+- **Scaling is per-scene constants** (`scripts/resources/cp2020_time_scale.gd`, `CP2020TimeScale`): World Map = 60 s/action, City Grid = 1 s/action, Datafort = 1 ns/action (CP2020 sourcebook). The turn manager emits `action_consumed` for every action spent; each scene adds its scale's constant to the clocks. Display strings come from `CP2020TimeScale.format_clock()`.
+- **Phase 2 deviation**: `last_mission_refresh_time` lives in `RunState` / `RunStateData`, not `MetaStateData` (contradicting §4.2 above; consistent with MISSIONS_PLAN §7). `check_mission_refresh()` is a `RunState` method invoked by the workbench on entry and tab-switch, not workbench-local logic.
+- **Phase 3**: the 3600 s mission rotation is covered by `scripts/dsh/test_missions_runner.tscn` (forces net-time past the threshold → rotation PASS). Reset-on-new-life is exercised by the run flow; per-environment scaling is structural (per-scene constants) rather than separately tested.

@@ -1,6 +1,8 @@
 # NetRunner V0.006 — Code Review Findings (DRAFT)
 
 > Auto-generated comprehensive code review. Findings are categorized by area and rated by severity (HIGH / MEDIUM / LOW).
+>
+> **Status (triaged on `feature/2.5d-visual-upgrade`):** this file is now a historical snapshot, not a worklist. The triage table under §9 maps each priority to verified-fixed / still-open; remaining open items are tracked as unchecked boxes in `TODO.md`.
 
 ---
 
@@ -513,6 +515,40 @@ Violates "typed GDScript everywhere" convention (ARCHITECTURE line 10).
 ---
 
 ## 9. Summary — Top Priorities (All 5 Agents + Personal Analysis)
+
+### Triage table (verified on `feature/2.5d-visual-upgrade`)
+
+✅ = verified fixed in code on this branch · ⬜ = still open (tracked in `TODO.md`)
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | "Copy All" added once per file (§7.1) | ✅ fixed — item moved outside the file loop |
+| 2 | Tie-resolution inconsistency (§7.2) | ✅ fixed — defender-favored via `CP2020Dice.roll_opposed` |
+| 3 | NPC shield model dead (§4.1/§4.2) | ✅ rebuilt on integrity + `_shield_cooldown`; `max_health`/`current_health` fields now dead (TODO) |
+| 4 | Datafort alternation broken (§4.3) | ✅ fixed — `i % 2` + empty-list fallback, exactly as prescribed |
+| 5 | Rez-spawn NPC floor gate (§7.5) | ✅ fixed — `npc.home_floor == current_floor` |
+| 6 | Armor not `[ACTIVE]` (§7.6) | ✅ fixed |
+| 7 | city_grid `_ready` resets net_time (§6.7) | ✅ fixed — reset contract documented in `_ready` |
+| 8 | Extract `GridEntityBase` (§4.7) | ✅ done — also fixes the §4.4/§4.5 unguarded awaits |
+| 9 | Split `cyberdeck_workbench.gd` (§6.4) | ⬜ open — still one file, now 1876 lines |
+| 10 | Split `_on_action_triggered` + `handle_right_click` (§7.3/§7.4) | ⬜ open |
+| 11 | Unify city-grid rendering (§5.1/§2.1) | ✅ city grid uses shared `CP2020NeonGridRenderer` · ⬜ world-map designer still inline |
+| 12 | `CP2020Dice.roll_opposed` (§2.2) | ✅ done — 5+ call sites |
+| 13 | Cache `_theme_font()` (§6.2/§5.8) | ✅ done in all three files |
+| 14 | Gate board-renderer per-frame redraw (§6.3) | ✅ done — redraws only while animating |
+| 15 | Font `const` preload (§4.8) | ✅ done — portable static `get_fallback_font()` with `ResourceLoader.exists` guard |
+| 16 | Delete `cp2020_canvas.gd` (§6.1) | ✅ deleted |
+| 17 | Delete `cp2020_subnet_loader.gd` (§6.1/§5.6) | ✅ deleted |
+| 18 | Delete dead session code (§7.14) | ✅ done |
+| 19 | Remove stale generator references (§1.4) | ✅ removed — copilot-instructions now states no generator exists |
+| 20 | `get_tile()` raw-dict migration (§3.1/§3.2) | ✅ fixed — full-field copy via `_convert_raw_tile` + `push_error` + key normalisation |
+| 21 | Enum-typed exports (§3.4) | ✅ `security_tier` typed · ⬜ `npc_disposition` not re-verified |
+| 22 | `schema_version` (§6.5) | ✅ done — ⬜ save-at-end-of-`start_new_life()` half still open |
+| 23 | Glyph/sprite controls → `.tscn` (§5.2) | ✅ done — code builders removed |
+| 24 | `FileDialog` nodes → `.tscn` (§5.3) | ✅ done — code fallbacks removed |
+| 25 | Procgen assessment | n/a — assessment, no action |
+
+Untriaged LOW tails remain in §3.9–3.11, §4.9, §5.9, §6.10, §7.14. Separately verified as fixed but not listed above: §3.3 (dual-key helper), §5.7 (partially — fallback still present, see TODO), §6.8 (`duplicate(true)` both directions), §7.12 (redesigned as CP2020 Death-Trap auto-hit), §3.8 (resolved by documentation — `reward_credits` marked legacy in source), §5.5 (`set_block_signals` present in both designers).
 
 ### Critical bugs to fix first (HIGH severity, behavioral correctness):
 1. **"Copy All" menu item added once per file** — `cp2020_interaction_handler.gd:429` (§7.1)
