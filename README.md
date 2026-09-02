@@ -17,6 +17,11 @@ This document provides a comprehensive breakdown of the system architecture, cod
 ```
 netrunner-v-0.006/
 ├── project.godot                     # Godot project configuration & input maps
+├── autoload/                         # Root-level autoload dir (registered in project.godot)
+│   └── mcp_interaction_server.gd     # McpInteractionServer — TCP JSON automation server (127.0.0.1:9090; see §7)
+├── MISSIONS_PLAN.md                  # Missions system design plan (implemented)
+├── WORLD_TIME_PLAN.md                # World-time / net-time clock plan (implemented in RunState)
+├── TODO.md                           # Development checklist (missions implementation status)
 ├── data/                             # Resource instances (.tres) for decks, programs & maps
 │   ├── starting_deck.tres            # Cyberdeck resource instance
 │   ├── codecracker.tres              # Program resources (.tres)
@@ -44,12 +49,16 @@ netrunner-v-0.006/
 │       ├── cp2020_city_grid_designer.tscn  # City Grid authoring tool
 │       ├── CP2020DesignerCanvas.tscn       # Datafort authoring tool
 │       └── CyberdeckWorkbench.tscn         # Deck/program loadout UI
+│   └── models/                        # 3D proxy models for rezzed programs / CPU crash (2.5D board)
+│       ├── blue_lady_rotated.tscn, cat_rotated.tscn, dog_rotated.tscn, skull_rotated.tscn
+│       └── worm_rotated.tscn, up.tscn, down.tscn
 └── scripts/
     ├── autoload/
     │   ├── run_state.gd              # RunState singleton — cross-scene PER-LIFE run state (lost on death)
     │   ├── run_state_data.gd         # RunStateData Resource — per-life snapshot saved/loaded to user://
     │   ├── meta_state.gd             # MetaState singleton — PERSISTENT vendor catalogue (survives death)
-    │   └── meta_state_data.gd        # MetaStateData Resource — unlocked decks/programs + run history
+    │   ├── meta_state_data.gd        # MetaStateData Resource — unlocked decks/programs + run history
+    │   └── screenshot_tool.gd        # Dev tool — headless screenshot capture helper (not a registered autoload)
     ├── resources/                    # Core gameplay resources, nodes & controllers
     │   ├── CP2020DatafortLayout.gd   # Datafort grid layout Resource definition
     │   ├── CP2020TileData.gd         # Individual grid tile state Resource (incl. LDL fields)
@@ -64,6 +73,7 @@ netrunner-v-0.006/
     │   ├── cp_2020_world_net_map.gd  # Runtime world map node (movement, LDL jumps, ENTER city grid)
     │   ├── cp2020_blackice.gd        # Black ICE enemy AI node (AStarGrid2D, tracing)
     │   ├── cp2020_board_renderer.gd  # CanvasItem custom grid renderer (Fog of War)
+    │   ├── cp2020_board_3d.gd        # 2.5D board renderer — 3D proxies for rezzed programs/ICE
     │   ├── cp2020_cyberdecks.gd      # Cyberdeck data Resource class
     │   ├── cp2020_datafort_designer.gd # @tool root coordinator for the datafort designer (panels, file I/O, signal wiring)
     │   ├── cp2020_datafort_grid_canvas.gd # @tool grid canvas child node (drawing, input, tile painting)
@@ -73,6 +83,9 @@ netrunner-v-0.006/
     │   ├── cp2020_programs.gd        # Software program Resource class
     │   ├── cp2020_turn_manager.gd    # Turn state controller
     │   └── cp2020_world_map_designer.gd # @tool world map authoring tool
+    ├── dsh/                          # Headless agent-harness helpers: mission test runner, target scanner, mission authoring
+    ├── shaders/
+    │   └── 3d_outline.gdshader       # Fresnel outline shader for 3D program proxies
     └── ui/
         └── cyberdeck_workbench.gd    # Cyberdeck loadout & program management UI script
 ```
@@ -81,7 +94,7 @@ netrunner-v-0.006/
 
 ## 3. Core Architecture & Component Diagram
 
-The gameplay loop is built around a decoupled component architecture. Cross-scene state lives in two autoload singletons: `RunState` (per-life state, lost on death) and `MetaState` (persistent vendor catalogue that survives permadeath). The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
+The gameplay loop is built around a decoupled component architecture. Cross-scene state lives in three autoload singletons: `RunState` (per-life state, lost on death), `MetaState` (persistent vendor catalogue that survives permadeath), and `McpInteractionServer` (localhost TCP automation server — see §7). The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
 
 ```mermaid
 graph TD
@@ -285,7 +298,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 - Validates movement obstacles: blocks movement into `DATAWALL` tiles or locked `CODE_GATE` tiles. Empty cells (no tile) are walkable.
 - `initialize(layout, entry_coord)`: spawns at `entry_coord` if supplied, in-bounds, and a tile exists there (used by mid-run LDL travel); otherwise picks an arrival point with a deterministic ordering so the initial city-grid dive never lands on an outbound LDL link: (1) the map's primary entry (`is_primary_entry`), then (2) any plain (non-LDL) `ENTRY` tile, then (3) any `ENTRY` tile at all. Logs a warning if no ENTRY tile exists.
 - **Program-HP model** (`program_integrity: Dictionary`): a program's `strength` is also its max health (integrity). Seeded to `prog.strength` on `install_program` and via `seed_program_integrity()` (called by the game session at run start after the direct `installed_programs` assignment). `damage_program(amount, attacker)` damages a random installed program; `damage_specific_program(prog, amount, attacker)` targets a specific program. At 0 integrity the program is **DEREZZED** — it **crashes and clogs MU**: stays in `installed_programs` (counts toward `get_used_memory()`) but can't be used. The runner must call `clear_crashed_program(prog)` to free the MU. The `use_program` action blocks crashed programs (integrity ≤ 0). The raised shield does **not** block anti-program attacks. The `update_deck_info()` HUD shows `[CRASHED]` (red) for de-rezzed programs, `[ACTIVE]` (green) for raised shields, and `STR cur/max` for damaged-but-not-crashed programs.
-- **Combat model** (CP2020 PnP): Initiative = `1D10 + REF + Cyberdeck Speed` (runner) vs `1D10 + System INT` (CPUs×3); ties are simultaneous; the system winning means adversaries act before the runner that round. **Action economy**: 1 action per turn (per CPU when mainframes land); each action is EITHER a program/Net action OR movement of up to 5 spaces — not both. Space ends the turn early (forfeits remaining movement). With no enemies, the round auto-rolls back to the runner (no initiative/adversary phase). Sight range is 20. Combat roll ties → attacker. **Armor** absorbs point-for-point first (persistent), then **Shield** opposed roll (ties→attacker, one-shot), then HP. **Anti-personnel hits** (`apply_damage(..., is_anti_personnel=true)`) also cause INT-stat loss (1/hit) and a Mortal/Stun save (`1D10+body` vs cumulative-damage target). **Deck crash** (`crash_deck`) from `CRASH_CPU` resident programs blocks programs for `1D6+1` turns but preserves a movement action (flee). Stats: `reflex` (initiative), `intelligence`/`body` (meat-space), `interface_rank` (legacy).
+- **Combat model** (CP2020 PnP): Initiative = `1D10 + REF + Cyberdeck Speed` (runner) vs `1D10 + System INT` (CPUs×3); ties are simultaneous; the system winning means adversaries act before the runner that round. **Action economy**: 1 action per turn (per CPU when mainframes land); each action is EITHER a program/Net action OR movement of up to 5 spaces — not both. Space ends the turn early (forfeits remaining movement). With no enemies, the round auto-rolls back to the runner (no initiative/adversary phase). Sight range is 20. Combat roll ties → attacker. **Armor** absorbs point-for-point first (persistent), then **Shield** opposed roll (ties→attacker, one-shot), then HP. **Anti-personnel hits** (`apply_damage(..., is_anti_personnel=true)`) also cause INT-stat loss (1/hit) and a Mortal/Stun save (`1D10+body` vs cumulative-damage target). **Deck crash** (`crash_deck`) from `CRASH_CPU` resident programs blocks programs for `1D6+1` turns but preserves a movement action (flee). Stats: `reflex` (initiative), `intelligence`/`body` (meat-space), `interface_rank` (legacy). Attempted action-consuming interactions while a movement action is still active are **auto-queued** (single slot) and replayed at the start of the next runner turn — no forced Space press.
 - Emits `position_changed`, `message_logged`, `deck_updated`, `shield_raised`, `shield_consumed`, `armor_raised`, `armor_consumed`, `health_changed`, `int_changed`, `stunned`, `deck_crashed`, and `flatlined` (when `current_health <= 0`).
 
 ### 5.4 Hostile Black ICE AI ([cp2020_blackice.gd](scripts/resources/cp2020_blackice.gd))
@@ -412,3 +425,12 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 - **@tool panels in code**: The world map and city grid designers build their side panels in code (anchored to stay on-screen) rather than in the `.tscn`, so the scene files stay minimal. The **datafort designer** has been migrated to a scene-tree-based architecture: all UI (toolbar, side panels, file dialogs, grid canvas) is authored in `CP2020DesignerCanvas.tscn` and the root coordinator script (`cp2020_datafort_designer.gd`) references nodes via `@onready` and connects their signals in `_ready()`. The grid canvas (`cp2020_datafort_grid_canvas.gd`, `class_name CP2020DatafortGridCanvas`) is a child `Control` node that owns `_draw` / `_gui_input` / `paint_tile` and emits 5 signals that the root connects to for opening/closing side panels. This lets the layout be rearranged visually in the Godot editor.
 - **Resource Persistence**: Layouts are saved as `.tres` resources containing `grid_tiles` dictionaries. When editing resources at runtime, prefer duplicate or freshly instantiated `CP2020TileData` objects to avoid shared reference bugs.
 - **Shared default arrays/dicts in CP2020TileData**: Godot shares the default value `[]` / `{}` across all `new()` instances, so `files`, `loot_programs`, `npc_programs`, and `ldl_links` would be shared across all tiles created in the designer. `CP2020TileData._init()` assigns fresh instances of each collection so every `new()` tile gets its own array/dict. `.tres` deserialization overrides these after `_init()`, so loaded layouts are unaffected.
+
+---
+
+## 7. Missions, 2.5D & DSH Tooling (feature branch)
+
+- **Missions system** — contract/bounty layer: a **MISSIONS** tab on the CyberdeckWorkbench, one active mission at a time, net-time-driven board refresh, objective tracking (Data Harvest / Sabotage / Recon) and hand-in for credits. Full details in [ARCHITECTURE.md](ARCHITECTURE.md) §7 and [MISSIONS_PLAN.md](MISSIONS_PLAN.md); design checklist in [TODO.md](TODO.md).
+- **2.5D board** — `cp2020_board_3d.gd` renders rezzed programs/ICE as 3D proxies: per-program `mesh_scene` wins, then the matching per-effect-type slot, then the generic fallback mesh. Fresnel outlines come from `scripts/shaders/3d_outline.gdshader`; proxy models live in `scenes/models/`.
+- **World time** — a net-time clock (ticks only while jacked in, resets on New Life) drives the mission-board rotation and future timed events; see [WORLD_TIME_PLAN.md](WORLD_TIME_PLAN.md).
+- **DSH tooling** — headless agent harness: `scripts/dsh/` (functional mission test runner, datafort target scanner, mission authoring) plus the `McpInteractionServer` autoload — TCP `127.0.0.1:9090`, newline-delimited JSON commands (`screenshot`, `click`, `key_press`, `eval`, `wait`, scene introspection/property access, `change_scene`, `pause`). Localhost-only dev tool; details and security notes in [ARCHITECTURE.md §8](ARCHITECTURE.md).

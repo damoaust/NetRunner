@@ -17,6 +17,11 @@ This document provides a comprehensive breakdown of the system architecture, cod
 ```
 netrunner-v-0.006/
 ├── project.godot                     # Godot project configuration & input maps
+├── autoload/                         # Root-level autoload dir (registered in project.godot)
+│   └── mcp_interaction_server.gd     # McpInteractionServer — TCP JSON automation server (127.0.0.1:9090; see §8)
+├── MISSIONS_PLAN.md                  # Missions system design plan (implemented — see §7)
+├── WORLD_TIME_PLAN.md                # World-time / net-time clock plan (implemented in RunState)
+├── TODO.md                           # Development checklist (missions implementation status)
 ├── data/                             # Resource instances (.tres) for decks, programs & maps
 │   ├── starting_deck.tres            # Cyberdeck resource instance
 │   ├── codecracker.tres              # Program resources (.tres)
@@ -45,12 +50,16 @@ netrunner-v-0.006/
 │       ├── cp2020_city_grid_designer.tscn  # City Grid authoring tool
 │       ├── CP2020DesignerCanvas.tscn       # Datafort authoring tool
 │       └── CyberdeckWorkbench.tscn         # Deck/program loadout UI
+│   └── models/                        # 3D proxy models for rezzed programs / CPU crash (2.5D board)
+│       ├── blue_lady_rotated.tscn, cat_rotated.tscn, dog_rotated.tscn, skull_rotated.tscn
+│       └── worm_rotated.tscn, up.tscn, down.tscn
 └── scripts/
     ├── autoload/
     │   ├── run_state.gd              # RunState singleton — cross-scene PER-LIFE run state (lost on death)
     │   ├── run_state_data.gd         # RunStateData Resource — per-life snapshot saved/loaded to user://
     │   ├── meta_state.gd             # MetaState singleton — PERSISTENT vendor catalogue (survives death)
-    │   └── meta_state_data.gd        # MetaStateData Resource (unlocked_decks/programs + run history)
+    │   ├── meta_state_data.gd        # MetaStateData Resource (unlocked_decks/programs + run history)
+    │   └── screenshot_tool.gd        # Dev tool — headless screenshot capture helper (not a registered autoload)
     ├── resources/                    # Core gameplay resources, nodes & controllers
     │   ├── CP2020DatafortLayout.gd   # Datafort grid layout Resource definition
     │   ├── CP2020TileData.gd         # Individual grid tile state Resource (incl. LDL fields)
@@ -66,6 +75,7 @@ netrunner-v-0.006/
     │   ├── cp2020_blackice.gd        # Black ICE enemy AI node (AStarGrid2D, tracing)
     │   ├── cp2020_npc_netrunner.gd   # NPC netrunner node (NetWatch + random runners; cyberdeck, programs, AI)
     │   ├── cp2020_board_renderer.gd  # CanvasItem custom grid renderer (Fog of War)
+    │   ├── cp2020_board_3d.gd        # 2.5D board renderer — 3D proxies for rezzed programs/ICE (see §6.1 step 8)
     │   ├── cp2020_cyberdecks.gd      # Cyberdeck data Resource class
     │   ├── cp2020_datafort_designer.gd # @tool root coordinator for the datafort designer (panels, file I/O, signal wiring)
     │   ├── cp2020_datafort_grid_canvas.gd # @tool grid canvas child node (drawing, input, tile painting)
@@ -76,6 +86,9 @@ netrunner-v-0.006/
     │   ├── cp2020_net_file.gd        # NetFile Resource — discrete file on a MEMORY_UNIT tile (memory-tile loot)
     │   ├── cp2020_turn_manager.gd    # Turn state controller
     │   └── cp2020_world_map_designer.gd # @tool world map authoring tool
+    ├── dsh/                          # Headless agent-harness helpers: mission test runner, target scanner, mission authoring
+    ├── shaders/
+    │   └── 3d_outline.gdshader       # Fresnel outline shader for 3D program proxies
     └── ui/
         ├── cyberdeck_workbench.gd    # Hub: Cyberdeck loadout + Buy/Sell shop UI script
         └── game_over.gd              # GameOver screen script (permadeath → New Life)
@@ -85,7 +98,7 @@ netrunner-v-0.006/
 
 ## 3. Core Architecture & Component Diagram
 
-The game is structured as a **permadeath rogue-like**. The gameplay loop is built around a decoupled component architecture with **two autoload singletons**: `RunState` (per-life state, LOST on death) and `MetaState` (persistent vendor catalogue, SURVIVES death). The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench (hub)** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
+The game is structured as a **permadeath rogue-like**. The gameplay loop is built around a decoupled component architecture with **three autoload singletons**: `RunState` (per-life state, LOST on death), `MetaState` (persistent vendor catalogue, SURVIVES death), and `McpInteractionServer` (localhost TCP automation server — see §8). The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench (hub)** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
 
 **Rogue-like meta-loop:** New life → hub (starting gear + 0 eb) → run (copy files from `MEMORY_UNIT` tiles + loot programs from `CONTROL_NODE` tiles, manage accumulated trace) → jack out (only if trace < `BUSTED_THRESHOLD`, else **busted** = permadeath) → return to hub, sell carried files + loot, **buy blueprint unlocks** (permanent `MetaState` catalogue) **+ buy-to-own upgrades** (per-life) from the catalogue → push deeper next run → **die** (flatline in a datafort OR busted on jack-out) → `GameOver` scene → **New Life** (fresh runner, but the `MetaState` catalogue of discovered/unlocked decks/programs persists across lives, saved to `user://`).
 
@@ -367,6 +380,7 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
 - **Turn economy (unified actions)**: The turn manager gives the netrunner **`max_actions` actions per turn** (1 per CPU; `max_actions = 1` today, raised when mainframes land). Each action is EITHER a program/Net action OR movement of up to **`max_movement` (5) grid spaces** — not both. `movement_remaining` is the space budget for the *current* movement action; it resets to `max_movement` once that movement action is spent (all 5 spaces used → `consume_movement_step` finalizes it, or the runner ends it early with Space via `end_movement_action`). Using a program (`consume_action`) forfeits movement for that action. The turn ends when `actions_remaining` hits 0 (all actions spent) or the player presses Space. `can_use_programs()` gates program/Net actions on an available action, `not programs_blocked`, and `not _movement_action_active` (can't fire mid-stride). The HUD shows `"Actions: 1/1 | Move: 5/5"` where `Move` is the current movement action's remaining spaces.
 - **Deck crash vs. stun**: A crashed cyberdeck (`netrunner.deck_crashed_turns > 0`) sets `turn_manager.programs_blocked = true` — programs are unavailable but movement still works (CP2020 RAW: the runner can flee/jack out with a crashed deck). Stun (Death Trap) zeroes `actions_remaining`, which blocks BOTH programs and movement (movement requires an action). Both are applied in `_on_turn_ended` after `start_netrunner_turn` resets the flags.
 - **Auto rollover (no enemies)**: `start_round` and `end_round` count valid adversaries (`_count_valid_adversaries`); if none remain, the initiative roll and adversary phase are skipped entirely and the round rolls straight back to `start_netrunner_turn`. This covers dataforts cleared of all ICE/NPCs/datafort-CPU activity mid-run.
+- **Auto-cycle action queue**: When the player attempts an action-consuming interaction while a movement action is still active (1–4 spaces used), the action can't fire this turn. Instead of forcing a Space press, the intent is queued (single slot — a new attempt during the cycle replaces it), the movement action is ended, and the queued action is replayed at the start of the next netrunner turn (`_pending_action` in `cp2020_game_session.gd`). Cleared on replay or scene exit.
 - **Initiative (round-start ordering)**: Each round (from round 2 onward) begins with a CP2020 initiative roll via `turn_manager.start_round(ice_nodes, target, layout, netrunner_int, system_int)`: runner `1D10 + REF + Cyberdeck Speed` vs system `1D10 + System INT` (CPUs × 3 via `datafort.total_int()`), emitted as `initiative_rolled(nr_roll, sys_roll, netrunner_first, is_tie)`. **If the system wins**, `run_adversary_phase` runs BEFORE the netrunner's turn (adversaries act first); **if the runner wins or ties**, the adversary phase is deferred to after the runner's turn via `_post_round_adversary` — a tie is simultaneous (one phase, no ordering, no bonus). When the runner ends their turn, `end_round` runs the deferred adversary phase (if any) and then calls `start_round` for the next round. If no valid enemies remain, both phases are skipped (auto rollover — see Turn economy). Round 1 is special-cased: the runner just jacked in and acts first with no roll (`_post_round_adversary = true`), so initiative only matters once adversaries are active. NPC netrunners do NOT roll initiative separately — they act during the adversary phase.
 - **NPC Combat**: `execute_npc_attack(program, coord)` resolves an opposed 1D10+STR roll vs the NPC's strength (same convention as `execute_ice_attack`); `take_damage` handles destruction + the provoked transition. Called via `_attack_with_rezzed` when a rezzed `DAMAGE_RUNNER` / `DEREZ_ICE` program strikes an NPC (Phase 1 — the program must be rezzed first). `_talk_to_npc(coord)` logs flavour text for neutral runners (placeholder for future dialogue/trading).
 - **Datafort Adversary** (`spawn_datafort`, after `spawn_npcs`): spawns a [CP2020Datafort](scripts/resources/cp2020_datafort.gd) node that treats the datafort itself as an adversary. It owns the CPU list (built from `CONTROL_NODE` tiles), computes total INT (`3 × active CPUs`), actions-per-turn (`1 × active CPUs`), and MU capacity (`10 × active CPUs`) per CP2020 PnP rules. It takes a turn each round running `resident_programs` (anti-runner `DAMAGE_RUNNER` programs) against the netrunner, and decrements crashed-CPU reboot timers. Signals: `message_logged`, `attacked_netrunner` (→ `_on_ice_attacked`), `attacked_runner_deck` (→ `_on_runner_deck_attacked`, for `CRASH_CPU` resident programs that crash the runner's cyberdeck), `cpu_crashed`, `cpu_rebooted`, `state_changed` (→ `update_datafort_info`). The datafort is **prepended** to `_all_adversaries()` so it acts before ICE/NPC, but it does **not** command them — ICE and NPCs stay independent.
@@ -623,7 +637,7 @@ Fire-and-forget visual effect renderer for combat. A `Node2D` (`class_name Comba
 
 A contract/bounty layer for the rogue-like hub loop. The player browses available contracts on a new **Missions** tab in the `CyberdeckWorkbench`, accepts **at most one** at a time, travels to the target datafort manually, fulfils the strict objective, jacks out, and returns to the workbench to **hand in** for a flat credit reward. No timers; failing a run (death/busted) discards the active mission.
 
-### 7.1 `CP2020Mission` ([cp2020_mission.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_mission.gd))
+### 7.1 `CP2020Mission` ([cp2020_mission.gd](scripts/resources/cp2020_mission.gd))
 `class_name CP2020Mission extends Resource`. Authored as static `.tres` files in `data/missions/` (the "mission library"). The resource is a **read-only template** — never mutated at runtime; the board holds `duplicate()`d copies tagged with `source_path`.
 - **`MissionType` enum**: `DATA_HARVEST`, `SABOTAGE`, `RECON`.
 - **Properties**: `mission_id`, `title`, `description`, `mission_type`, `reward_credits`, `target_location_label`, `target_subnet_path` (`.tres`), `target_coord: Vector2i` (Sabotage/Recon; `(-1,-1)` = unset), `target_file_name` (Data Harvest), `objective_summary`. Runtime-only `var source_path: String` (save/load tag, not `@export`).
@@ -652,7 +666,7 @@ Added as a third tab in the `Tabs` `TabContainer` (Loadout=0, SHOP=1, MISSIONS=2
 - `_refresh_missions()` populates the list/detail/active/refresh; called on workbench entry (after `check_mission_refresh()`) and on tab switch to Missions (`_on_tab_changed(2)`).
 
 ### 7.5 Mission library & reachability
-10 authored missions in `data/missions/` (4 Data Harvest, 3 Sabotage, 3 Recon), each referencing a real, reachable subnet + exact coordinate / file name (verified by `scripts/dsh/scan_mission_targets.gd`). Regenerable via `scripts/dsh/author_missions.gd`.
+11 authored missions in `data/missions/` (4 Data Harvest, 4 Sabotage, 3 Recon), each referencing a real, reachable subnet + exact coordinate / file name (verified by `scripts/dsh/scan_mission_targets.gd`). Regenerable via `scripts/dsh/author_missions.gd`.
 - **City Hall** (Night City grid) targets `night_city_subnet.tres` via the `CP2020CityGridDatafort` default `subnet_path` — its `MEMORY_UNIT` tiles carry the named files used by the Data Harvest contracts.
 - Two Night City dataforts were wired in via `scripts/dsh/wire_mission_subnets.gd` (idempotent): **Pirate BBS** → `p2.tres`, **Warez Node** → `p5.tres`, so those file-bearing subnets are diveable.
 - Sabotage/Recon targets use `CONTROL_NODE` / `MEMORY_UNIT` coordinates on city-grid-reachable subnets (`tokyo_subnet`, `london_subnet`, `fort1`, `fort2`, `pr0n1`).
@@ -661,3 +675,20 @@ Added as a third tab in the `Tabs` `TabContainer` (Loadout=0, SHOP=1, MISSIONS=2
 - **`current_subnet_path` vs `selected_subnet_path`**: mission objective subnet checks MUST use `game_session.current_subnet_path` (updated on LDL travel), not `RunState.selected_subnet_path` (set once at city-grid dive). Using the latter would silently break Sabotage/Recon completion in any datafort reached via an LDL link.
 - **DATA_HARVEST hand-in requires the file still carried**: the objective flag is set on copy, but `can_hand_in_mission()` re-checks `carried_files` for the target name at hand-in — if the runner fenced the file first, they must fetch another copy before handing in.
 - **`class_name CP2020Mission` + global class cache**: like all `class_name` types, a freshly-added `cp2020_mission.gd` won't resolve on first headless run until `global_script_class_cache.cfg` is rebuilt (the editor does this on open; for headless validation the entry was added manually). See the §6.4 `CombatEffectAnimator` note for the same pattern.
+
+---
+
+## 8. MCP Interaction Server — *NEW*
+
+`McpInteractionServer` (`autoload/mcp_interaction_server.gd`) is the third autoload singleton: a **localhost TCP automation server** for driving the game from external tools. It pairs with the `scripts/dsh/` agent-harness scripts (mission test runner, target scanner, mission authoring).
+
+### 8.1 Transport & protocol
+- **TCP on `127.0.0.1:9090`** (localhost only). Requests are newline-delimited JSON: `{"command": "...", "params": {...}, "id": ...}`. Responses are JSON and echo `id`.
+- **Single-flight**: one command at a time — a second command while one is in flight gets a `Server busy` error response (`BUSY_TIMEOUT` = 120 s).
+
+### 8.2 Commands (see `_handle_command`)
+- **Async**: `screenshot`, `click`, `key_press`, `eval` (remote GDScript execution), `wait`.
+- **Sync**: `mouse_move`, `get_ui_elements`, `get_scene_tree`, `get_property`, `set_property`, `call_method`, `get_node_info`, `instantiate_scene`, `remove_node`, `change_scene`, `pause`.
+
+### 8.3 Security note
+`eval` executes arbitrary GDScript in the running game. The server binds to localhost only and exists as a development tool — **do not ship it in public release builds** without an explicit guard (e.g. gate the `_ready()` listener on `OS.has_feature("editor")` or a debug-only flag).
