@@ -692,5 +692,23 @@ Added as a third tab in the `Tabs` `TabContainer` (Loadout=0, SHOP=1, MISSIONS=2
 - **Async**: `screenshot`, `click`, `key_press`, `eval` (remote GDScript execution), `wait`.
 - **Sync**: `mouse_move`, `get_ui_elements`, `get_scene_tree`, `get_property`, `set_property`, `call_method`, `get_node_info`, `instantiate_scene`, `remove_node`, `change_scene`, `pause`.
 
-### 8.3 Security note
+### 8.3 Driving it from an agent session
+`tools/godot_mcp.py` is a stdlib-only CLI client — one command per invocation, prints the response JSON, exits 1 on error/timeout:
+
+```bash
+python3 tools/godot_mcp.py get_scene_tree --wait-port 25
+python3 tools/godot_mcp.py eval '{"code": "return RunState.credits"}'
+python3 tools/godot_mcp.py click '{"x": 640, "y": 360}'
+python3 tools/godot_mcp.py screenshot --save shot.png   # decodes the base64 PNG
+```
+
+The server only exists while a scene is **running** (autoloads boot with the game, not the editor):
+- Headless run (`godot --headless --path .`) — fine for state reads, `get_scene_tree`, `eval`, `set_property`/`call_method`. `screenshot` and `click` need a real renderer/window.
+- Windowed run (editor F5 or `godot --path .`) enables everything.
+
+Gotchas:
+- `eval` code is wrapped in a function body — statements, not expressions. Use an explicit `return` to get a value back.
+- Single-flight: a second command while one is in flight gets `Server busy` (auto-reset after 120 s); retry with a longer client `--timeout`.
+
+### 8.4 Security note
 `eval` executes arbitrary GDScript in the running game. The server binds to localhost only and exists as a development tool — **do not ship it in public release builds** without an explicit guard (e.g. gate the `_ready()` listener on `OS.has_feature("editor")` or a debug-only flag).
