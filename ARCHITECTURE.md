@@ -2,6 +2,8 @@
 
 This document provides a comprehensive breakdown of the system architecture, code organization, data models, signal flows, and mechanics for the Cyberpunk 2020 (CP2020) Netrunning game built in **Godot 4**. It is designed as a direct technical primer for coding agents and human developers.
 
+> **This is the single source of technical truth** for the project. The [README](README.md) is the front door (overview, quick-start, links) — when systems change, update this document; don't duplicate technical content in the README.
+
 ---
 
 ## 1. Executive Overview & Tech Stack
