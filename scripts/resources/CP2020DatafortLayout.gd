@@ -199,6 +199,33 @@ func get_floor_count() -> int:
 	return floors.size()
 
 
+# Single source of truth for vertical (up/down floor) travel blocking — used by
+# the game session when executing travel and by the interaction handler to grey
+# out blocked directions (CODE_REVIEW §7.10; see docs/multi-floor-travel-plan.md
+# §2 blocking check). Returns "" when the move is allowed, otherwise one of:
+# "no_floor", "out_of_bounds", "datawall", "locked_gate".
+func vertical_travel_block(target_coord: Vector2i, target_floor: int) -> String:
+	if target_floor < 0 or target_floor >= get_floor_count():
+		return "no_floor"
+	if target_coord.x < 0 or target_coord.x >= columns \
+			or target_coord.y < 0 or target_coord.y >= rows:
+		return "out_of_bounds"
+	var tile := get_tile(target_coord, target_floor)
+	# Empty / no-tile = open floor (allowed). Only walls / locked gates block.
+	if tile == null:
+		return ""
+	if tile.tile_type == TileType.DATAWALL:
+		return "datawall"
+	if tile.tile_type == TileType.CODE_GATE and not tile.is_unlocked:
+		return "locked_gate"
+	return ""
+
+
+# Convenience boolean wrapper over vertical_travel_block().
+func can_travel_vertical(target_coord: Vector2i, target_floor: int) -> bool:
+	return vertical_travel_block(target_coord, target_floor) == ""
+
+
 # Shared line-of-sight helper used by both the netrunner's fog-of-war vision
 # and the adversaries' sight gating. Combines a Euclidean distance check
 # (matching the existing fog radius) with the Bresenham raycast that blocks on

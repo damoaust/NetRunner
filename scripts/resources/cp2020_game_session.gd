@@ -513,28 +513,6 @@ func _set_current_floor(f: int) -> void:
 		netrunner.current_floor = f
 	_update_floor_hud_label()
 
-# Authoritative vertical-travel blocking check (mirrors the interaction
-# handler's pre-check so the menu can grey out blocked directions). Returns
-# true if `target_floor` exists and the arrival coord is a non-blocking tile
-# (not a Datawall, not a locked Code Gate). See
-# docs/multi-floor-travel-plan.md §2 blocking check.
-func _can_travel_vertical(target_floor: int, target_coord: Vector2i) -> bool:
-	if current_layout == null:
-		return false
-	if target_floor < 0 or target_floor >= current_layout.get_floor_count():
-		return false
-	if target_coord.x < 0 or target_coord.x >= current_layout.columns \
-			or target_coord.y < 0 or target_coord.y >= current_layout.rows:
-		return false
-	var tile := current_layout.get_tile(target_coord, target_floor)
-	if tile == null:
-		return true
-	if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL:
-		return false
-	if tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked:
-		return false
-	return true
-
 # Keyboard Q/E entry point: travel up/down from the runner's current tile.
 # Silent no-op when the runner isn't standing on a tile flagged for that
 # direction (avoids log spam on every key press).
@@ -570,14 +548,18 @@ func _do_travel_vertical(up: bool, clicked_coord: Vector2i) -> void:
 	if not (tile.can_go_up if up else tile.can_go_down):
 		log_to_terminal("No %s shaft here.\n" % ("upward" if up else "downward"))
 		return
-	if not _can_travel_vertical(target_floor, target_coord):
-		if target_floor < 0 or target_floor >= current_layout.get_floor_count():
-			log_to_terminal("No floor %s — cannot travel %s.\n" % [target_floor, "up" if up else "down"])
-		elif target_coord.x < 0 or target_coord.x >= current_layout.columns \
-				or target_coord.y < 0 or target_coord.y >= current_layout.rows:
-			log_to_terminal("Vertical shaft leads nowhere (out of bounds).\n")
-		else:
-			log_to_terminal("The way %s is blocked by a Datawall or locked Code Gate.\n" % ("up" if up else "down"))
+	# Blocking check lives on the layout (single source of truth — the
+	# interaction handler greys out blocked directions with the same call,
+	# CODE_REVIEW §7.10). Turn the reason code into the player-facing log.
+	var block: String = current_layout.vertical_travel_block(target_coord, target_floor)
+	if block != "":
+		match block:
+			"no_floor":
+				log_to_terminal("No floor %s — cannot travel %s.\n" % [target_floor, "up" if up else "down"])
+			"out_of_bounds":
+				log_to_terminal("Vertical shaft leads nowhere (out of bounds).\n")
+			_:
+				log_to_terminal("The way %s is blocked by a Datawall or locked Code Gate.\n" % ("up" if up else "down"))
 		return
 	# Switch floor + position. Each floor retains its own fog state, so a
 	# revisited floor shows as already-explored; recalculate_fog_of_war sets

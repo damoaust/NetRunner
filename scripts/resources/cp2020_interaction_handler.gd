@@ -180,14 +180,14 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 	# See docs/multi-floor-travel-plan.md §4.
 	if tile_data.can_go_up:
 		_ldl_tile = tile_data
-		var up_ok := _can_travel_vertical(layout, tile_data.up_target_entry_coord, layout.current_floor + 1)
+		var up_ok := layout.can_travel_vertical(tile_data.up_target_entry_coord, layout.current_floor + 1)
 		var idx := _dynamic_menu.get_item_count()
 		_dynamic_menu.add_item("Go Up", 3002)
 		_dynamic_menu.set_item_disabled(idx, not up_ok)
 		options_added = true
 	if tile_data.can_go_down:
 		_ldl_tile = tile_data
-		var down_ok := _can_travel_vertical(layout, tile_data.down_target_entry_coord, layout.current_floor - 1)
+		var down_ok := layout.can_travel_vertical(tile_data.down_target_entry_coord, layout.current_floor - 1)
 		var idx := _dynamic_menu.get_item_count()
 		_dynamic_menu.add_item("Go Down", 3003)
 		_dynamic_menu.set_item_disabled(idx, not down_ok)
@@ -611,23 +611,6 @@ func _ldl_target_name(path: String) -> String:
 	var fname := path.get_file().get_basename()
 	return fname if fname != "" else "target datafort"
 
-# Pre-check for vertical travel: returns true if `target_floor` exists and the
-# arrival coord on it is a non-blocking tile (not a Datawall, not a locked Code
-# Gate). Mirrors the game session's authoritative _can_travel_vertical so the
-# menu can grey out a blocked Go Up / Go Down. See
-# docs/multi-floor-travel-plan.md §2 blocking check.
-func _can_travel_vertical(layout: CP2020DatafortLayout, target_coord: Vector2i, target_floor: int) -> bool:
-	if target_floor < 0 or target_floor >= layout.get_floor_count():
-		return false
-	if target_coord.x < 0 or target_coord.x >= layout.columns \
-			or target_coord.y < 0 or target_coord.y >= layout.rows:
-		return false
-	var tile := layout.get_tile(target_coord, target_floor)
-	# Empty / no-tile = open floor (allowed). Only walls / locked gates block.
-	if tile == null:
-		return true
-	if tile.tile_type == CP2020DatafortLayout.TileType.DATAWALL:
-		return false
-	if tile.tile_type == CP2020DatafortLayout.TileType.CODE_GATE and not tile.is_unlocked:
-		return false
-	return true
+# Vertical-travel blocking lives on CP2020DatafortLayout.can_travel_vertical()
+# — the game session and this handler share that one implementation (the
+# session enforces it on travel, the handler greys out blocked directions).
