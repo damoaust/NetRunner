@@ -131,41 +131,15 @@ var _selected_buy_module_idx: int = -1
 var _selected_sell_loot_idx: int = -1
 var _selected_sell_file_idx: int = -1
 
-# --- Configure Subroutines window (built in code — popup) ---
-var subroutines_window: Window
-var sub_slot_list: ItemList
-var sub_candidate_list: ItemList
-var sub_assign_button: Button
-var sub_clear_button: Button
-var _sub_target_demon: DemonProgram
-var _sub_candidates: Array[NetProgram] = []
-var _sub_selected_slot_idx: int = -1
-var _sub_selected_candidate_idx: int = -1
+# --- Popup windows (extracted classes; see scripts/ui/workbench_*_window.gd).
+# Built lazily on first open, reused afterwards; each handles its own UI and
+# reports back via `changed` (deck UI refresh) + `message_requested`. ---
+var subroutines_window: WorkbenchSubroutinesWindow
+var upgrades_window: WorkbenchUpgradesWindow
 
-# --- Upgrades window (built in code — popup) ---
-var upgrades_window: Window
-var upg_slot_list: ItemList
-var upg_library_list: ItemList
-var upg_install_button: Button
-var upg_uninstall_button: Button
-var _upg_selected_slot_idx: int = -1
-var _upg_selected_library_idx: int = -1
-
-# Human-readable tags for each program effect type.
-const EFFECT_TAGS: Dictionary = {
-	NetProgram.EffectType.BYPASS_GATE: "Intrusion",
-	NetProgram.EffectType.BREACH_WALL: "Breach",
-	NetProgram.EffectType.DEREZ_ICE: "Anti-ICE",
-	NetProgram.EffectType.DAMAGE_RUNNER: "Anti-Pers",
-	NetProgram.EffectType.REVEAL_NODES: "Reveal",
-	NetProgram.EffectType.MODIFY_MU: "Utility",
-	NetProgram.EffectType.SHIELD: "Defense",
-	NetProgram.EffectType.CRASH_CPU: "Anti-System",
-	NetProgram.EffectType.ARMOR: "Defense",
-	NetProgram.EffectType.DEMON: "Demon",
-	NetProgram.EffectType.WORM: "Worm",
-	NetProgram.EffectType.DETECTION: "Detect",
-}
+# Human-readable tags for each program effect type (single source of truth on
+# NetProgram).
+const EFFECT_TAGS: Dictionary = NetProgram.EFFECT_TAGS
 
 # Compact tag used inline in list rows where horizontal space is at a premium
 # (the library column on a 1280px viewport). Falls back to the full EFFECT_TAGS
@@ -1379,7 +1353,9 @@ func _close_unlock_window() -> void:
 			unlock_window.get_parent().remove_child(unlock_window)
 
 # ---------------------------------------------------------------------------
-# Configure Subroutines window (for Demon programs)
+# Configure Subroutines / Deck Upgrades popups — UI + logic live in their
+# extracted classes (scripts/ui/workbench_*_window.gd, CODE_REVIEW §6.4); the
+# workbench only constructs, wires, and opens them.
 # ---------------------------------------------------------------------------
 func _open_subroutines_window() -> void:
 	if active_deck == null or _selected_loaded_idx < 0:
@@ -1389,356 +1365,29 @@ func _open_subroutines_window() -> void:
 	var prog := active_deck.installed_programs[_selected_loaded_idx] as NetProgram
 	if not (prog is DemonProgram):
 		return
-	_sub_target_demon = prog as DemonProgram
 	if subroutines_window == null:
-		_build_subroutines_window()
-	_refresh_subroutines_window()
+		subroutines_window = WorkbenchSubroutinesWindow.new()
+		subroutines_window.changed.connect(_on_popup_changed)
+		subroutines_window.message_requested.connect(_show_message)
 	add_child(subroutines_window)
-	subroutines_window.popup_centered(Vector2i(460, 560))
+	subroutines_window.open_for(prog as DemonProgram, active_deck)
 
-func _build_subroutines_window() -> void:
-	subroutines_window = Window.new()
-	subroutines_window.title = "◢ CONFIGURE SUBROUTINES ◣"
-	subroutines_window.min_size = Vector2i(400, 460)
-	subroutines_window.wrap_controls = true
-	subroutines_window.close_requested.connect(_close_subroutines_window)
-	subroutines_window.add_theme_color_override("embedded_border_bg", COL_BG)
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	subroutines_window.add_child(margin)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	margin.add_child(col)
-
-	col.add_child(THEME.make_header_label("◢ SUBROUTINE SLOTS ◣", true))
-	col.add_child(THEME.make_label("Assigned subroutines fire at the Demon's STR.", COL_DIM, 22))
-
-	sub_slot_list = ItemList.new()
-	sub_slot_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sub_slot_list.custom_minimum_size = Vector2(0, 130)
-	sub_slot_list.item_selected.connect(_on_sub_slot_selected)
-	col.add_child(sub_slot_list)
-
-	col.add_child(THEME.make_rule())
-	col.add_child(THEME.make_header_label("◢ AVAILABLE PROGRAMS ◣", true))
-
-	sub_candidate_list = ItemList.new()
-	sub_candidate_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sub_candidate_list.custom_minimum_size = Vector2(0, 160)
-	sub_candidate_list.item_selected.connect(_on_sub_candidate_selected)
-	col.add_child(sub_candidate_list)
-
-	var btns := HBoxContainer.new()
-	btns.add_theme_constant_override("separation", 8)
-	col.add_child(btns)
-
-	sub_assign_button = THEME.make_button("ASSIGN ▶", COL_HEADER)
-	sub_assign_button.pressed.connect(_on_sub_assign_pressed)
-	sub_assign_button.disabled = true
-	btns.add_child(sub_assign_button)
-
-	sub_clear_button = THEME.make_button("◀ CLEAR", COL_WARN)
-	sub_clear_button.pressed.connect(_on_sub_clear_pressed)
-	sub_clear_button.disabled = true
-	btns.add_child(sub_clear_button)
-
-	var done_btn := THEME.make_button("DONE", COL_GREEN)
-	done_btn.pressed.connect(_close_subroutines_window)
-	btns.add_child(done_btn)
-
-	subroutines_window.theme = THEME_RES
-
-func _close_subroutines_window() -> void:
-	if subroutines_window != null and is_instance_valid(subroutines_window):
-		subroutines_window.hide()
-		if subroutines_window.get_parent() != null:
-			subroutines_window.get_parent().remove_child(subroutines_window)
-	_sub_target_demon = null
-	_sub_selected_slot_idx = -1
-	_sub_selected_candidate_idx = -1
-
-func _refresh_subroutines_window() -> void:
-	if _sub_target_demon == null:
-		return
-	sub_slot_list.clear()
-	sub_candidate_list.clear()
-	_sub_selected_slot_idx = -1
-	_sub_selected_candidate_idx = -1
-	if sub_assign_button:
-		sub_assign_button.disabled = true
-	if sub_clear_button:
-		sub_clear_button.disabled = true
-	# Slots: show assigned subroutine names or "(empty)".
-	var assigned: Array = _sub_target_demon.assigned_subroutines
-	for i in range(_sub_target_demon.max_subroutines):
-		var label_txt: String = "Slot %d — " % (i + 1)
-		if i < assigned.size() and assigned[i] != null:
-			var sub := assigned[i] as NetProgram
-			label_txt += "%s (STR %d)" % [sub.program_name, _sub_target_demon.strength]
-		else:
-			label_txt += "(empty)"
-			sub_slot_list.set_item_custom_fg_color(i, COL_GREY)
-		var idx := sub_slot_list.add_item(label_txt, null, true)
-		sub_slot_list.set_item_metadata(idx, i)
-	# Candidates: installed programs restricted to allowed executable effect
-	# types, excluding the Demon itself and any other DemonProgram.
-	_sub_candidates.clear()
-	for prog in active_deck.installed_programs:
-		if prog == _sub_target_demon:
-			continue
-		if prog is DemonProgram:
-			continue
-		# Eligible subroutines: allowed executable effect types only. The
-		# slot-count gate is enforced by the Assign button state, not here,
-		# so candidates remain visible when slots are full (for swapping).
-		if prog.effect_type in DemonProgram.ALLOWED_SUB_EFFECTS:
-			_sub_candidates.append(prog)
-			var cidx := sub_candidate_list.add_item(
-				"%s — %s (STR %d, MU %d)" % [
-					prog.program_name,
-					EFFECT_TAGS.get(prog.effect_type, "???"),
-					prog.strength,
-					prog.memory_cost,
-				], null, true)
-			sub_candidate_list.set_item_metadata(cidx, _sub_candidates.size() - 1)
-
-func _on_sub_slot_selected(index: int) -> void:
-	_sub_selected_slot_idx = index
-	if sub_clear_button:
-		var slot_meta: int = sub_slot_list.get_item_metadata(index)
-		var assigned: Array = _sub_target_demon.assigned_subroutines
-		sub_clear_button.disabled = not (slot_meta < assigned.size() and assigned[slot_meta] != null)
-	_update_sub_assign_state()
-
-func _on_sub_candidate_selected(index: int) -> void:
-	_sub_selected_candidate_idx = index
-	_update_sub_assign_state()
-
-func _update_sub_assign_state() -> void:
-	if sub_assign_button == null or _sub_target_demon == null:
-		return
-	# Assign targets the selected slot if one is chosen, else the next free
-	# slot. Disable if no candidate selected or no target slot available.
-	var has_candidate := _sub_selected_candidate_idx >= 0 and _sub_selected_candidate_idx < _sub_candidates.size()
-	var slot_meta: int = -1
-	if _sub_selected_slot_idx >= 0:
-		slot_meta = sub_slot_list.get_item_metadata(_sub_selected_slot_idx)
-	var has_slot := false
-	if slot_meta >= 0:
-		var assigned: Array = _sub_target_demon.assigned_subroutines
-		has_slot = slot_meta >= assigned.size() or assigned[slot_meta] == null
-	else:
-		has_slot = _sub_target_demon.assigned_subroutines.size() < _sub_target_demon.max_subroutines
-	sub_assign_button.disabled = not (has_candidate and has_slot)
-
-func _on_sub_assign_pressed() -> void:
-	if _sub_target_demon == null or _sub_selected_candidate_idx < 0:
-		return
-	var sub := _sub_candidates[_sub_selected_candidate_idx] as NetProgram
-	if sub == null:
-		return
-	var slot_idx: int = -1
-	if _sub_selected_slot_idx >= 0:
-		slot_idx = sub_slot_list.get_item_metadata(_sub_selected_slot_idx)
-	if slot_idx < 0:
-		slot_idx = _sub_target_demon.assigned_subroutines.size()
-	# Grow the array to fit the slot, padding with nulls.
-	while _sub_target_demon.assigned_subroutines.size() <= slot_idx:
-		_sub_target_demon.assigned_subroutines.append(null)
-	# Reject duplicates (a subroutine may only occupy one slot).
-	if _sub_target_demon.assigned_subroutines.has(sub):
-		_show_message("%s is already assigned to a slot." % sub.program_name, COL_AMBER)
-		return
-	_sub_target_demon.assigned_subroutines[slot_idx] = sub
-	_refresh_subroutines_window()
-	RunState.save_run()
-	_show_message("Assigned %s to slot %d." % [sub.program_name, slot_idx + 1], COL_GREEN)
-
-func _on_sub_clear_pressed() -> void:
-	if _sub_target_demon == null or _sub_selected_slot_idx < 0:
-		return
-	var slot_idx: int = sub_slot_list.get_item_metadata(_sub_selected_slot_idx)
-	if slot_idx < 0 or slot_idx >= _sub_target_demon.assigned_subroutines.size():
-		return
-	_sub_target_demon.assigned_subroutines[slot_idx] = null
-	# Trim trailing nulls to keep the array tidy.
-	while _sub_target_demon.assigned_subroutines.size() > 0:
-		var last = _sub_target_demon.assigned_subroutines[_sub_target_demon.assigned_subroutines.size() - 1]
-		if last == null:
-			_sub_target_demon.assigned_subroutines.remove_at(_sub_target_demon.assigned_subroutines.size() - 1)
-		else:
-			break
-	_refresh_subroutines_window()
-	RunState.save_run()
-
-# ---------------------------------------------------------------------------
-# Upgrades window (hardware module install/uninstall)
-# ---------------------------------------------------------------------------
 func _open_upgrades_window() -> void:
 	if active_deck == null:
 		return
 	if upgrades_window == null:
-		_build_upgrades_window()
-	_refresh_upgrades_window()
+		upgrades_window = WorkbenchUpgradesWindow.new()
+		upgrades_window.changed.connect(_on_popup_changed)
+		upgrades_window.message_requested.connect(_show_message)
 	add_child(upgrades_window)
-	upgrades_window.popup_centered(Vector2i(520, 560))
+	upgrades_window.open_for(active_deck)
 
-func _build_upgrades_window() -> void:
-	upgrades_window = Window.new()
-	upgrades_window.title = "◢ DECK UPGRADES ◣"
-	upgrades_window.min_size = Vector2i(460, 480)
-	upgrades_window.wrap_controls = true
-	upgrades_window.close_requested.connect(_close_upgrades_window)
-	upgrades_window.add_theme_color_override("embedded_border_bg", COL_BG)
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	upgrades_window.add_child(margin)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	margin.add_child(col)
-
-	col.add_child(THEME.make_header_label("◢ UPGRADE SLOTS ◣", true))
-	col.add_child(THEME.make_label("Install hardware modules into the deck's upgrade slots.", COL_DIM, 22))
-
-	upg_slot_list = ItemList.new()
-	upg_slot_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	upg_slot_list.custom_minimum_size = Vector2(0, 130)
-	upg_slot_list.item_selected.connect(_on_upg_slot_selected)
-	col.add_child(upg_slot_list)
-
-	col.add_child(THEME.make_rule())
-	col.add_child(THEME.make_header_label("◢ OWNED MODULES ◣", true))
-
-	upg_library_list = ItemList.new()
-	upg_library_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	upg_library_list.custom_minimum_size = Vector2(0, 160)
-	upg_library_list.item_selected.connect(_on_upg_library_selected)
-	col.add_child(upg_library_list)
-
-	var btns := HBoxContainer.new()
-	btns.add_theme_constant_override("separation", 8)
-	col.add_child(btns)
-
-	upg_install_button = THEME.make_button("INSTALL ▶", COL_HEADER)
-	upg_install_button.pressed.connect(_on_upg_install_pressed)
-	upg_install_button.disabled = true
-	btns.add_child(upg_install_button)
-
-	upg_uninstall_button = THEME.make_button("◀ UNINSTALL", COL_WARN)
-	upg_uninstall_button.pressed.connect(_on_upg_uninstall_pressed)
-	upg_uninstall_button.disabled = true
-	btns.add_child(upg_uninstall_button)
-
-	var done_btn := THEME.make_button("DONE", COL_GREEN)
-	done_btn.pressed.connect(_close_upgrades_window)
-	btns.add_child(done_btn)
-
-	upgrades_window.theme = THEME_RES
-
-func _close_upgrades_window() -> void:
-	if upgrades_window != null and is_instance_valid(upgrades_window):
-		upgrades_window.hide()
-		if upgrades_window.get_parent() != null:
-			upgrades_window.get_parent().remove_child(upgrades_window)
-	_upg_selected_slot_idx = -1
-	_upg_selected_library_idx = -1
-
-func _refresh_upgrades_window() -> void:
-	if active_deck == null:
-		return
-	if upg_slot_list == null:
-		return
-	upg_slot_list.clear()
-	upg_library_list.clear()
-	_upg_selected_slot_idx = -1
-	_upg_selected_library_idx = -1
-	if upg_install_button:
-		upg_install_button.disabled = true
-	if upg_uninstall_button:
-		upg_uninstall_button.disabled = true
-	# Slots: show installed module or "(empty)".
-	var slots: int = active_deck.upgrade_slots
-	var installed: Array[DeckModule] = active_deck.installed_modules
-	for i in range(slots):
-		var label_txt: String = "Slot %d — " % (i + 1)
-		if i < installed.size() and installed[i] != null:
-			var mod := installed[i] as DeckModule
-			label_txt += "%s [%s %s]" % [mod.module_name, DeckModule.effect_tag(mod.effect_type), mod.bonus_sign()]
-		else:
-			label_txt += "(empty)"
-		var idx := upg_slot_list.add_item(label_txt, null, true)
-		upg_slot_list.set_item_metadata(idx, i)
-		if not (i < installed.size() and installed[i] != null):
-			upg_slot_list.set_item_custom_fg_color(idx, COL_GREY)
-	# Library: owned-but-not-installed modules.
-	for mod in RunState.owned_modules:
-		if mod == null:
-			continue
-		var tag: String = DeckModule.effect_tag(mod.effect_type)
-		var sign: String = mod.bonus_sign()
-		var idx := upg_library_list.add_item("%s [%s %s] — %d eb" % [mod.module_name, tag, sign, mod.price], null, true)
-		upg_library_list.set_item_metadata(idx, mod)
-
-func _on_upg_slot_selected(index: int) -> void:
-	_upg_selected_slot_idx = index
-	if upg_uninstall_button:
-		var slot_meta: int = upg_slot_list.get_item_metadata(index)
-		var installed: Array[DeckModule] = active_deck.installed_modules
-		upg_uninstall_button.disabled = not (slot_meta < installed.size() and installed[slot_meta] != null)
-	_update_upg_install_state()
-
-func _on_upg_library_selected(index: int) -> void:
-	_upg_selected_library_idx = index
-	_update_upg_install_state()
-
-func _update_upg_install_state() -> void:
-	if upg_install_button == null or active_deck == null:
-		return
-	var has_module := _upg_selected_library_idx >= 0 and _upg_selected_library_idx < upg_library_list.item_count
-	upg_install_button.disabled = not (has_module and active_deck.free_upgrade_slots() > 0)
-
-func _on_upg_install_pressed() -> void:
-	if active_deck == null or _upg_selected_library_idx < 0:
-		return
-	var mod := upg_library_list.get_item_metadata(_upg_selected_library_idx) as DeckModule
-	if mod == null:
-		return
-	if RunState.install_module_to_deck(mod, active_deck):
-		_refresh_upgrades_window()
-		update_deck_ui()
-		RunState.save_run()
-		_show_message("Installed %s." % mod.module_name, COL_GREEN)
-	else:
-		_show_message("Cannot install %s — no free slots." % mod.module_name)
-
-func _on_upg_uninstall_pressed() -> void:
-	if active_deck == null or _upg_selected_slot_idx < 0:
-		return
-	var slot_idx: int = upg_slot_list.get_item_metadata(_upg_selected_slot_idx)
-	if slot_idx < 0 or slot_idx >= active_deck.installed_modules.size():
-		return
-	var mod := active_deck.installed_modules[slot_idx] as DeckModule
-	if mod == null:
-		return
-	if RunState.uninstall_module_from_deck(mod, active_deck):
-		_refresh_upgrades_window()
-		update_deck_ui()
-		RunState.save_run()
-		_show_message("Uninstalled %s." % mod.module_name, COL_AMBER)
-	else:
-		_show_message("Cannot uninstall that module.")
+# The popups persist their own changes via RunState.save_run(); refresh the
+# workbench deck UI so MU / summary readouts follow.
+func _on_popup_changed() -> void:
+	update_deck_ui()
 
 func _refresh_unlock_list() -> void:
 	unlock_list.clear()

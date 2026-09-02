@@ -29,6 +29,24 @@ enum EffectType {
 	DEMON,            # Demon: a program shell carrying N other programs as subroutines (Imp=2/Afreet=3/Succubus=4/Balron=5). Rezzed as one node; the runner commands it to fire any loaded subroutine, each using the Demon core's STR (not the subroutine's own). Faithful CP2020 multi-program-in-one tradeoff.
 }
 
+# Human-readable effect-type tags used across UI lists (filter dropdown, workbench
+# library rows, Demon subroutine candidates). Single source of truth — UI scripts
+# alias it so all call sites show the same tags.
+const EFFECT_TAGS: Dictionary = {
+	EffectType.BYPASS_GATE: "Intrusion",
+	EffectType.BREACH_WALL: "Breach",
+	EffectType.DEREZ_ICE: "Anti-ICE",
+	EffectType.DAMAGE_RUNNER: "Anti-Pers",
+	EffectType.REVEAL_NODES: "Reveal",
+	EffectType.MODIFY_MU: "Utility",
+	EffectType.SHIELD: "Defense",
+	EffectType.CRASH_CPU: "Anti-System",
+	EffectType.ARMOR: "Defense",
+	EffectType.DEMON: "Demon",
+	EffectType.WORM: "Worm",
+	EffectType.DETECTION: "Detect",
+}
+
 # Attack/defense visual config per effect type. Each entry describes the beam
 # rendered when a program of that effect_type fires. Adding/customizing a
 # program's attack visual is a one-file change here.
