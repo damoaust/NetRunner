@@ -814,67 +814,11 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 				log_to_terminal(">> MISSION OBJECTIVE MET: %s — jack out and hand in at the workbench.\n" % RunState.active_mission.title)
 	match action_name:
 		"use_program":
-			if program is NetProgram and current_layout:
-				if turn_manager and not turn_manager.can_use_programs():
-					if _try_defer_action_for_cycle("use_program", target_coord, program):
-						return
-					if turn_manager.programs_blocked:
-						log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
-					elif turn_manager._movement_action_active:
-						log_to_terminal("Already moving this action — end movement (Space) first.\n")
-					else:
-						log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
-					return
-				# Crashed (de-rezzed) programs clog MU but can't be used —
-				# their integrity is 0. Block the action before consuming it.
-				if is_instance_valid(netrunner) and netrunner.program_integrity_for(program) <= 0:
-					log_to_terminal("Program '%s' is crashed (de-rezzed) — cannot use. Clear it to free MU.\n" % program.program_name)
-					return
-				# Delegate to the program's virtual execute_runner_action. The
-				# base NetProgram dispatches by effect_type to the private
-				# _execute_* helpers; subclasses (Worm, Watchdog) override it
-				# entirely. Returns false if the use failed validation — in
-				# that case do NOT consume an action.
-				var ok: bool = program.execute_runner_action(self, target_coord)
-				if ok:
-					if turn_manager:
-						turn_manager.consume_action()
-					_check_actions_exhausted()
+			_handle_use_program(target_coord, program)
 		"travel_ldl":
-			# program carries the CP2020TileData of the LDL link tile.
-			if program is CP2020TileData:
-				var tile: CP2020TileData = program
-				var dest_path: String = tile.target_subnet_path
-				var dest_coord: Vector2i = tile.target_entry_coord
-				if dest_path == "":
-					log_to_terminal("LDL link has no target subnet set.\n")
-					return
-				if load_subnet(dest_path, dest_coord):
-					# If a target_entry_coord was requested but the remote map
-					# had no valid tile there, netrunner.initialize fell back to
-					# the remote's primary/first entry. Surface that so the
-					# player/designer isn't silently dropped somewhere unexpected.
-					if dest_coord.x >= 0 and dest_coord.y >= 0 and netrunner and netrunner.current_position != dest_coord:
-						log_to_terminal("LDL target entry %s invalid — arrived at remote entry %s instead.\n" % [dest_coord, netrunner.current_position])
-					else:
-						log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, netrunner.current_position if netrunner else dest_coord])
-					update_deck_info()
-					_update_trace()
-					_update_security_dispatch_hud()
-				else:
-					log_to_terminal("LDL target '%s' could not be loaded.\n" % dest_path)
+			_handle_travel_ldl(program)
 		"return_world_map":
-			log_to_terminal("Returning to the City Grid via LDL. Connection preserved.\n")
-			# Trace is preserved — the runner is still in the run, just back up
-			# one map level (Datafort -> City Grid).
-			if RunState.selected_city_grid_path != "":
-				get_tree().change_scene_to_file("res://scenes/ui/cp2020_city_grid.tscn")
-			else:
-				# No city grid recorded (e.g. legacy entry) — fall back to world map.
-				RunState.accumulated_trace = 0
-				RunState.security_dispatch_turns = 0
-				RunState.net_time_seconds = 0.0
-				get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+			_handle_return_world_map()
 		"travel_up":
 			# Vertical travel within the same datafort (no load_subnet). The
 			# program_resource carries the ENTRY tile the runner right-clicked
@@ -886,181 +830,278 @@ func _on_action_triggered(action_name: String, target_coord: Vector2i, program =
 		"talk_npc":
 			_talk_to_npc(target_coord)
 		"rez_program":
-			# Rez an installed attack program onto the net as an active node.
-			# `program` is the installed NetProgram copy to rez. Consumes 1
-			# action. The node spawns at the runner's tile (or nearest walkable
-			# adjacent tile) and auto-follows thereafter.
-			if program is NetProgram:
-				if turn_manager and not turn_manager.can_use_programs():
-					if _try_defer_action_for_cycle("rez_program", target_coord, program):
-						return
-					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
-					return
-				if _rez_program(program as NetProgram):
-					if turn_manager:
-						turn_manager.consume_action()
-					_check_actions_exhausted()
+			_handle_rez_program(target_coord, program)
 		"derez_program":
 			# De-rez a rezzed attack-program node (free — no action cost).
 			# `program` is the RezzedProgram node to remove.
 			if program is RezzedProgram:
 				_derez_program(program as RezzedProgram)
 		"attack_with_rezzed":
-			# Command a rezzed attack program to strike a target. `program` is
-			# the RezzedProgram node; target_coord is the target tile. Consumes
-			# 1 action. Dispatches by effect_type to the existing execute_*
-			# helpers, sourcing stats from the rezzed node's program duplicate.
-			if program is RezzedProgram and current_layout:
-				var rez_node: RezzedProgram = program as RezzedProgram
-				if turn_manager and not turn_manager.can_use_programs():
-					if _try_defer_action_for_cycle("attack_with_rezzed", target_coord, program):
-						return
-					log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
-					return
-				if not is_instance_valid(rez_node) or rez_node.program == null:
-					log_to_terminal("That rezzed program is no longer active.\n")
-					return
-				var ok := _attack_with_rezzed(rez_node, target_coord)
-				if ok:
-					if turn_manager:
-						turn_manager.consume_action()
-					_check_actions_exhausted()
+			_handle_attack_with_rezzed(target_coord, program)
 		"command_demon":
-				# Command a rezzed Demon to fire one of its subroutines. `program`
-				# is a 2-element Array [DemonNode, subroutine_index] built by the
-				# interaction handler's Demon command menu (id range 8500+i).
-				# Consumes 1 action. Attack subroutines strike `target_coord`;
-				# SHIELD/ARMOR subroutines self-buff the runner.
-				if program is Array and current_layout:
-					var payload: Array = program
-					if payload.size() >= 2 and payload[0] is DemonNode:
-						var demon_node: DemonNode = payload[0]
-						var sub_idx: int = int(payload[1])
-						if turn_manager and not turn_manager.can_use_programs():
-							if _try_defer_action_for_cycle("command_demon", target_coord, program):
-								return
-							log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
-							return
-						if not is_instance_valid(demon_node):
-							log_to_terminal("That Demon is no longer active.\n")
-							return
-						var ok2 := _command_demon(demon_node, sub_idx, target_coord)
-						if ok2:
-							if turn_manager:
-								turn_manager.consume_action()
-							_check_actions_exhausted()
+			_handle_command_demon(target_coord, program)
 		"copy_file":
-			# Copy a single file from a MEMORY_UNIT tile to the deck. File
-			# retrieval is a "free" data action in CP2020 — it does NOT consume
-			# an action or end the turn (unlike use_program / attack_npc above).
-			if current_layout:
-				var file := program as NetFile
-				if file == null:
-					push_warning("copy_file: program is not a NetFile.")
-					return
-				var tile: CP2020TileData = current_layout.get_tile(target_coord, current_floor)
-				if not tile:
-					push_warning("copy_file: no tile at %s." % target_coord)
-					return
-				# Find the file's index on the tile. Match by instance OR by
-				# file_name, since program_resource may be a duplicate with
-				# different identity than the tile's stored entry.
-				var idx: int = -1
-				for i in range(tile.files.size()):
-					if tile.files[i] == file or tile.files[i].file_name == file.file_name:
-						idx = i
-						break
-				if idx < 0:
-					push_warning("copy_file: file not found on tile %s." % target_coord)
-					return
-				if str(idx) in tile.copied_file_paths:
-					push_warning("copy_file: file already copied.")
-					return
-				# MU-fit check: free MU = max MU minus programs + carried files.
-				var free_mu: int = netrunner.effective_max_memory() - netrunner.get_used_memory() if netrunner else 999999
-				if file.mu_size > free_mu:
-					log_to_terminal("Not enough free deck memory for %s (need %d MU, have %d).\n" % [file.file_name, file.mu_size, free_mu])
-					return
-				RunState.copy_file(file)
-				tile.copied_file_paths.append(str(idx))
-				log_to_terminal("Copied %s to deck memory (%d MU).\n" % [file.file_name, file.mu_size])
-				# Mission hook: a DATA_HARVEST objective is met the moment the
-				# target file is copied (hand-in still re-verifies it's carried).
-				RunState.notify_file_copied(file)
-				if RunState.active_mission != null and RunState.mission_objective_met \
-						and RunState.active_mission.mission_type == CP2020Mission.MissionType.DATA_HARVEST:
-					log_to_terminal(">> MISSION OBJECTIVE MET: %s — jack out and hand in at the workbench.\n" % RunState.active_mission.title)
-				update_deck_info()
-				if board_renderer:
-					board_renderer.request_redraw()
+			_handle_copy_file(target_coord, program)
 		"copy_all_files":
-			# Batch-copy every fitting file from a MEMORY_UNIT tile to the
-			# deck. Like copy_file, this does NOT consume an action or end
-			# the turn — it is a free data retrieval action.
-			if current_layout:
-				var tile: CP2020TileData = current_layout.get_tile(target_coord, current_floor)
-				if not tile:
-					push_warning("copy_all_files: no tile at %s." % target_coord)
-					return
-				if tile.files.is_empty():
-					return
-				if netrunner:
-					var free_mu := netrunner.effective_max_memory() - netrunner.get_used_memory()
-					for i in range(tile.files.size()):
-						if str(i) in tile.copied_file_paths:
-							continue
-						var f: NetFile = tile.files[i]
-						if f == null:
-							continue
-						if f.mu_size <= free_mu:
-							RunState.copy_file(f)
-							tile.copied_file_paths.append(str(i))
-							free_mu -= f.mu_size
-							log_to_terminal("Copied %s to deck memory (%d MU).\n" % [f.file_name, f.mu_size])
-							# Mission hook (batch): a DATA_HARVEST target copied via
-							# "Copy All" also satisfies the objective.
-							RunState.notify_file_copied(f)
-						else:
-							log_to_terminal("Skipped %s — not enough free deck memory.\n" % f.file_name)
-				if board_renderer:
-					board_renderer.request_redraw()
-				update_deck_info()
-				log_to_terminal("Batch copy complete.\n")
+			_handle_copy_all_files(target_coord)
 		"loot_tile":
-			# Loot a CONTROL_NODE tile. A free data action — does NOT consume
-			# a turn. Moves loot_programs into RunState.loot (each duplicate()d
-			# so cached .tres files aren't mutated, via RunState.add_loot),
-			# adds loot_credits to RunState.credits, picks up loot_modules via
-			# RunState.add_module_loot, and marks the tile looted.
-			if current_layout:
-				var tile: CP2020TileData = current_layout.get_tile(target_coord, current_floor)
-				if tile == null:
-					push_warning("loot_tile: no tile at %s." % target_coord)
-					return
-				if tile.is_looted:
-					log_to_terminal("Already looted.\n")
-					return
-				var looted_any: bool = false
-				for prog in tile.loot_programs:
-					if prog is NetProgram:
-						RunState.add_loot(prog as NetProgram)
-						log_to_terminal("Looted program: %s\n" % (prog as NetProgram).program_name)
-						looted_any = true
-				if tile.loot_credits > 0:
-					RunState.add_loot_credits(tile.loot_credits)
-					log_to_terminal("Looted %d credits.\n" % tile.loot_credits)
+			_handle_loot_tile(target_coord)
+		"copy_file":
+			_handle_copy_file(target_coord, program)
+		"copy_all_files":
+			_handle_copy_all_files(target_coord)
+		"loot_tile":
+			_handle_loot_tile(target_coord)
+
+# Guard for the action-consuming arms: true when programs may be used right
+# now. Handles the auto-cycle defer queue plus the busy messages; `detailed`
+# selects use_program's richer failure messages (deck-crashed / mid-movement).
+func _programs_available(action_name: String, target_coord: Vector2i, program: Variant, detailed: bool) -> bool:
+	if turn_manager == null or turn_manager.can_use_programs():
+		return true
+	if _try_defer_action_for_cycle(action_name, target_coord, program):
+		return false
+	if detailed:
+		if turn_manager.programs_blocked:
+			log_to_terminal("Cyberdeck crashed — programs unavailable this turn (movement only).\n")
+		elif turn_manager._movement_action_active:
+			log_to_terminal("Already moving this action — end movement (Space) first.\n")
+		else:
+			log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
+	else:
+		log_to_terminal("No actions remaining. End turn (Space) to let adversaries move.\n")
+	return false
+
+
+# Consume the spent action + roll the turn over when everything is spent.
+func _consume_program_action() -> void:
+	if turn_manager:
+		turn_manager.consume_action()
+	_check_actions_exhausted()
+
+
+func _handle_use_program(target_coord: Vector2i, program: Variant) -> void:
+	if program is NetProgram and current_layout:
+		if not _programs_available("use_program", target_coord, program, true):
+			return
+		# Crashed (de-rezzed) programs clog MU but can't be used —
+		# their integrity is 0. Block the action before consuming it.
+		if is_instance_valid(netrunner) and netrunner.program_integrity_for(program) <= 0:
+			log_to_terminal("Program '%s' is crashed (de-rezzed) — cannot use. Clear it to free MU.\n" % program.program_name)
+			return
+		# Delegate to the program's virtual execute_runner_action. The
+		# base NetProgram dispatches by effect_type to the private
+		# _execute_* helpers; subclasses (Worm, Watchdog) override it
+		# entirely. Returns false if the use failed validation — in
+		# that case do NOT consume an action.
+		var ok: bool = program.execute_runner_action(self, target_coord)
+		if ok:
+			_consume_program_action()
+
+
+func _handle_travel_ldl(program: Variant) -> void:
+	# program carries the CP2020TileData of the LDL link tile.
+	if program is CP2020TileData:
+		var tile: CP2020TileData = program
+		var dest_path: String = tile.target_subnet_path
+		var dest_coord: Vector2i = tile.target_entry_coord
+		if dest_path == "":
+			log_to_terminal("LDL link has no target subnet set.\n")
+			return
+		if load_subnet(dest_path, dest_coord):
+			# If a target_entry_coord was requested but the remote map
+			# had no valid tile there, netrunner.initialize fell back to
+			# the remote's primary/first entry. Surface that so the
+			# player/designer isn't silently dropped somewhere unexpected.
+			if dest_coord.x >= 0 and dest_coord.y >= 0 and netrunner and netrunner.current_position != dest_coord:
+				log_to_terminal("LDL target entry %s invalid — arrived at remote entry %s instead.\n" % [dest_coord, netrunner.current_position])
+			else:
+				log_to_terminal("Travelling LDL to %s (entry %s). Trace preserved.\n" % [dest_path, netrunner.current_position if netrunner else dest_coord])
+			update_deck_info()
+			_update_trace()
+			_update_security_dispatch_hud()
+		else:
+			log_to_terminal("LDL target '%s' could not be loaded.\n" % dest_path)
+
+
+func _handle_return_world_map() -> void:
+	log_to_terminal("Returning to the City Grid via LDL. Connection preserved.\n")
+	# Trace is preserved — the runner is still in the run, just back up
+	# one map level (Datafort -> City Grid).
+	if RunState.selected_city_grid_path != "":
+		get_tree().change_scene_to_file("res://scenes/ui/cp2020_city_grid.tscn")
+	else:
+		# No city grid recorded (e.g. legacy entry) — fall back to world map.
+		RunState.accumulated_trace = 0
+		RunState.security_dispatch_turns = 0
+		RunState.net_time_seconds = 0.0
+		get_tree().change_scene_to_file("res://scenes/ui/cp2020_world_net_map.tscn")
+
+
+func _handle_rez_program(target_coord: Vector2i, program: Variant) -> void:
+	# Rez an installed attack program onto the net as an active node.
+	# `program` is the installed NetProgram copy to rez. Consumes 1
+	# action. The node spawns at the runner's tile (or nearest walkable
+	# adjacent tile) and auto-follows thereafter.
+	if program is NetProgram:
+		if not _programs_available("rez_program", target_coord, program, false):
+			return
+		if _rez_program(program as NetProgram):
+			_consume_program_action()
+
+
+func _handle_attack_with_rezzed(target_coord: Vector2i, program: Variant) -> void:
+	# Command a rezzed attack program to strike a target. `program` is
+	# the RezzedProgram node; target_coord is the target tile. Consumes
+	# 1 action. Dispatches by effect_type to the existing execute_*
+	# helpers, sourcing stats from the rezzed node's program duplicate.
+	if program is RezzedProgram and current_layout:
+		var rez_node: RezzedProgram = program as RezzedProgram
+		if not _programs_available("attack_with_rezzed", target_coord, program, false):
+			return
+		if not is_instance_valid(rez_node) or rez_node.program == null:
+			log_to_terminal("That rezzed program is no longer active.\n")
+			return
+		if _attack_with_rezzed(rez_node, target_coord):
+			_consume_program_action()
+
+
+func _handle_command_demon(target_coord: Vector2i, program: Variant) -> void:
+	# Command a rezzed Demon to fire one of its subroutines. `program`
+	# is a 2-element Array [DemonNode, subroutine_index] built by the
+	# interaction handler's Demon command menu (id range 8500+i).
+	# Consumes 1 action. Attack subroutines strike `target_coord`;
+	# SHIELD/ARMOR subroutines self-buff the runner.
+	if program is Array and current_layout:
+		var payload: Array = program
+		if payload.size() >= 2 and payload[0] is DemonNode:
+			var demon_node: DemonNode = payload[0]
+			var sub_idx: int = int(payload[1])
+			if not _programs_available("command_demon", target_coord, program, false):
+				return
+			if not is_instance_valid(demon_node):
+				log_to_terminal("That Demon is no longer active.\n")
+				return
+			if _command_demon(demon_node, sub_idx, target_coord):
+				_consume_program_action()
+
+
+func _handle_copy_file(target_coord: Vector2i, program: Variant) -> void:
+	# Copy a single file from a MEMORY_UNIT tile to the deck. File
+	# retrieval is a "free" data action in CP2020 — it does NOT consume
+	# an action or end the turn (unlike use_program / attack_npc above).
+	if current_layout:
+		var file := program as NetFile
+		if file == null:
+			push_warning("copy_file: program is not a NetFile.")
+			return
+		var tile: CP2020TileData = current_layout.get_tile(target_coord, current_floor)
+		if not tile:
+			push_warning("copy_file: no tile at %s." % target_coord)
+			return
+		# Find the file's index on the tile. Match by instance OR by
+		# file_name, since program_resource may be a duplicate with
+		# different identity than the tile's stored entry.
+		var idx: int = -1
+		for i in range(tile.files.size()):
+			if tile.files[i] == file or tile.files[i].file_name == file.file_name:
+				idx = i
+				break
+		if idx < 0:
+			push_warning("copy_file: file not found on tile %s." % target_coord)
+			return
+		if str(idx) in tile.copied_file_paths:
+			push_warning("copy_file: file already copied.")
+			return
+		# MU-fit check: free MU = max MU minus programs + carried files.
+		var free_mu: int = netrunner.effective_max_memory() - netrunner.get_used_memory() if netrunner else 999999
+		if file.mu_size > free_mu:
+			log_to_terminal("Not enough free deck memory for %s (need %d MU, have %d).\n" % [file.file_name, file.mu_size, free_mu])
+			return
+		RunState.copy_file(file)
+		tile.copied_file_paths.append(str(idx))
+		log_to_terminal("Copied %s to deck memory (%d MU).\n" % [file.file_name, file.mu_size])
+		# Mission hook: a DATA_HARVEST objective is met the moment the
+		# target file is copied (hand-in still re-verifies it's carried).
+		RunState.notify_file_copied(file)
+		if RunState.active_mission != null and RunState.mission_objective_met \
+				and RunState.active_mission.mission_type == CP2020Mission.MissionType.DATA_HARVEST:
+			log_to_terminal(">> MISSION OBJECTIVE MET: %s — jack out and hand in at the workbench.\n" % RunState.active_mission.title)
+		update_deck_info()
+		if board_renderer:
+			board_renderer.request_redraw()
+
+
+func _handle_copy_all_files(target_coord: Vector2i) -> void:
+	# Batch-copy every fitting file from a MEMORY_UNIT tile to the
+	# deck. Like copy_file, this does NOT consume an action or end
+	# the turn — it is a free data retrieval action.
+	if current_layout:
+		var tile: CP2020TileData = current_layout.get_tile(target_coord, current_floor)
+		if not tile:
+			push_warning("copy_all_files: no tile at %s." % target_coord)
+			return
+		if tile.files.is_empty():
+			return
+		if netrunner:
+			var free_mu := netrunner.effective_max_memory() - netrunner.get_used_memory()
+			for i in range(tile.files.size()):
+				if str(i) in tile.copied_file_paths:
+					continue
+				var f: NetFile = tile.files[i]
+				if f == null:
+					continue
+				if f.mu_size <= free_mu:
+					RunState.copy_file(f)
+					tile.copied_file_paths.append(str(i))
+					free_mu -= f.mu_size
+					log_to_terminal("Copied %s to deck memory (%d MU).\n" % [f.file_name, f.mu_size])
+					# Mission hook (batch): a DATA_HARVEST target copied via
+					# "Copy All" also satisfies the objective.
+					RunState.notify_file_copied(f)
+				else:
+					log_to_terminal("Skipped %s — not enough free deck memory.\n" % f.file_name)
+		if board_renderer:
+			board_renderer.request_redraw()
+		update_deck_info()
+		log_to_terminal("Batch copy complete.\n")
+
+
+func _handle_loot_tile(target_coord: Vector2i) -> void:
+	# Loot a CONTROL_NODE tile. A free data action — does NOT consume
+	# a turn. Moves loot_programs into RunState.loot (each duplicate()d
+	# so cached .tres files aren't mutated, via RunState.add_loot),
+	# adds loot_credits to RunState.credits, picks up loot_modules via
+	# RunState.add_module_loot, and marks the tile looted.
+	if current_layout:
+		var tile: CP2020TileData = current_layout.get_tile(target_coord, current_floor)
+		if tile == null:
+			push_warning("loot_tile: no tile at %s." % target_coord)
+			return
+		if tile.is_looted:
+			log_to_terminal("Already looted.\n")
+			return
+		var looted_any: bool = false
+		for prog in tile.loot_programs:
+			if prog is NetProgram:
+				RunState.add_loot(prog as NetProgram)
+				log_to_terminal("Looted program: %s\n" % (prog as NetProgram).program_name)
+				looted_any = true
+		if tile.loot_credits > 0:
+			RunState.add_loot_credits(tile.loot_credits)
+			log_to_terminal("Looted %d credits.\n" % tile.loot_credits)
+			looted_any = true
+		if tile.loot_modules.size() > 0:
+			for mod in tile.loot_modules:
+				if mod is DeckModule:
+					RunState.add_module_loot(mod as DeckModule)
+					log_to_terminal("Looted module: %s\n" % (mod as DeckModule).module_name)
 					looted_any = true
-				if tile.loot_modules.size() > 0:
-					for mod in tile.loot_modules:
-						if mod is DeckModule:
-							RunState.add_module_loot(mod as DeckModule)
-							log_to_terminal("Looted module: %s\n" % (mod as DeckModule).module_name)
-							looted_any = true
-				if looted_any:
-					tile.is_looted = true
-					if board_renderer:
-						board_renderer.request_redraw()
-					update_deck_info()
+		if looted_any:
+			tile.is_looted = true
+			if board_renderer:
+				board_renderer.request_redraw()
+			update_deck_info()
 
 func _execute_decryption(program: NetProgram, target_coord: Vector2i) -> void:
 	var tile = current_layout.get_tile(target_coord, current_floor)

@@ -208,27 +208,13 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 		# programs to attack it. Attack programs must be rezzed onto the net
 		# before they can strike (Phase 1). id range 8200+i over
 		# _current_rezzed_nodes. If none are rezzed, show a hint.
-		var added_rezzed = false
-		for i in range(_current_rezzed_nodes.size()):
-			var rez = _current_rezzed_nodes[i]
-			if is_instance_valid(rez) and rez.program and rez.program.effect_type == NetProgram.EffectType.DEREZ_ICE:
-				var menu_label = "Attack %s: %s (STR %d)" % [ice_here.program.program_name, rez.program.program_name, rez.program.strength]
-				_dynamic_menu.add_item(menu_label, 8200 + i)
-				added_rezzed = true
-		# Demon subroutines: any rezzed Demon carrying a DEREZ_ICE subroutine
-		# can be commanded to attack this ICE (id 8500+i over
-		# _current_demon_commands). Subroutines use the Demon core's STR.
-		for rez in _current_rezzed_nodes:
-			if is_instance_valid(rez) and rez is DemonNode:
-				var demon: DemonNode = rez as DemonNode
-				for si in range(demon.get_commandable_subroutines().size()):
-					var sub: NetProgram = demon.get_subroutine(si)
-					if sub and sub.effect_type == NetProgram.EffectType.DEREZ_ICE:
-						_add_demon_command_item("Attack %s: %s → %s (STR %d)" % [ice_here.program.program_name, demon.program.program_name, sub.program_name, sub.strength], demon, si)
-						added_rezzed = true
+		var attack_prefix := "Attack %s" % ice_here.program.program_name
+		var added_rezzed := _add_rezzed_attack_options([NetProgram.EffectType.DEREZ_ICE], 8200, attack_prefix)
+		# Demon subroutines carrying a DEREZ_ICE subroutine can also be
+		# commanded to attack this ICE (id 8500+i over _current_demon_commands).
+		added_rezzed = _add_demon_subroutine_options([NetProgram.EffectType.DEREZ_ICE], attack_prefix) or added_rezzed
 		if not added_rezzed:
-			_dynamic_menu.add_item("Rez an anti-ICE program first", 0)
-			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
+			_add_disabled_hint("Rez an anti-ICE program first")
 		options_added = true
 
 	elif npc_here and tile_data.is_visible:
@@ -237,26 +223,11 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 		# DEREZ) in the 8300+i id range over _current_rezzed_nodes, plus a
 		# Talk option for neutral runners.
 		_npc_target = npc_here
-		var added_attack = false
-		for i in range(_current_rezzed_nodes.size()):
-			var rez = _current_rezzed_nodes[i]
-			if is_instance_valid(rez) and rez.program and rez.program.effect_type in [NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE]:
-				var menu_label = "Attack %s: %s (STR %d)" % [npc_here.npc_name, rez.program.program_name, rez.program.strength]
-				_dynamic_menu.add_item(menu_label, 8300 + i)
-				added_attack = true
-		# Demon subroutines: any rezzed Demon carrying a DAMAGE_RUNNER or
-		# DEREZ_ICE subroutine can be commanded to attack this NPC.
-		for rez in _current_rezzed_nodes:
-			if is_instance_valid(rez) and rez is DemonNode:
-				var demon: DemonNode = rez as DemonNode
-				for si in range(demon.get_commandable_subroutines().size()):
-					var sub: NetProgram = demon.get_subroutine(si)
-					if sub and sub.effect_type in [NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE]:
-						_add_demon_command_item("Attack %s: %s → %s (STR %d)" % [npc_here.npc_name, demon.program.program_name, sub.program_name, sub.strength], demon, si)
-						added_attack = true
+		var attack_prefix := "Attack %s" % npc_here.npc_name
+		var added_attack := _add_rezzed_attack_options([NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE], 8300, attack_prefix)
+		added_attack = _add_demon_subroutine_options([NetProgram.EffectType.DAMAGE_RUNNER, NetProgram.EffectType.DEREZ_ICE], attack_prefix) or added_attack
 		if not added_attack:
-			_dynamic_menu.add_item("Rez an attack program first", 0)
-			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
+			_add_disabled_hint("Rez an attack program first")
 		options_added = true
 		# Neutral runners can be talked to (id 4000).
 		if npc_here.disposition == CP2020NpcNetrunner.Disposition.NEUTRAL:
@@ -266,26 +237,10 @@ func handle_right_click(_event: InputEventMouseButton, current_mouse_pos: Vector
 		# CPU tile visible — offer REZZED anti-system (CRASH_CPU) programs to
 		# crash the datafort's CPU. id range 8400+i over _current_rezzed_nodes
 		# (checked before the 1000+i program range in _on_menu_action_selected).
-		var added_cpu = false
-		for i in range(_current_rezzed_nodes.size()):
-			var rez = _current_rezzed_nodes[i]
-			if is_instance_valid(rez) and rez.program and rez.program.effect_type == NetProgram.EffectType.CRASH_CPU:
-				var menu_label = "Krash CPU: %s (STR %d)" % [rez.program.program_name, rez.program.strength]
-				_dynamic_menu.add_item(menu_label, 8400 + i)
-				added_cpu = true
-		# Demon subroutines: any rezzed Demon carrying a CRASH_CPU subroutine
-		# can be commanded to crash this CPU.
-		for rez in _current_rezzed_nodes:
-			if is_instance_valid(rez) and rez is DemonNode:
-				var demon: DemonNode = rez as DemonNode
-				for si in range(demon.get_commandable_subroutines().size()):
-					var sub: NetProgram = demon.get_subroutine(si)
-					if sub and sub.effect_type == NetProgram.EffectType.CRASH_CPU:
-						_add_demon_command_item("Krash CPU: %s → %s (STR %d)" % [demon.program.program_name, sub.program_name, sub.strength], demon, si)
-						added_cpu = true
+		var added_cpu := _add_rezzed_attack_options([NetProgram.EffectType.CRASH_CPU], 8400, "Krash CPU")
+		added_cpu = _add_demon_subroutine_options([NetProgram.EffectType.CRASH_CPU], "Krash CPU") or added_cpu
 		if not added_cpu:
-			_dynamic_menu.add_item("Rez an anti-system program first", 0)
-			_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
+			_add_disabled_hint("Rez an anti-system program first")
 		# Loot option — offer when the tile has unlooted loot_programs /
 		# loot_credits / loot_modules. id 5000 (single fixed id, checked
 		# after 8500+i and before 1000+i in _on_menu_action_selected).
@@ -610,6 +565,39 @@ func _ldl_target_name(path: String) -> String:
 		return "target datafort"
 	var fname := path.get_file().get_basename()
 	return fname if fname != "" else "target datafort"
+
+# Shared right-click menu builders for the attack branches (CODE_REVIEW §7.4).
+# `prefix` is baked into each label ("Attack Night City", "Krash CPU", ...);
+# rezzed ids are base + index over _current_rezzed_nodes. Returns true when at
+# least one option was added.
+func _add_rezzed_attack_options(effect_types: Array, base_id: int, prefix: String) -> bool:
+	var added := false
+	for i in range(_current_rezzed_nodes.size()):
+		var rez = _current_rezzed_nodes[i]
+		if is_instance_valid(rez) and rez.program and rez.program.effect_type in effect_types:
+			_dynamic_menu.add_item("%s: %s (STR %d)" % [prefix, rez.program.program_name, rez.program.strength], base_id + i)
+			added = true
+	return added
+
+
+func _add_demon_subroutine_options(effect_types: Array, prefix: String) -> bool:
+	# Any rezzed Demon carrying a matching subroutine can be commanded
+	# (id 8500+i over _current_demon_commands via _add_demon_command_item).
+	var added := false
+	for rez in _current_rezzed_nodes:
+		if is_instance_valid(rez) and rez is DemonNode:
+			var demon: DemonNode = rez as DemonNode
+			for si in range(demon.get_commandable_subroutines().size()):
+				var sub: NetProgram = demon.get_subroutine(si)
+				if sub and sub.effect_type in effect_types:
+					_add_demon_command_item("%s: %s → %s (STR %d)" % [prefix, demon.program.program_name, sub.program_name, sub.strength], demon, si)
+					added = true
+	return added
+
+
+func _add_disabled_hint(text: String) -> void:
+	_dynamic_menu.add_item(text, 0)
+	_dynamic_menu.set_item_disabled(_dynamic_menu.get_item_count() - 1, true)
 
 # Vertical-travel blocking lives on CP2020DatafortLayout.can_travel_vertical()
 # — the game session and this handler share that one implementation (the
