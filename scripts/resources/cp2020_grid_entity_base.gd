@@ -10,9 +10,20 @@ extends Node2D
 
 signal moved_to(new_pos: Vector2i)
 
-# Preloaded once — replaces the per-call load("res://data/seguiemj.ttf") that
-# every glyph applier used to issue on the fallback path.
-const FALLBACK_FONT := preload("res://data/seguiemj.ttf")
+# Loaded once lazily — replaces the per-call load("res://data/seguiemj.ttf") that
+# every glyph applier used to issue on the fallback path. Resolved at runtime
+# (not preload) because seguiemj.ttf is a proprietary Windows font that is
+# deliberately gitignored; on machines without it we degrade to the default font.
+const FALLBACK_FONT_PATH := "res://data/seguiemj.ttf"
+static var _fallback_font: Font = null
+static var _fallback_font_resolved: bool = false
+
+static func get_fallback_font() -> Font:
+	if not _fallback_font_resolved:
+		_fallback_font_resolved = true
+		if ResourceLoader.exists(FALLBACK_FONT_PATH, "Font"):
+			_fallback_font = load(FALLBACK_FONT_PATH) as Font
+	return _fallback_font
 
 @export var cell_size: int = 40
 @export var grid_offset_y: int = 90
@@ -146,7 +157,7 @@ func apply_visual_from_program(p_program: NetProgram, fallback_glyph: String, fa
 	# metrics and rendering when the glyph isn't found.
 	var auto_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, font, font_size, cell_size)
 	if auto_offset == Vector2.ZERO:
-		var fallback_font: Font = FALLBACK_FONT
+		var fallback_font: Font = get_fallback_font()
 		if fallback_font != null:
 			var fb_offset: Vector2 = NetProgram.compute_glyph_centering(glyph, fallback_font, font_size, cell_size)
 			if fb_offset != Vector2.ZERO:
