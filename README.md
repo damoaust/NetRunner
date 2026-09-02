@@ -46,13 +46,16 @@ netrunner-v-0.006/
 │       └── CyberdeckWorkbench.tscn         # Deck/program loadout UI
 └── scripts/
     ├── autoload/
-    │   └── run_state.gd              # RunState singleton — cross-scene run state
+    │   ├── run_state.gd              # RunState singleton — cross-scene PER-LIFE run state (lost on death)
+    │   ├── run_state_data.gd         # RunStateData Resource — per-life snapshot saved/loaded to user://
+    │   ├── meta_state.gd             # MetaState singleton — PERSISTENT vendor catalogue (survives death)
+    │   └── meta_state_data.gd        # MetaStateData Resource — unlocked decks/programs + run history
     ├── resources/                    # Core gameplay resources, nodes & controllers
     │   ├── CP2020DatafortLayout.gd   # Datafort grid layout Resource definition
     │   ├── CP2020TileData.gd         # Individual grid tile state Resource (incl. LDL fields)
-    │   ├── CP2020WorldMapLayout.gd   # World map layout (regions + hubs) Resource
-    │   ├── CP2020WorldHub.gd         # City hub Resource (name, pos, city_grid_path; tier kept for compat)
-    │   ├── CP2020WorldRegion.gd      # World region Resource (name + colour, categorising only)
+    │   ├── cp2020_world_map_layout.gd   # World map layout (regions + hubs) Resource
+    │   ├── cp2020_world_hub.gd         # City hub Resource (name, pos, city_grid_path; tier kept for compat)
+    │   ├── cp2020_world_region.gd      # World region Resource (name + colour, categorising only)
     │   ├── cp2020_security_tier.gd   # CP2020SecurityTier const class (Tier enum + LABELS/COLORS/GLYPHS)
     │   ├── cp2020_city_grid_datafort.gd # CP2020CityGridDatafort resource (datafort icon on a city grid)
     │   ├── cp2020_city_grid_layout.gd  # CP2020CityGridLayout resource (city grid layout)
@@ -61,7 +64,6 @@ netrunner-v-0.006/
     │   ├── cp_2020_world_net_map.gd  # Runtime world map node (movement, LDL jumps, ENTER city grid)
     │   ├── cp2020_blackice.gd        # Black ICE enemy AI node (AStarGrid2D, tracing)
     │   ├── cp2020_board_renderer.gd  # CanvasItem custom grid renderer (Fog of War)
-    │   ├── cp2020_canvas.gd          # UI container grid loader (legacy/placeholder)
     │   ├── cp2020_cyberdecks.gd      # Cyberdeck data Resource class
     │   ├── cp2020_datafort_designer.gd # @tool root coordinator for the datafort designer (panels, file I/O, signal wiring)
     │   ├── cp2020_datafort_grid_canvas.gd # @tool grid canvas child node (drawing, input, tile painting)
@@ -69,7 +71,6 @@ netrunner-v-0.006/
     │   ├── cp2020_interaction_handler.gd # Contextual right-click PopupMenu handler
     │   ├── cp2020_netrunner.gd       # Player Netrunner entity controller
     │   ├── cp2020_programs.gd        # Software program Resource class
-    │   ├── cp2020_subnet_loader.gd   # ResourceLoader for datafort layout files
     │   ├── cp2020_turn_manager.gd    # Turn state controller
     │   └── cp2020_world_map_designer.gd # @tool world map authoring tool
     └── ui/
@@ -80,7 +81,7 @@ netrunner-v-0.006/
 
 ## 3. Core Architecture & Component Diagram
 
-The gameplay loop is built around a decoupled component architecture. Cross-scene state lives in the `RunState` autoload singleton. The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
+The gameplay loop is built around a decoupled component architecture. Cross-scene state lives in two autoload singletons: `RunState` (per-life state, lost on death) and `MetaState` (persistent vendor catalogue that survives permadeath). The player flows through **three map levels** matching the CP2020 sourcebook: **Workbench** → **World Map** → **City Grid** → **Datafort (gameplay)**, with LDL links enabling travel between dataforts and back up the stack.
 
 ```mermaid
 graph TD
@@ -89,7 +90,6 @@ graph TD
     WorldMap["CP2020WorldNetMap (cp_2020_world_net_map.gd)"]
     CityGrid["CP2020CityGrid (cp2020_city_grid.gd)"]
     GameSession["GameSession (cp2020_game_session.gd)"]
-    SubnetLoader["SubnetLoader (cp2020_subnet_loader.gd)"]
     BoardRenderer["BoardRenderer (cp2020_board_renderer.gd)"]
     Netrunner["CP2020Netrunner (cp2020_netrunner.gd)"]
     BlackIce["BlackIce (cp2020_blackice.gd)"]
@@ -128,18 +128,18 @@ graph TD
 
 All data objects inherit from `Resource` to allow direct serialization to `.tres` files and inspector editing.
 
-### 4.1 `CP2020DatafortLayout` ([CP2020DatafortLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020DatafortLayout.gd))
+### 4.1 `CP2020DatafortLayout` ([CP2020DatafortLayout.gd](scripts/resources/CP2020DatafortLayout.gd))
 Represents a grid map layout for a Datafort.
 - **Properties**:
   - `fort_name: String`
   - `rows: int` (default 15)
   - `columns: int` (default 15)
   - `cpu: int`, `int_rating: int`, `datawall_strength: int`
-  - `grid_tiles: Dictionary` - Maps `Vector2i(x, y)` to [CP2020TileData](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020TileData.gd)
+  - `grid_tiles: Dictionary` - Maps `Vector2i(x, y)` to [CP2020TileData](scripts/resources/CP2020TileData.gd)
 - **TileType Enum**:
   - `EMPTY` (0), `WALL` (1), `DATAWALL` (2), `ENTRY` (3), `CODE_GATE` (4), `MEMORY_UNIT` (5), `CONTROL_NODE` (6), `BLACK_ICE` (7)
 
-### 4.2 `CP2020TileData` ([CP2020TileData.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020TileData.gd))
+### 4.2 `CP2020TileData` ([CP2020TileData.gd](scripts/resources/CP2020TileData.gd))
 Represents state and attributes of a single cell in the datafort layout grid.
 - **Properties**:
   - `tile_type: CP2020DatafortLayout.TileType`
@@ -160,7 +160,7 @@ Represents state and attributes of a single cell in the datafort layout grid.
     - `ice_program: NetProgram` — optional assigned `program.tres` supplying the ICE's `program_name` / `strength` / `effect_type` / `damage_dice` (drives behavior: `DAMAGE_RUNNER` = health attack; `DEREZ_ICE` = stationary anti-program sentry that scans for Worms in LoS); `duplicate()`d at spawn
     - No per-tile scalar stat overrides — `max_integrity` is derived 1:1 from `program.strength`, movement is STR-based (`program.strength` spaces/turn), and tracing is deferred to program-specific logic (no scalar `traces` flag). The old `ice_*` scalar fields and `ice_has_override` have been removed.
 
-### 4.3 `CP2020WorldMapLayout` ([CP2020WorldMapLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020WorldMapLayout.gd))
+### 4.3 `CP2020WorldMapLayout` ([cp2020_world_map_layout.gd](scripts/resources/cp2020_world_map_layout.gd))
 Serializable world map authored by the world map designer and loaded at runtime by `cp_2020_world_net_map.gd`.
 - **Properties**:
   - `grid_cols: int`, `grid_rows: int` (default 32×18)
@@ -170,16 +170,16 @@ Serializable world map authored by the world map designer and loaded at runtime 
   - `runner_spawn_hub: String` (default "Night City")
 - **Helpers**: `get_region(pos)`, `get_hub(pos)`, `get_hub_by_name(name)`
 
-### 4.4 `CP2020WorldHub` ([CP2020WorldHub.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_world_hub.gd))
+### 4.4 `CP2020WorldHub` ([cp2020_world_hub.gd](scripts/resources/cp2020_world_hub.gd))
 - `name: String`, `pos: Vector2i`, `subnet_path: String` (legacy fallback datafort `.tres`; the City Grid is now the entry point), `ldl_cost: int`, `security_code: int` (1D10 target to hack the LDL), `trace_value: int` (trace added on a successful jump through this hub's LDL)
 - `city_grid_path: String` — path to the city's `CP2020CityGridLayout` `.tres`. The world map ENTER action loads this. **This is the primary link from the world map into a city.**
 - `security_tier: int` — CP2020 classification (CP2020SecurityTier.Tier: `GREY=0`, `LEVEL_1=1`, `LEVEL_2=2`, `LEVEL_3=3`, `BLACK=4`). **Kept for save compatibility only** — tier no longer drives world-map icons (cities are plain markers) and no longer drives datafort ICE; the per-datafort tier on the City Grid is now the source of truth for ICE loadouts. Tier metadata consts live in `CP2020SecurityTier` (see 4.8).
 - `security_code` (LDL hack difficulty) and `security_tier` (classification) are kept separate per the sourcebook.
 
-### 4.5 `CP2020WorldRegion` ([CP2020WorldRegion.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_world_region.gd))
+### 4.5 `CP2020WorldRegion` ([cp2020_world_region.gd](scripts/resources/cp2020_world_region.gd))
 - `name: String`, `color: Color` — purely visual categorisation; ocean is the absence of a region assignment.
 
-### 4.6 `CP2020SecurityTier` ([cp2020_security_tier.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_security_tier.gd)) — *NEW*
+### 4.6 `CP2020SecurityTier` ([cp2020_security_tier.gd](scripts/resources/cp2020_security_tier.gd)) — *NEW*
 Shared const class (single source of truth for tier rendering). Referenced as `CP2020SecurityTier.Tier.GREY`, `CP2020SecurityTier.COLORS[tier]`, etc.
 - `enum Tier { GREY, LEVEL_1, LEVEL_2, LEVEL_3, BLACK }`
 - `LABELS: Dictionary` — full labels (`"Grey"`, `"Level 1"`, ..., `"Black"`)
@@ -187,21 +187,21 @@ Shared const class (single source of truth for tier rendering). Referenced as `C
 - `COLORS: Dictionary` — tier colours (Grey=grey, L1=green, L2=yellow, L3=orange, Black=red)
 - `GLYPHS: Dictionary` — single-char icon glyphs (`"G"`, `"1"`, `"2"`, `"3"`, `"B"`)
 
-### 4.7 `CP2020CityGridDatafort` ([cp2020_city_grid_datafort.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_city_grid_datafort.gd)) — *NEW*
+### 4.7 `CP2020CityGridDatafort` ([cp2020_city_grid_datafort.gd](scripts/resources/cp2020_city_grid_datafort.gd)) — *NEW*
 A datafort icon on a City Grid. Tier classifies the datafort (per sourcebook), and the runtime reads `security_tier` at dive time to set `RunState.selected_security_tier`.
 - `name: String`, `pos: Vector2i` (grid tile)
 - `subnet_path: String` — the datafort interior `.tres` (e.g. `night_city_subnet.tres`)
 - `security_tier: int` (CP2020SecurityTier.Tier) — drives the icon colour/glyph AND the datafort's default ICE loadout
 - `ldl_cost: int` (default 50), `security_code: int` (default 4, 1D10 hack target), `trace_value: int` (default 5)
 
-### 4.8 `CP2020CityGridLayout` ([cp2020_city_grid_layout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_city_grid_layout.gd)) — *NEW*
+### 4.8 `CP2020CityGridLayout` ([cp2020_city_grid_layout.gd](scripts/resources/cp2020_city_grid_layout.gd)) — *NEW*
 Serializable per-city grid authored by the City Grid designer and loaded at runtime by `cp2020_city_grid.gd`.
 - `city_name: String`, `grid_cols: int` (default 20), `grid_rows: int` (default 12)
 - `dataforts: Array[CP2020CityGridDatafort]` — the datafort icons on the grid
 - `ldl_entry: Vector2i` — the runner arrival tile from the world map
 - **Helpers**: `get_datafort(pos)`, `get_datafort_by_name(name)`
 
-### 4.9 `Cyberdeck` ([cp2020_cyberdecks.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_cyberdecks.gd))
+### 4.9 `Cyberdeck` ([cp2020_cyberdecks.gd](scripts/resources/cp2020_cyberdecks.gd))
 Represents the Netrunner's hardware deck.
 - **Properties**:
   - `deck_name: String`
@@ -212,7 +212,7 @@ Represents the Netrunner's hardware deck.
   - `installed_programs: Array[NetProgram]`
 - **Methods**: `get_used_mu() -> int`
 
-### 4.10 `NetProgram` ([cp2020_programs.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_programs.gd))
+### 4.10 `NetProgram` ([cp2020_programs.gd](scripts/resources/cp2020_programs.gd))
 Represents an executable program software tool loaded into a cyberdeck.
 - **ProgramType Enum**: `DECRYPTION`, `DETECTION`, `ANTI_PROGRAM`, `ANTI_PERSONNEL`, `ANTI_SYSTEM`, `UTILITY`, `ICE`
 - **EffectType Enum**:
@@ -234,7 +234,7 @@ Represents an executable program software tool loaded into a cyberdeck.
 
 ## 5. Core Systems & Implementation Details
 
-### 5.1 Game Session Orchestrator ([cp2020_game_session.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_game_session.gd))
+### 5.1 Game Session Orchestrator ([cp2020_game_session.gd](scripts/resources/cp2020_game_session.gd))
 Controls gameplay flow, scene initialization, input routing, turn changes, terminal logs, and program interactions.
 - **Constants & Grid Math**:
   - `cell_size = 40` px
@@ -266,7 +266,7 @@ Controls gameplay flow, scene initialization, input routing, turn changes, termi
   - **Netrunner-side tripwire** (`execute_detection()` / `_tick_watchdog_beacons()`): the `DETECTION` case in `_on_action_triggered` calls `execute_detection(program)`, which spends 1 action to deploy a Watchdog beacon at the runner's current grid coord. Beacons are stored in `_watchdog_beacons: Array[Vector2i]`; `_watchdog_alerted: Dictionary` (keyed by coord) tracks whether a beacon has already logged its first detection. Each netrunner turn, `_tick_watchdog_beacons()` scans a 20-space LoS from every beacon for enemy ICE/NPCs and logs a `"WATCHDOG ALERT"` message the first time an enemy enters range (per beacon). Beacons are passive — they do not attack, move, or consume further actions.
   - **One File, One Instance**: deployed programs are appended to `_deployed_programs: Array[NetProgram]` on the game session. In `_input`, the available-programs list passed to the interaction handler is filtered to exclude any program in `_deployed_programs`, so a deployed Watchdog cannot be re-deployed. To run two beacons, load two copies of the Watchdog program at the workbench (each `.tres` is a separate program instance). Beacons + `_deployed_programs` + `_watchdog_alerted` are cleared in `load_subnet` (same cached-instance reset pattern as fog/worm/CPU crash).
 
-### 5.2 Board Renderer ([cp2020_board_renderer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_board_renderer.gd))
+### 5.2 Board Renderer ([cp2020_board_renderer.gd](scripts/resources/cp2020_board_renderer.gd))
 Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpunk grid style** (matching the city grid). All colors are `@export`-ed in two inspector groups (Grid + Grid Effects) for theming. The `draw_grid()` pipeline: base background → neon grid lines → fog-of-war overlays → tile graphics → scanlines → vignette → tech frame. A `_pulse_time` var drives a continuous pulse animation (always redraws).
 
 **Fog-of-war (3 states):**
@@ -279,7 +279,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
    - **Worm-in-progress indicator**: DATAWALL and CODE_GATE tiles with `worm_turns_remaining > 0` render a pulsing purple circle with a "W" glyph (three diagonal strokes), signalling an active stealth open. (Worms are stealth code breakers — invisible to ICE, so this overlay is the only visual indication of a Worm at work. The overlay colour shifts purple→orange→red as `worm_integrity` decreases, and a "cur/max" integrity readout is drawn below the W glyph when the Worm has taken damage.)
    - **Watchdog beacon overlay**: tiles in the renderer's `watchdog_beacons: Array[Vector2i]` array (synced from the game session) render a pulsing amber circle with a "W" glyph — visually distinct from the Worm's purple "W" (different colour + stroke style). Drawn in `draw_grid()` over the beacon tiles so deployed tripwires are visible at a glance.
 
-### 5.3 Player Netrunner Controller ([cp2020_netrunner.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_netrunner.gd))
+### 5.3 Player Netrunner Controller ([cp2020_netrunner.gd](scripts/resources/cp2020_netrunner.gd))
 - Handles keyboard movement (`WASD` or Arrow keys via `ui_up`, `ui_down`, `ui_left`, `ui_right`).
 - Checks boundaries against layout bounds (`0..columns-1`, `0..rows-1`).
 - Validates movement obstacles: blocks movement into `DATAWALL` tiles or locked `CODE_GATE` tiles. Empty cells (no tile) are walkable.
@@ -288,9 +288,9 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 - **Combat model** (CP2020 PnP): Initiative = `1D10 + REF + Cyberdeck Speed` (runner) vs `1D10 + System INT` (CPUs×3); ties are simultaneous; the system winning means adversaries act before the runner that round. **Action economy**: 1 action per turn (per CPU when mainframes land); each action is EITHER a program/Net action OR movement of up to 5 spaces — not both. Space ends the turn early (forfeits remaining movement). With no enemies, the round auto-rolls back to the runner (no initiative/adversary phase). Sight range is 20. Combat roll ties → attacker. **Armor** absorbs point-for-point first (persistent), then **Shield** opposed roll (ties→attacker, one-shot), then HP. **Anti-personnel hits** (`apply_damage(..., is_anti_personnel=true)`) also cause INT-stat loss (1/hit) and a Mortal/Stun save (`1D10+body` vs cumulative-damage target). **Deck crash** (`crash_deck`) from `CRASH_CPU` resident programs blocks programs for `1D6+1` turns but preserves a movement action (flee). Stats: `reflex` (initiative), `intelligence`/`body` (meat-space), `interface_rank` (legacy).
 - Emits `position_changed`, `message_logged`, `deck_updated`, `shield_raised`, `shield_consumed`, `armor_raised`, `armor_consumed`, `health_changed`, `int_changed`, `stunned`, `deck_crashed`, and `flatlined` (when `current_health <= 0`).
 
-### 5.4 Hostile Black ICE AI ([cp2020_blackice.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd))
+### 5.4 Hostile Black ICE AI ([cp2020_blackice.gd](scripts/resources/cp2020_blackice.gd))
 - **Pathfinding**: Instantiates an `AStarGrid2D` instance over the layout matrix region.
-- Dynamic obstacle update ([_update_obstacles](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd#L99)): dynamic solid points applied to `DATAWALL` tiles and locked `CODE_GATE` tiles.
+- Dynamic obstacle update ([refresh_pathfinding](scripts/resources/cp2020_grid_entity_base.gd#L80)): dynamic solid points applied to `DATAWALL` tiles and locked `CODE_GATE` tiles.
 - **States**: `IDLE` -> `PURSUE`. Activates upon turn execution, taking up to `program.strength` steps per turn toward the Netrunner's position (CP2020: ICE moves at STR speed). On reaching the runner, branches on `effect_type`: `DAMAGE_RUNNER` emits `attacked_netrunner(strength)` — the program's STR (not rolled damage), so the interface defense roll in `apply_damage` happens first, and the payload is rolled only if the attack hits. The attack is a single action delivered when the ICE reaches the runner's tile and does not consume movement. `damage` is computed by `_roll_damage()`: `strength` when `damage_dice <= 0` (flat-strength, legacy default), otherwise `randi_range(1, damage_dice)` — a per-hit dice roll sourced from the assigned program (e.g. **Sword** rolls 1D6 per hit). The program, not a global rule, defines how damage is dealt.
 - **DEREZ_ICE (Killer) — stationary anti-program sentry**: a `BlackIce` with `effect_type = DEREZ_ICE` does **NOT** pursue or attack the netrunner. `BlackIce.take_turn` early-returns for DEREZ_ICE, skipping the runner LoS check and Invisibility cloak gate. `NetProgram.take_ice_turn` branches to `_take_killer_turn(ice, layout)`: it scans `ice.rezzed_programs` (a live reference to the game session's `rezzed_program_nodes` array, set at spawn time) for a rezzed attack program on the same floor, alive, and within LoS. If found, it emits `attacked_program(attacker_str, tile_coord)` (one attack per turn). The game session's `_on_ice_attacked_program` resolves the **opposed roll** (Killer STR + 1D10 vs rezzed program `current_integrity` + 1D10): Killer wins → rezzed program takes 1D6 damage via `take_damage()` (de-rezzed at 0 integrity); rezzed program wins or tie → no damage (passive defender during adversary phase). **Worms are stealth code breakers — invisible to ICE and never targeted.**
 - **DETECTION ICE (Watchdog alarm + trace)**: a `BlackIce` with `effect_type = DETECTION` (value `10`) is a stationary alarm + tracing tripwire — it **does not pursue or attack**. In `take_turn`, the DETECTION case scans a 20-space LoS radius (`sight_range`) for the netrunner; on the first sighting `WatchdogProgram.take_ice_turn` emits `alarm_triggered` (once per ICE) and **rolls the CP2020 trace check**: `1D10 + program.strength` vs `RunState.accumulated_trace` (the runner's total LDL Trace Value). On a success it emits `trace_succeeded(program)`. The game session's `_on_ice_alarm_triggered()` then calls `activate_alarm()` on every other non-DETECTION ICE node, waking dormant ICE (`_activated = true`, `current_state = PURSUE`). See §5.1 for the alarm handler + netrunner-side beacon system, and the **Security Dispatch** entry below for the trace-success consequence.
@@ -300,7 +300,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 - **Fog of War Visibility**: Dynamically updates the `skull_label` icon visibility based on the tile fog state.
 - **Stat sourcing** (see `cp2020_game_session.spawn_black_ice`): ICE stats are set on the node **before** `initialize()` (which copies `max_integrity` into `current_integrity`). Sourcing precedence: (1) `tile.ice_program` (assigned `program.tres`) supplies name/strength/`effect_type`/`damage_dice` (program is `duplicate()`d); (2) otherwise the hub's `security_tier` selects a default template from `TIER_ICE_TEMPLATES` (Grey→Watchdog, L1→Killer 1.0, L2→Killer 2.0, L3→Hellhound, Black→Flatline), built into a base `NetProgram`. `max_integrity` is always derived 1:1 from `program.strength`. Movement is a flat `BlackIce.ICE_MOVEMENT_PER_TURN` (5) for all ICE. There are no per-tile scalar stat overrides — the old `ice_*` scalar fields and `ice_has_override` override path have been removed.
 
-### 5.5 Contextual Right-Click Input Handler ([cp2020_interaction_handler.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_interaction_handler.gd))
+### 5.5 Contextual Right-Click Input Handler ([cp2020_interaction_handler.gd](scripts/resources/cp2020_interaction_handler.gd))
 - Captures right-click mouse events over grid cells.
 - Converts mouse pixel coordinates to grid cell coordinates `Vector2i(grid_x, grid_y)`.
 - Checks if tile `is_explored` (menus are blocked on unexplored tiles). **Must use `layout.get_tile(coord)`** — `.tres` files store dictionary keys as `"x,y"` strings, so a direct `grid_tiles.get(Vector2i)` always returns null.
@@ -313,7 +313,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 - `_on_menu_action_selected` checks ids in order: LDL travel (`3000`/`3001`) → NPC talk (`4000`) → NPC attack (`2000+i`) → CPU crash (`5000+i`) → memory files (`6000+i`/`6999`) → Armor-raise (`7000+i`) → loot (`loot_tile`) → program use (`1000+i`). **Do not reorder.**
 - Dynamically creates and opens a `PopupMenu` near mouse location (`popup_on_parent`).
 
-### 5.6 Datafort Designer Tool ([cp2020_datafort_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_designer.gd) + [cp2020_datafort_grid_canvas.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_grid_canvas.gd))
+### 5.6 Datafort Designer Tool ([cp2020_datafort_designer.gd](scripts/resources/cp2020_datafort_designer.gd) + [cp2020_datafort_grid_canvas.gd](scripts/resources/cp2020_datafort_grid_canvas.gd))
 - Runs in editor (`@tool` annotation). The designer is split into a **root coordinator** (`cp2020_datafort_designer.gd`, `extends Control`) and a **grid canvas child node** (`cp2020_datafort_grid_canvas.gd`, `extends Control`, `class_name CP2020DatafortGridCanvas`). All UI elements — toolbar buttons, side panels, file dialogs, the grid canvas, and the programs toggle button — are authored in the scene tree (`CP2020DesignerCanvas.tscn`) so the layout can be rearranged visually in the Godot editor. The root coordinator uses `@onready` references to scene-tree nodes and connects their signals in `_ready()`. The grid canvas owns `_draw` / `_gui_input` / `paint_tile` and emits 5 signals (`tile_selected`, `tile_painted`, `ldl_link_selected`, `ldl_link_painted`, `tile_moved`) that the root connects to for opening/closing side panels.
 - Visual editor interface for painting tiles. The toolbar has a **Select** tool (click an existing tile to open its editor without overwriting it; the selected tile gets a yellow outline highlight), plus distinct **Entry** (plain datafort arrival point, `is_ldl_link=false`) and **LDL Link** (travel node, `is_ldl_link=true` with no hardcoded target) buttons, and Datawall, Code Gate, Memory Unit, Control Node, Black ICE, **NetWatch**, **Netrunner**, and Eraser. Picking any paint tool exits Select mode.
 - **LDL-Link Editor panel** (scene-tree `PanelContainer` anchored to the right edge): target subnet `LineEdit` + Browse `FileDialog` (scoped to `scenes/forts/*.tres`), target entry coord X/Y `SpinBox`es, a "Clear target" button, and a shared "Primary entry" checkbox (an LDL link can also be the map's primary arrival; toggling it on clears the flag on every other ENTRY tile so at most one ENTRY per map is primary). In LDL mode, clicking an existing LDL link selects it for editing (does not overwrite); clicking empty space paints a new link and opens the editor. Field edits write back to the tile live and persist on save. Empty target = world-map-return-only. LDL links draw with a distinct blue frame + "L" glyph.
@@ -324,22 +324,22 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 - **CPU Editor panel** (scene-tree `PanelContainer`; shown when a CONTROL_NODE tile is painted/selected): read-only info displaying the per-CPU stats (3 INT, 1 action/turn, 10 MU) per CP2020 PnP rules. No editable fields — CPU stats are fixed. CPUs are structural tiles (walkable) and render with a purple diamond glyph; a crashed CPU (`cpu_crashed_turns > 0`) renders dimmed red with an "X" glyph in the gameplay view.
 - **Files Editor panel** (scene-tree `PanelContainer`; shown when a `MEMORY_UNIT` tile is painted/selected): an `ItemList` with Add/Edit/Remove/Clear buttons authoring `NetFile`s — name `LineEdit`, description `TextEdit` (lore/flavour), `credit_value` `SpinBox` (fixed authored fence price at the hub, in eb), `mu_size` `SpinBox` (deck MU consumed while carrying). Writes the tile's `files: Array[NetFile]`. This is the new memory-tile loot model (replaces `loot_programs`/`loot_credits` for `MEMORY_UNIT`). The board renderer draws a "data copied" marker on a fully-harvested memory tile.
 - **Loot Editor panel** (scene-tree `PanelContainer`; shown when a `CONTROL_NODE` tile is painted/selected): an `ItemList` with Add/Remove buttons loading `NetProgram` `.tres` files → writes the tile's `loot_programs`, plus a `loot_credits` `SpinBox`. This is the runner's "Download Files" program loot, now `CONTROL_NODE`-only (the `MEMORY_UNIT` Loot Editor is replaced by the Files Editor above).
-- **Resident Programs editor** (scene-tree `PanelContainer` toggled by a button at the bottom-right; an `ItemList` with Add/Remove buttons loading `NetProgram` `.tres` files): sets `layout.resident_programs` — the programs the [CP2020Datafort](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort.gd) adversary runs against the intruding netrunner each turn. An MU capacity label shows used/total MU (10 × CPU count); adding a program that would overflow available MU is rejected with a warning. Scope for this pass: Krash (player weapon) + anti-runner `DAMAGE_RUNNER` attacks; Murphy / Viral 15 later.
+- **Resident Programs editor** (scene-tree `PanelContainer` toggled by a button at the bottom-right; an `ItemList` with Add/Remove buttons loading `NetProgram` `.tres` files): sets `layout.resident_programs` — the programs the [CP2020Datafort](scripts/resources/cp2020_datafort.gd) adversary runs against the intruding netrunner each turn. An MU capacity label shows used/total MU (10 × CPU count); adding a program that would overflow available MU is rejected with a warning. Scope for this pass: Krash (player weapon) + anti-runner `DAMAGE_RUNNER` attacks; Murphy / Viral 15 later.
 - Dynamic layout resizing (`SpinBox` input for columns/rows).
 - Native file open/save dialog integration (scene-tree `FileDialog` nodes) for loading and exporting `.tres` layout files.
 
-### 5.7 World Map Designer Tool ([cp2020_world_map_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_world_map_designer.gd))
+### 5.7 World Map Designer Tool ([cp2020_world_map_designer.gd](scripts/resources/cp2020_world_map_designer.gd))
 - `@tool` editor that authors a `CP2020WorldMapLayout` `.tres` (regions + hubs) consumed at runtime by `cp_2020_world_net_map.gd`.
 - Tools: `REGION` (paint region colour), `HUB` (place/select a hub), `ERASER`.
 - Side panel edits the selected hub: name, subnet path (+ Browse), **City Grid path** (+ Browse `data/city_grids/*.tres`, writes `hub.city_grid_path`), LDL cost, security code, trace value, set-as-spawn, delete. The Security Tier `OptionButton` is **hidden** (tier moved to City Grid dataforts; field kept on the resource for save compat). Hub chips are drawn as plain cyan markers (no tier glyph). Region list with add/paint.
 
-### 5.7b City Grid Designer Tool ([cp2020_city_grid_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_city_grid_designer.gd)) — *NEW*
+### 5.7b City Grid Designer Tool ([cp2020_city_grid_designer.gd](scripts/resources/cp2020_city_grid_designer.gd)) — *NEW*
 - `@tool` editor that authors a `CP2020CityGridLayout` `.tres` (dataforts + LDL entry) consumed at runtime by `cp2020_city_grid.gd`. Save/Load to `data/city_grids/*.tres`.
 - Tools: `DATAFORT` (place/select), `LDL_ENTRY` (set the runner arrival tile), `ERASER` (remove a datafort). Settings row: city name `LineEdit`, Cols/Rows `SpinBox`es + Apply Size.
 - Side panel edits the selected datafort: name, subnet path (+ Browse `scenes/forts/*.tres`), **Security Tier** `OptionButton` (populated via `CP2020SecurityTier.LABELS`), LDL cost, security code, trace value, delete.
 - `_draw`: grid + datafort chips in tier colour (`CP2020SecurityTier.COLORS`) with tier glyph (`CP2020SecurityTier.GLYPHS`) + name; LDL entry ring marker.
 
-### 5.8 Cyberdeck Workbench UI ([cyberdeck_workbench.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/ui/cyberdeck_workbench.gd))
+### 5.8 Cyberdeck Workbench UI ([cyberdeck_workbench.gd](scripts/ui/cyberdeck_workbench.gd))
 - Deck selection via an `OptionButton` (`available_decks`); stats (Model, Speed, MU used/total + coloured MU bar, Data Wall STR, Interface Rank from the deck resource) refresh on selection. The whole UI is built in code from a minimal scene root (matching the designer-panel pattern).
 - Three-zone layout: **Deck Stats** (left) | **Loaded into Memory** + `LOAD ▶` / `◀ UNLOAD` / `CLEAR` buttons (centre) | **Program Library** + filter `OptionButton` + detail card (right).
 - Two `ItemList`s: **Library** (all `available_programs`, filtered by EffectType category) and **Loaded** (the active deck's `installed_programs`). Items are colour-coded per `EffectType`; library items that won't fit in the remaining MU are greyed out and disabled.
@@ -354,7 +354,7 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
   - **SELL LOOT**: lists programs carried in `RunState.loot` (collected from datafort tiles); select + `SELL` fences at 50% of program price, adds to `RunState.credits`.
   - **SELL FILES**: lists files carried in `RunState.carried_files` (copied from `MEMORY_UNIT` tiles); select + `SELL FILE` fences at `credit_value`; **`SELL ALL`** button fences all carried files at once. Files consume deck MU while carried (shown in MU bar).
 
-### 5.9 World Map Runtime ([cp_2020_world_net_map.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp_2020_world_net_map.gd))
+### 5.9 World Map Runtime ([cp_2020_world_net_map.gd](scripts/resources/cp_2020_world_net_map.gd))
 - Geographic grid titled **"WORLD MAP"**. Runner spawns on the configured spawn hub (Night City fallback) and moves tile-by-tile with a 5-action turn limit (no ICE on the world map). Regions are categorising only — any in-bounds tile is traversable, including open ocean. No tier legend (tier is a datafort property, shown on the City Grid).
 - **Plain city markers**: each hub is drawn as a cyan ring + name (tier glyphs removed — tier moved to City Grid datafort icons). The spawn hub additionally shows a cyan "LDL" entry marker.
 - **LDL command panel**: a persistent `PanelContainer` docked to the right side of the HUD overlay (built in code, not in the `.tscn`). Lists every hackable LDL within Chebyshev ≤ 5 of the runner (each row: name / Sec / +Trace), plus an **ENTER \<city\> City Grid** button (visible only when the runner sits on a hub with a `city_grid_path`) and a **\> Jack Out to Hub** button. Replaces the old right-click popup (right-click no longer does anything).
@@ -364,14 +364,14 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 - HUD: Actions, Credits (`RunState.credits`), Location (hub/region/ocean), Trace (`RunState.accumulated_trace`).
 - Camera follow via a `Camera2D` clamped to the map rect and centred on the runner.
 
-### 5.10 City Grid Runtime ([cp2020_city_grid.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_city_grid.gd)) — *NEW*
+### 5.10 City Grid Runtime ([cp2020_city_grid.gd](scripts/resources/cp2020_city_grid.gd)) — *NEW*
 - Per-city grid (`cp2020_city_grid.tscn`) loaded from `RunState.selected_city_grid_path` (`CP2020CityGridLayout`). Runner spawns on `ldl_entry` and moves 5 actions/turn. Reuses the world map movement/camera pattern.
 - **Tier-coded datafort icons**: each datafort is drawn as a filled chip in its `security_tier` colour (via `CP2020SecurityTier.COLORS`) with the tier glyph (`CP2020SecurityTier.GLYPHS`) and the datafort name. The LDL entry tile shows a cyan "LDL" ring marker.
 - **Stepping onto a datafort icon auto-dives** into its subnet (sets `RunState.selected_subnet_path` + `selected_security_tier`, keeps `selected_city_grid_path`, changes scene to gameplay). No Hack/Pay LDL on the city grid — that is a world-map-only mechanic; dataforts are reached by walking.
 - Right-click the runner's tile → **Return to World Map** popup (resets `accumulated_trace`, clears `selected_city_grid_path` + `selected_security_tier`, changes scene to the world map) / Cancel.
 - HUD: Actions, Credits, Location (datafort/city), Trace.
 
-### 5.11 Cross-Scene State & Trace ([run_state.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/autoload/run_state.gd))
+### 5.11 Cross-Scene State & Trace ([run_state.gd](scripts/autoload/run_state.gd))
 - `RunState` is an autoload singleton holding state that survives scene changes within a run: `selected_deck`, `selected_subnet_path`, `selected_city_grid_path`, `selected_security_tier`, `credits`, and `accumulated_trace`.
 - **`selected_city_grid_path`** — the city grid currently in play, so the datafort LDL-return can go back to the right city grid.
 - **`selected_security_tier`** — set at dive time by the City Grid (the datafort icon's tier); read by `game_session._resolve_security_tier()` for the default ICE loadout. Fallback `LEVEL_1`.
@@ -387,17 +387,17 @@ Performs procedural drawing via `CanvasItem.draw_*` calls using a **neon cyberpu
 ## 6. Guide for Future Coding Agents
 
 ### 6.1 How to Add a New Program
-1. Create a new `.tres` resource file in [data/](file:///c:/Users/mecca/Documents/netrunner-v-0.006/data/).
+1. Create a new `.tres` resource file in [data/](data/).
 2. Set `script = ExtResource("res://scripts/resources/cp2020_programs.gd")`.
 3. Configure properties (`program_name`, `type`, `effect_type`, `memory_cost`, `strength`, `price`, optionally `damage_dice` — `0` = flat `strength` per Black ICE hit; `>0` = roll `1D{damage_dice}` per hit, e.g. Sword = 6).
 4. The hub shop auto-discovers any `NetProgram` `.tres` in `data/` via `cyberdeck_workbench._scan_data_catalogue()` — no catalogue registration needed.
-5. To add a program to the player starting loadout, add it to the `installed_programs` array on [cp2020_netrunner.tscn](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scenes/ui/cp2020_netrunner.tscn) or within [cp2020_gameplay.tscn](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scenes/cp2020_gameplay.tscn).
+5. To add a program to the player starting loadout, add it to the `installed_programs` array on [cp2020_netrunner.tscn](scenes/ui/cp2020_netrunner.tscn) or within [cp2020_gameplay.tscn](scenes/cp2020_gameplay.tscn).
 
 ### 6.2 How to Add a New Tile Type
-1. Add the enum value to `TileType` in [CP2020DatafortLayout.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/CP2020DatafortLayout.gd).
-2. Update graphics rendering in [_draw_tile_graphics](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_board_renderer.gd#L40).
-3. Update obstacle logic in [cp2020_netrunner.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_netrunner.gd#L86), [_has_line_of_sight](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_game_session.gd#L163), and [_update_obstacles](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_blackice.gd#L85).
-4. Update the editor toolbar buttons in [cp2020_datafort_designer.gd](file:///c:/Users/mecca/Documents/netrunner-v-0.006/scripts/resources/cp2020_datafort_designer.gd#L88).
+1. Add the enum value to `TileType` in [CP2020DatafortLayout.gd](scripts/resources/CP2020DatafortLayout.gd).
+2. Update graphics rendering in [_draw_tile_graphics](scripts/resources/cp2020_board_renderer.gd#L320).
+3. Update obstacle logic in [refresh_pathfinding](scripts/resources/cp2020_grid_entity_base.gd#L80) (shared by all grid entities) and [_has_line_of_sight](scripts/resources/cp2020_game_session.gd#L2330).
+4. Update the editor toolbar buttons in [cp2020_datafort_designer.gd](scripts/resources/cp2020_datafort_designer.gd#L138).
 
 ### 6.3 Important Conventions & Gotchas
 - **Grid Offset**: The top 90 pixels of the viewport are reserved for UI elements. Always convert world mouse clicks or tile positions using `grid_offset_y = 90` and `cell_size = 40`.
