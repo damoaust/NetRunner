@@ -197,6 +197,10 @@ func update_visual_position() -> void:
 	position = Vector2(center_x, center_y)
 
 func _process(delta: float) -> void:
+	# 2D avatar pulse only. Skip entirely in 3D mode — the 3D avatar renders
+	# the runner, so there is no 2D draw to animate (CODE_REVIEW §8.3).
+	if visual_3d_mode or not is_visible_in_tree():
+		return
 	_pulse_time += delta
 	queue_redraw()
 
